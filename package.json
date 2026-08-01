@@ -1,0 +1,52 @@
+{
+  "name": "claude-turn-diff",
+  "displayName": "Turn Diff for Claude Code",
+  "description": "Shows everything Claude Code changed in one turn as a single multi-file diff.",
+  "version": "0.1.0",
+  "publisher": "ZhenyaUsenko",
+  "license": "MIT",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ZhenyaUsenko/vscode-claude-turn-diff.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ZhenyaUsenko/vscode-claude-turn-diff/issues"
+  },
+  "homepage": "https://github.com/ZhenyaUsenko/vscode-claude-turn-diff#readme",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "SCM Providers",
+    "Other"
+  ],
+  "keywords": [
+    "claude",
+    "claude code",
+    "diff",
+    "multi-file diff",
+    "code review",
+    "hooks"
+  ],
+  "main": "./extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "claudeTurnDiff.showLast",
+        "title": "Turn Diff: Show last turn changes"
+      },
+      {
+        "command": "claudeTurnDiff.installHooks",
+        "title": "Turn Diff: Register hooks in Claude settings"
+      },
+      {
+        "command": "claudeTurnDiff.uninstallHooks",
+        "title": "Turn Diff: Remove hooks from Claude settings"
+      }
+    ]
+  }
+}
