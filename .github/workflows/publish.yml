@@ -56,6 +56,11 @@ jobs:
       - name: Package
         run: npx --yes @vscode/vsce@latest package --out "${{ steps.version.outputs.vsix }}"
 
+      - name: Publish to Marketplace
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx --yes @vscode/vsce@latest publish --packagePath "${{ steps.version.outputs.vsix }}"
+
       - name: Extract release notes from CHANGELOG
         run: |
           awk -v v="${{ steps.version.outputs.version }}" '
