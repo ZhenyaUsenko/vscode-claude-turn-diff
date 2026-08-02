@@ -2,7 +2,7 @@
   "name": "claude-turn-diff",
   "displayName": "Turn Diff for Claude Code",
   "description": "Shows everything Claude Code changed in one turn as a single multi-file diff.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "ZhenyaUsenko",
   "license": "MIT",
   "icon": "icon.png",
