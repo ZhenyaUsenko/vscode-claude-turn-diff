@@ -8,6 +8,8 @@ through VSCode's file service. They leave no Local History entry, no Timeline
 entry, and no way to review a turn as a unit — you get a diff per message in
 the chat panel instead. This closes that gap.
 
+![Everything one turn changed, in a single multi-file diff](images/multi-file-diff.png)
+
 > Unofficial community extension. Not affiliated with or endorsed by Anthropic.
 
 ## What you get
@@ -27,7 +29,7 @@ the chat panel instead. This closes that gap.
 
 ## Requirements
 
-- [Claude Code](https://claude.com/claude-code)
+- [Claude Code for VS Code](https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code)
 - `jq` on your `PATH`
 - macOS or Linux. On Windows, use WSL or Git Bash.
 
@@ -68,7 +70,7 @@ from the palette, or add this yourself:
 
 | Command | Does |
 |---|---|
-| Turn Diff: Show last turn's changes | Reopens the last diff, skipping anything since reverted |
+| Turn Diff: Show last turn changes | Reopens the last diff, skipping anything since reverted |
 | Turn Diff: Register hooks in Claude settings | Writes the hook config, after a backup |
 | Turn Diff: Remove hooks from Claude settings | Removes only this extension's entries |
 
