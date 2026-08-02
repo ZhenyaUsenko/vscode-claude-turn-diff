@@ -117,6 +117,9 @@ git update-ref -d refs/claude/turns     # remove it
   directly. Already-tracked files always appear, ignore rules notwithstanding.
 - A shell command writing **outside** every repo is caught by neither
   mechanism.
+- Binary files are not shown. The multi-file diff editor resolves both sides
+  through VS Code's text model service, so a binary entry cannot render, and
+  there is no image diff to fall back on.
 - Paths containing tabs or newlines are not handled.
 
 ## License

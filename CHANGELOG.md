@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1
+
+- Document that binary files are not shown. The multi-file diff editor resolves
+  both sides through VS Code's text model service, so a binary entry cannot
+  render and is skipped rather than counted and silently dropped.
+
 ## 0.1.0
 
 First release.
