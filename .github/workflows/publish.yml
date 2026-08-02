@@ -56,7 +56,31 @@ jobs:
       - name: Package
         run: npx --yes @vscode/vsce@latest package --out "${{ steps.version.outputs.vsix }}"
 
+      # Runs after packaging so marketplace.json cannot end up inside the vsix.
+      # `vsce show` exits 0 even for an extension that does not exist, so the
+      # exit code proves nothing and the JSON has to be inspected. Skipping
+      # here — rather than letting publish fail on a duplicate — is what makes
+      # re-running a tag safe.
+      - name: Check whether this version is already published
+        id: marketplace
+        run: |
+          ID="$(node -p "const p = require('./package.json'); p.publisher + '.' + p.name")"
+          npx --yes @vscode/vsce@latest show "$ID" --json > marketplace.json 2>/dev/null || true
+          if node -e '
+            const fs = require("fs")
+            let d
+            try { d = JSON.parse(fs.readFileSync("marketplace.json", "utf8")) } catch { process.exit(1) }
+            const versions = Array.isArray(d.versions) ? d.versions.map((v) => v.version) : []
+            process.exit(versions.includes(process.argv[1]) ? 0 : 1)
+          ' "${{ steps.version.outputs.version }}"; then
+            echo "already=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::${ID}@${{ steps.version.outputs.version }} is already on the Marketplace — skipping publish"
+          else
+            echo "already=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publish to Marketplace
+        if: steps.marketplace.outputs.already != 'true'
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: npx --yes @vscode/vsce@latest publish --packagePath "${{ steps.version.outputs.vsix }}"
@@ -72,14 +96,20 @@ jobs:
             echo "::warning::no CHANGELOG section for ${{ steps.version.outputs.version }}"
           fi
 
+      # Also idempotent: gh release create fails outright if the tag already
+      # has a release, which would turn a harmless re-run into a red build.
       - name: GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ -s RELEASE_NOTES.md ]; then
-            gh release create "$GITHUB_REF_NAME" "${{ steps.version.outputs.vsix }}" \
+          VSIX="${{ steps.version.outputs.vsix }}"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "::notice::release $GITHUB_REF_NAME already exists — refreshing its asset"
+            gh release upload "$GITHUB_REF_NAME" "$VSIX" --clobber
+          elif [ -s RELEASE_NOTES.md ]; then
+            gh release create "$GITHUB_REF_NAME" "$VSIX" \
               --title "$GITHUB_REF_NAME" --notes-file RELEASE_NOTES.md
           else
-            gh release create "$GITHUB_REF_NAME" "${{ steps.version.outputs.vsix }}" \
+            gh release create "$GITHUB_REF_NAME" "$VSIX" \
               --title "$GITHUB_REF_NAME" --generate-notes
           fi
