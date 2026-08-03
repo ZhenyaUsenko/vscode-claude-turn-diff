@@ -13,5 +13,4 @@ else
 fi
 
 echo
-echo "reload the window to activate it, then run a turn"
-echo "activation rewrites the hook, so check ./scripts/status.sh afterwards"
+echo "reload the window to activate it"
