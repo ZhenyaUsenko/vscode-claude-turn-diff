@@ -5,3 +5,5 @@ images/**
 .vscode/**
 **/.DS_Store
 **/*.vsix
+test/**
+scripts/**

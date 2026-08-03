@@ -2,7 +2,7 @@
   "name": "claude-turn-diff",
   "displayName": "Turn Diff for Claude Code",
   "description": "Shows everything Claude Code changed in one turn as a single multi-file diff.",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "publisher": "ZhenyaUsenko",
   "license": "MIT",
   "icon": "icon.png",
@@ -29,7 +29,7 @@
     "code review",
     "hooks"
   ],
-  "main": "./extension.js",
+  "main": "./src/extension.js",
   "activationEvents": [
     "onStartupFinished"
   ],
@@ -48,5 +48,11 @@
         "title": "Turn Diff: Remove hooks from Claude settings"
       }
     ]
+  },
+  "scripts": {
+    "test": "node test/index.js",
+    "build": "./scripts/build.sh",
+    "dev:install": "./scripts/install.sh",
+    "dev:restore": "./scripts/restore.sh"
   }
 }
