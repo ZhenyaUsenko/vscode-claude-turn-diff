@@ -45,13 +45,19 @@ const listRepositories = async (folders) => {
 // Snapshot one worktree as a tree object without touching its real index: the
 // index is copied aside and GIT_INDEX_FILE points git at the copy, so the
 // user's staging area is never disturbed.
+const copyPreservingMtime = (source, destination) => {
+  fs.copyFileSync(source, destination)
+  const { atime, mtime } = fs.statSync(source)
+  fs.utimesSync(destination, atime, mtime)
+}
+
 const snapshotTree = async (repository, scratchDir) => {
   const gitDir = await text(['-C', repository, 'rev-parse', '--absolute-git-dir'])
   if (!gitDir) return null
 
   const indexCopy = path.join(scratchDir, 'index.tmp')
   try {
-    fs.copyFileSync(path.join(gitDir, 'index'), indexCopy)
+    copyPreservingMtime(path.join(gitDir, 'index'), indexCopy)
   } catch {
     return null
   }

@@ -5,6 +5,7 @@ const vscode = require('vscode')
 const view = require('./view')
 const install = require('./install')
 const { start: startServer } = require('./server')
+const { disposeAllWatchers } = require('./watch')
 const { projectDirFor } = require('./util/paths')
 
 const activate = (context) => {
@@ -12,7 +13,7 @@ const activate = (context) => {
   const log = (message) => output.error(message)
 
   view.markCurrentAsSeen() // a turn already on disk is not this window's news
-  context.subscriptions.push(output, view.registerBeforeImageProvider())
+  context.subscriptions.push(output, view.registerBeforeImageProvider(), { dispose: disposeAllWatchers })
 
   // Watch only this project's directory: the hook writes open.json there, and
   // the path has to be re-derived if the first workspace folder changes.

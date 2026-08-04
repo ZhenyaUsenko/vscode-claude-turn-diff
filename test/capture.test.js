@@ -2,6 +2,7 @@
 
 const {
   assert, fs, path, turn, check, repoAt, commitAll, write, runTurn, manifest, statuses,
+  registerChat, nextSecond,
 } = require('./support')
 
 check('reports A, M and D with correct before-images', async () => {
@@ -69,6 +70,21 @@ check('untracked files over the size cap are excluded from both snapshots', asyn
   })
 
   assert.deepStrictEqual(statuses(repo), ['M seed.txt'])
+})
+
+check('a same-size edit is still seen when the snapshot lands a second later', async () => {
+  const repo = repoAt()
+  write(path.join(repo, 'f.txt'), 'one\n')
+  commitAll(repo)
+
+  registerChat(repo, 'chat')
+  await turn.handle('begin', repo, { session_id: 'chat', prompt: 'p' }, [repo])
+  await turn.handle('arm', repo, { session_id: 'chat' }, [repo])
+  write(path.join(repo, 'f.txt'), 'two\n')
+  await nextSecond()
+  await turn.handle('end', repo, { session_id: 'chat' }, [repo])
+
+  assert.deepStrictEqual(statuses(repo), ['M f.txt'])
 })
 
 check('injected IDE context is stripped from the title', () => {

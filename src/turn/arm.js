@@ -16,6 +16,7 @@ const path = require('path')
 const { chatDirFor } = require('../util/paths')
 const { readLines, canonical, isUnder } = require('../util/files')
 const { listRepositories, snapshotTree } = require('../util/git')
+const { watchOutsideWorkspace } = require('../watch')
 
 const snapshotWorkspace = async (chatDir, workspaceFolders) => {
   const snapshots = []
@@ -35,6 +36,9 @@ const targetedFile = (payload) => {
 }
 
 const arm = async ({ workingDir, sessionId, payload, workspaceFolders }) => {
+  const file = targetedFile(payload)
+  if (file) watchOutsideWorkspace([file], workspaceFolders, sessionId)
+
   const chatDir = chatDirFor(workingDir, sessionId)
   fs.mkdirSync(chatDir, { recursive: true })
 
@@ -43,7 +47,6 @@ const arm = async ({ workingDir, sessionId, payload, workspaceFolders }) => {
     ? readLines(reposFile).map((line) => line.split('\t'))
     : await snapshotWorkspace(chatDir, workspaceFolders)
 
-  const file = targetedFile(payload)
   if (!file) return
   if (repositories.some(([repository]) => isUnder(canonical(file), repository))) return
 

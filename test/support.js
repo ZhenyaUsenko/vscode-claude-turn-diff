@@ -11,8 +11,16 @@ const path = require('path')
 const HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'turn-diff-test-'))
 process.env.HOME = HOME
 
+// src/view.js requires 'vscode', which only resolves inside the editor.
+const Module = require('module')
+const vscode = require('./vscode-stub')
+const loadModule = Module._load
+Module._load = (request, ...rest) =>
+  request === 'vscode' ? vscode : loadModule.call(Module, request, ...rest)
+
 const turn = require('../src/turn')
 const paths = require('../src/util/paths')
+const view = require('../src/view')
 
 // --- registry --------------------------------------------------------------
 
@@ -110,4 +118,6 @@ module.exports = {
   nextSecond,
   runTurn,
   statuses,
+  view,
+  vscode,
 }

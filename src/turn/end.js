@@ -8,6 +8,7 @@ const { chatDirFor, manifestFor } = require('../util/paths')
 const { readLines, removeRecursive, canonical, isUnder } = require('../util/files')
 const git = require('../util/git')
 const { purgeSupersededTurns } = require('./purge')
+const { disposeWatchers } = require('../watch')
 
 // Collects one manifest entry per genuinely changed file. `beforeContents` is
 // null when the file did not exist before the turn.
@@ -101,6 +102,8 @@ const recordShadowRef = async ({ repository, treeBefore, treeAfter }, prompt) =>
 }
 
 const end = async ({ workingDir, sessionId }) => {
+  disposeWatchers(sessionId)
+
   const chatDir = chatDirFor(workingDir, sessionId)
   const armed =
     fs.existsSync(path.join(chatDir, 'repos.tsv')) || fs.existsSync(path.join(chatDir, 'touched.tsv'))
