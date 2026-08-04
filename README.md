@@ -30,7 +30,6 @@ the chat panel instead. This closes that gap.
 ## Requirements
 
 - [Claude Code for VS Code](https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code)
-- `jq` on your `PATH`
 - macOS or Linux. On Windows, use WSL or Git Bash.
 
 ## Install
@@ -84,9 +83,15 @@ from the palette, or add this yourself:
 | `Stop` | Claude finishes | diffs, opens the editor, points `refs/claude/turns` at this turn |
 
 Snapshots use a throwaway copy of `.git/index`, so your real index and staging
-area are never touched. Later `PreToolUse` calls hit a guard that runs on bash
-builtins and exits in a few milliseconds. A turn that writes nothing never
-spawns git at all.
+area are never touched.
+
+The hook is a thin client. It locates the window serving this project through a
+small file under `~/.claude/turn-diff/` and hands the payload over a loopback
+socket, so the capture runs inside the extension rather than in an interpreter
+re-spawned before every tool call. Later `PreToolUse` calls cost one round trip
+of a few milliseconds, and a turn that writes nothing never spawns git at all.
+If no window is serving the project, the hook exits without doing the work —
+there would be nothing to render it.
 
 Two mechanisms, because neither suffices alone: **tree snapshots** catch
 anything happening inside a git worktree however it happened, but cannot see

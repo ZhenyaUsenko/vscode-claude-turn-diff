@@ -1,11 +1,7 @@
 const fs = require('fs')
 const path = require('path')
 
-const removeRecursive = (target) => {
-  try {
-    fs.rmSync(target, { recursive: true, force: true })
-  } catch {}
-}
+const removeRecursive = (target) => fs.rmSync(target, { recursive: true, force: true })
 
 const readLines = (file) => {
   try {

@@ -8,11 +8,11 @@ const { start: startServer } = require('./server')
 const { projectDirFor } = require('./util/paths')
 
 const activate = (context) => {
-  const output = vscode.window.createOutputChannel('Turn Diff')
-  const log = (message) => output.appendLine(message)
+  const output = vscode.window.createOutputChannel('Turn Diff', { log: true })
+  const log = (message) => output.error(message)
 
   view.markCurrentAsSeen() // a turn already on disk is not this window's news
-  context.subscriptions.push(output, view.registerBeforeImageProvider(), { dispose: view.dispose })
+  context.subscriptions.push(output, view.registerBeforeImageProvider())
 
   // Watch only this project's directory: the hook writes open.json there, and
   // the path has to be re-derived if the first workspace folder changes.

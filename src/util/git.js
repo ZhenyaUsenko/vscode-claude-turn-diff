@@ -75,10 +75,8 @@ const snapshotTree = async (repository, scratchDir) => {
   }
 
   const tree = await text(['-C', repository, 'write-tree'], env)
-  try {
-    fs.unlinkSync(indexCopy)
-  } catch {}
-  return tree || null
+  fs.unlinkSync(indexCopy)
+  return tree
 }
 
 // numstat prints "-" for added and deleted lines on binary files.

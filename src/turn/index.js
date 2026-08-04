@@ -10,7 +10,7 @@ const handle = async (mode, workingDir, payload, workspaceFolders) => {
   const handler = HANDLERS[mode]
   const sessionId = payload && payload.session_id
   if (!handler || !sessionId || !workingDir) return
-  await handler({ workingDir, sessionId, payload, workspaceFolders: workspaceFolders || [] })
+  await handler({ workingDir, sessionId, payload, workspaceFolders })
 }
 
 module.exports = { handle, cleanPrompt }

@@ -14,8 +14,7 @@ const { sameContents } = require('./util/files')
 // the scheme differs, so no rename is inferred.
 const SCHEME = 'claude-before'
 
-const beforeImageByPath = new Map()
-const contentsChanged = new vscode.EventEmitter()
+const beforeImageByUri = new Map()
 let lastRendered = null
 
 const workspaceFolders = () =>
@@ -28,12 +27,8 @@ const manifestPath = () => {
 
 const readManifest = () => {
   const file = manifestPath()
-  if (!file) return null
-  try {
-    return JSON.parse(fs.readFileSync(file, 'utf8'))
-  } catch {
-    return null
-  }
+  if (!file || !fs.existsSync(file)) return null
+  return JSON.parse(fs.readFileSync(file, 'utf8'))
 }
 
 // The status was frozen when the manifest was written; the tree may have moved
@@ -47,14 +42,14 @@ const stillRenderable = (absolutePath, beforeImage, status) => {
 
 const toResources = (manifest) => {
   const resources = []
+  beforeImageByUri.clear() // superseded turns have had their images reclaimed
   for (const [absolutePath, beforeImage, , status] of manifest.files) {
     if (!stillRenderable(absolutePath, beforeImage, status)) continue
 
     const fileUri = vscode.Uri.file(absolutePath)
-    const beforeUri = fileUri.with({ scheme: SCHEME })
+    const beforeUri = fileUri.with({ scheme: SCHEME, query: manifest.ts })
 
-    beforeImageByPath.set(fileUri.path, beforeImage)
-    contentsChanged.fire(beforeUri) // drop anything cached from a prior turn
+    beforeImageByUri.set(beforeUri.toString(), beforeImage)
 
     if (status === 'A') resources.push([fileUri, undefined, fileUri])
     else if (status === 'D') resources.push([fileUri, beforeUri, undefined])
@@ -67,7 +62,7 @@ const showLastTurn = async ({ force = false } = {}) => {
   const manifest = readManifest()
   const title = manifest?.title || 'Last turn changes'
 
-  if (!manifest || !Array.isArray(manifest.files) || !manifest.files.length) {
+  if (!manifest) {
     // The editor renders its own "No Changed Files" state, which says it
     // better than a notification would.
     if (force) await vscode.commands.executeCommand('vscode.changes', title, [])
@@ -82,21 +77,13 @@ const showLastTurn = async ({ force = false } = {}) => {
     return
   }
 
-  try {
-    await vscode.commands.executeCommand('vscode.changes', title, resources)
-  } catch {
-    // defensive: if the undefined slots used for A and D are ever rejected,
-    // fall back to treating everything as a plain modification
-    const asModifications = resources.map(([uri]) => [uri, uri.with({ scheme: SCHEME }), uri])
-    await vscode.commands.executeCommand('vscode.changes', title, asModifications)
-  }
+  await vscode.commands.executeCommand('vscode.changes', title, resources)
 }
 
 const registerBeforeImageProvider = () =>
   vscode.workspace.registerTextDocumentContentProvider(SCHEME, {
-    onDidChange: contentsChanged.event,
     provideTextDocumentContent: (uri) => {
-      const source = beforeImageByPath.get(uri.path)
+      const source = beforeImageByUri.get(uri.toString())
       if (!source) return ''
       try {
         return fs.readFileSync(source, 'utf8')
@@ -121,5 +108,4 @@ module.exports = {
   markCurrentAsSeen,
   forgetLastRendered,
   workspaceFolders,
-  dispose: () => contentsChanged.dispose(),
 }

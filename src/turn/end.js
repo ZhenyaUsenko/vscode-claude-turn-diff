@@ -19,14 +19,10 @@ const createCollector = (beforeDir) => {
     fs.mkdirSync(path.dirname(beforeImage), { recursive: true })
     fs.writeFileSync(beforeImage, beforeContents === null ? '' : beforeContents)
 
+    // A file can leave the tree without its contents changing — a new
+    // .gitignore rule starting to match it, say. That is not a change.
     const existsNow = fs.existsSync(absolutePath)
-    if (existsNow) {
-      try {
-        // A file can leave the tree without its contents changing — a new
-        // .gitignore rule starting to match it, say. That is not a change.
-        if (fs.readFileSync(beforeImage).equals(fs.readFileSync(absolutePath))) return
-      } catch {}
-    }
+    if (existsNow && fs.readFileSync(beforeImage).equals(fs.readFileSync(absolutePath))) return
 
     entries.push({
       beforeImage,
@@ -72,12 +68,8 @@ const collectOutsideChanges = (chatDir, collector) => {
     const [absolutePath, existedBefore] = line.split('\t')
     if (!absolutePath) continue
 
-    let contents = null
-    if (existedBefore === '1') {
-      try {
-        contents = fs.readFileSync(path.join(chatDir, 'blobs', absolutePath))
-      } catch {}
-    }
+    const contents =
+      existedBefore === '1' ? fs.readFileSync(path.join(chatDir, 'blobs', absolutePath)) : null
     collector.add(absolutePath, contents)
   }
 }
