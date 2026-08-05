@@ -1,4 +1,4 @@
-const { begin, cleanPrompt } = require('./begin')
+const { begin } = require('./begin')
 const { arm } = require('./arm')
 const { end } = require('./end')
 
@@ -13,4 +13,4 @@ const handle = async (mode, workingDir, payload, workspaceFolders) => {
   await handler({ workingDir, sessionId, payload, workspaceFolders })
 }
 
-module.exports = { handle, cleanPrompt }
+module.exports = { handle }

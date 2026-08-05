@@ -26,13 +26,14 @@ check('a chat deleted in Claude Code has its whole directory reclaimed', async (
 
   await runTurn(repo, 'ghost', [repo], () => write(path.join(repo, 'f.txt'), 'two\n'))
   const ghostDir = paths.chatDirFor(repo, 'ghost')
-  assert.ok(fs.existsSync(path.join(ghostDir, 'prompt')), 'prompt survives an ordinary purge')
+  const images = fs.readdirSync(ghostDir).filter((name) => name.startsWith('before-'))
+  assert.strictEqual(images.length, 1, 'the finished turn left its before-images behind')
 
   forgetChat(repo, 'ghost')
   await nextSecond()
   await runTurn(repo, 'alive', [repo], () => write(path.join(repo, 'f.txt'), 'three\n'))
 
-  assert.ok(!fs.existsSync(ghostDir), 'the deleted chat is gone, prompt included')
+  assert.ok(!fs.existsSync(ghostDir), 'the deleted chat is gone, before-images included')
 })
 
 check('a finishing turn leaves the server advert alone', async () => {

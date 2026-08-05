@@ -1,11 +1,11 @@
-// Stop: diff the snapshots against the working tree, publish a manifest for
-// the extension to render, and point refs/claude/turns at this turn.
+// Stop: diff the snapshots against the working tree and publish a manifest for
+// the extension to render.
 
 const fs = require('fs')
 const path = require('path')
 
 const { chatDirFor, manifestFor } = require('../util/paths')
-const { readLines, removeRecursive, canonical, isUnder } = require('../util/files')
+const { readLines, removeRecursive } = require('../util/files')
 const git = require('../util/git')
 const { purgeSupersededTurns } = require('./purge')
 const { disposeWatchers } = require('../watch')
@@ -35,18 +35,13 @@ const createCollector = (beforeDir) => {
   return { entries, add }
 }
 
-const collectRepositoryChanges = async (chatDir, workingDir, collector) => {
-  let cwdRepository = null
-
+const collectRepositoryChanges = async (chatDir, collector) => {
   for (const line of readLines(path.join(chatDir, 'repos.tsv'))) {
     const [repository, treeBefore] = line.split('\t')
     if (!repository || !treeBefore) continue
 
     const treeAfter = await git.snapshotTree(repository, chatDir)
     if (!treeAfter || treeAfter === treeBefore) continue
-    if (!cwdRepository && isUnder(canonical(workingDir), repository)) {
-      cwdRepository = { repository, treeBefore, treeAfter }
-    }
 
     const changed = await git.nulSeparated([
       '-C', repository, 'diff', '--name-only', '-z', treeBefore, treeAfter,
@@ -60,8 +55,6 @@ const collectRepositoryChanges = async (chatDir, workingDir, collector) => {
       collector.add(path.join(repository, relative), contents)
     }
   }
-
-  return cwdRepository
 }
 
 const collectOutsideChanges = (chatDir, collector) => {
@@ -73,32 +66,6 @@ const collectOutsideChanges = (chatDir, collector) => {
       existedBefore === '1' ? fs.readFileSync(path.join(chatDir, 'blobs', absolutePath)) : null
     collector.add(absolutePath, contents)
   }
-}
-
-// A detached ref holding only the latest turn. Rebuilt from HEAD each time
-// rather than chained, so earlier turns go unreachable and normal gc reclaims
-// them. `git show refs/claude/turns` is always exactly this turn.
-const recordShadowRef = async ({ repository, treeBefore, treeAfter }, prompt) => {
-  let parent = await git.text(['-C', repository, 'rev-parse', '-q', '--verify', 'HEAD'])
-  const headTree = await git.text(['-C', repository, 'rev-parse', '-q', '--verify', 'HEAD^{tree}'])
-
-  if (treeBefore !== headTree) {
-    // the working tree already differed from HEAD when the turn began; record
-    // that separately so the turn commit stays exactly Claude's changes
-    const baseline = await git.text([
-      '-C', repository, 'commit-tree', treeBefore,
-      ...(parent ? ['-p', parent] : []),
-      '-m', '· uncommitted state before this turn',
-    ])
-    if (baseline) parent = baseline
-  }
-
-  const commit = await git.text([
-    '-C', repository, 'commit-tree', treeAfter,
-    ...(parent ? ['-p', parent] : []),
-    '-m', prompt,
-  ])
-  if (commit) await git.run(['-C', repository, 'update-ref', 'refs/claude/turns', commit])
 }
 
 const end = async ({ workingDir, sessionId }) => {
@@ -113,7 +80,7 @@ const end = async ({ workingDir, sessionId }) => {
   const beforeDir = path.join(chatDir, `before-${stamp}`)
   const collector = createCollector(beforeDir)
 
-  const cwdRepository = await collectRepositoryChanges(chatDir, workingDir, collector)
+  await collectRepositoryChanges(chatDir, collector)
   collectOutsideChanges(chatDir, collector)
 
   for (const consumed of ['repos.tsv', 'touched.tsv', 'blobs']) {
@@ -122,14 +89,6 @@ const end = async ({ workingDir, sessionId }) => {
   if (!collector.entries.length) {
     removeRecursive(beforeDir)
     return
-  }
-
-  if (cwdRepository) {
-    let prompt = 'turn'
-    try {
-      prompt = fs.readFileSync(path.join(chatDir, 'prompt'), 'utf8') || prompt
-    } catch {}
-    await recordShadowRef(cwdRepository, prompt)
   }
 
   // Publish before purging. With parallel chats the manifest being replaced

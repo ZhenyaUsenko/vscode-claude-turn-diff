@@ -86,11 +86,3 @@ check('a same-size edit is still seen when the snapshot lands a second later', a
 
   assert.deepStrictEqual(statuses(repo), ['M f.txt'])
 })
-
-check('injected IDE context is stripped from the title', () => {
-  assert.strictEqual(
-    turn.cleanPrompt('<ide_opened_file>The user opened /a/b.ts</ide_opened_file> real question'),
-    'real question',
-  )
-  assert.strictEqual(turn.cleanPrompt('<ide_opened_file>only noise</ide_opened_file>'), 'turn')
-})

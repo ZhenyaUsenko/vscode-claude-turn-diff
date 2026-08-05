@@ -22,8 +22,10 @@ other's diff.
   both sides of the diff until the window was refocused. VS Code only watches
   what is inside the workspace, so its copy of such a file lagged behind disk;
   those paths are now watched for as long as the turn that touches them.
-- Fixed: a symlinked working directory (`/var` on macOS) meant the shadow ref
-  was silently never written.
+- Removed `refs/claude/turns`. It only ever recorded the repository containing
+  the folder Claude Code was started in, so in a multi-root workspace it stayed
+  silently out of date as soon as you edited anything in one of the other
+  folders. Nothing read it, and the diff never depended on it.
 - State is reclaimed when a turn supersedes it, and a chat deleted in Claude
   Code has its state removed. No time-based sweep.
 

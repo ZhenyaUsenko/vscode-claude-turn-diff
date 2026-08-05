@@ -77,10 +77,10 @@ from the palette, or add this yourself:
 
 | Hook | Runs | Does |
 |---|---|---|
-| `UserPromptSubmit` | you hit enter | records the prompt. No git. |
+| `UserPromptSubmit` | you hit enter | clears anything an interrupted turn left. No git. |
 | `PreToolUse` | first write-capable tool of the turn | snapshots every git repo in the workspace to dangling tree objects |
 | `PreToolUse` | every `Edit`/`Write` naming a path | if that path is outside all those repos, copies its before-image |
-| `Stop` | Claude finishes | diffs, opens the editor, points `refs/claude/turns` at this turn |
+| `Stop` | Claude finishes | diffs and opens the editor |
 
 Snapshots use a throwaway copy of `.git/index`, so your real index and staging
 area are never touched.
@@ -104,15 +104,6 @@ Before-images live in `~/.claude/turn-diff/`, and only the most recent turn is
 kept — each turn purges the last. The diff compares against the *current* file,
 which is what makes it editable, so an older turn stops being meaningful the
 moment the tree moves on.
-
-`refs/claude/turns` is a detached ref in the repo containing the working
-directory. It never touches your branches and is never pushed. It holds the
-latest turn only, rebuilt from `HEAD` each time:
-
-```bash
-git show refs/claude/turns              # exactly what Claude changed last turn
-git update-ref -d refs/claude/turns     # remove it
-```
 
 ## Limitations
 
