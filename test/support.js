@@ -67,36 +67,40 @@ const write = (file, contents) => {
   fs.writeFileSync(file, contents)
 }
 
+const { projectKey } = paths
+
 // Pretend the chat exists, so the deleted-chat purge trusts the key mapping.
-const registerChat = (workingDir, sessionId) => {
-  const dir = path.join(HOME, '.claude', 'projects', paths.projectKey(workingDir))
+const registerChat = (directory, sessionId) => {
+  const dir = path.join(HOME, '.claude', 'projects', projectKey(directory))
   fs.mkdirSync(dir, { recursive: true })
   fs.writeFileSync(path.join(dir, `${sessionId}.jsonl`), '')
 }
 
-const forgetChat = (workingDir, sessionId) =>
-  fs.unlinkSync(path.join(HOME, '.claude', 'projects', paths.projectKey(workingDir), `${sessionId}.jsonl`))
+const forgetChat = (directory, sessionId) =>
+  fs.unlinkSync(path.join(HOME, '.claude', 'projects', projectKey(directory), `${sessionId}.jsonl`))
 
-const manifest = (workingDir) => JSON.parse(fs.readFileSync(paths.manifestFor(workingDir), 'utf8'))
+const manifest = (directory) =>
+  JSON.parse(fs.readFileSync(paths.manifestFor(projectKey(directory)), 'utf8'))
 
 // before-* directories are stamped in whole seconds, so tests that need one
 // turn to look strictly older than another have to cross a second boundary.
 const nextSecond = () => new Promise((resolve) => setTimeout(resolve, 1100))
 
-const runTurn = async (workingDir, sessionId, folders, mutate, { prompt = 'p', touch = [] } = {}) => {
-  registerChat(workingDir, sessionId)
-  await turn.handle('begin', workingDir, { session_id: sessionId, prompt }, folders)
-  await turn.handle('arm', workingDir, { session_id: sessionId }, folders)
+const runTurn = async (directory, sessionId, folders, mutate, { prompt = 'p', touch = [] } = {}) => {
+  const project = projectKey(directory)
+  registerChat(directory, sessionId)
+  await turn.handle('begin', project, { session_id: sessionId, prompt }, folders)
+  await turn.handle('arm', project, { session_id: sessionId }, folders)
   for (const file of touch) {
     const payload = { session_id: sessionId, tool_input: { file_path: file } }
-    await turn.handle('arm', workingDir, payload, folders)
+    await turn.handle('arm', project, payload, folders)
   }
   mutate()
-  await turn.handle('end', workingDir, { session_id: sessionId }, folders)
+  await turn.handle('end', project, { session_id: sessionId }, folders)
 }
 
-const statuses = (workingDir) =>
-  manifest(workingDir)
+const statuses = (directory) =>
+  manifest(directory)
     .files.map((entry) => `${entry[3]} ${path.basename(entry[0])}`)
     .sort()
 
@@ -118,6 +122,7 @@ module.exports = {
   nextSecond,
   runTurn,
   statuses,
+  projectKey,
   view,
   vscode,
 }

@@ -4,7 +4,7 @@ const fs = require('fs')
 const path = require('path')
 const vscode = require('vscode')
 
-const { projectDirFor } = require('./util/paths')
+const { projectKey, manifestFor } = require('./util/paths')
 const { sameContents } = require('./util/files')
 
 // The multi-diff editor decides a file was RENAMED by comparing
@@ -22,7 +22,7 @@ const workspaceFolders = () =>
 
 const manifestPath = () => {
   const folders = workspaceFolders()
-  return folders.length ? path.join(projectDirFor(folders[0]), 'open.json') : null
+  return folders.length ? manifestFor(projectKey(folders[0])) : null
 }
 
 const readManifest = () => {

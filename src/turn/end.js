@@ -68,10 +68,10 @@ const collectOutsideChanges = (chatDir, collector) => {
   }
 }
 
-const end = async ({ workingDir, sessionId }) => {
+const end = async ({ project, sessionId }) => {
   disposeWatchers(sessionId)
 
-  const chatDir = chatDirFor(workingDir, sessionId)
+  const chatDir = chatDirFor(project, sessionId)
   const armed =
     fs.existsSync(path.join(chatDir, 'repos.tsv')) || fs.existsSync(path.join(chatDir, 'touched.tsv'))
   if (!armed) return // nothing was written this turn
@@ -95,7 +95,7 @@ const end = async ({ workingDir, sessionId }) => {
   // may still be another chat's, and it must never point at before-images that
   // have already been deleted. The rename makes the swap atomic, so the
   // watcher cannot read a half-written file.
-  const manifest = manifestFor(workingDir)
+  const manifest = manifestFor(project)
   fs.writeFileSync(
     `${manifest}.tmp`,
     JSON.stringify({
@@ -111,7 +111,7 @@ const end = async ({ workingDir, sessionId }) => {
   )
   fs.renameSync(`${manifest}.tmp`, manifest)
 
-  purgeSupersededTurns({ workingDir, sessionId, stamp, currentBeforeDir: beforeDir })
+  purgeSupersededTurns({ project, sessionId, stamp, currentBeforeDir: beforeDir })
 }
 
 module.exports = { end }

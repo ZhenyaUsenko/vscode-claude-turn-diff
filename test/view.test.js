@@ -4,7 +4,7 @@ const {
   assert, fs, path, HOME, check, repoAt, commitAll, write, runTurn, nextSecond, view, vscode,
 } = require('./support')
 
-const render = async (workingDir, folders) => {
+const render = async (folders) => {
   vscode.reset(folders)
   await view.showLastTurn({ force: true })
   return vscode.state.executed[vscode.state.executed.length - 1]
@@ -25,7 +25,7 @@ check('A, M and D become the right pair of sides, with no rename inferred', asyn
     fs.unlinkSync(path.join(repo, 'gone.txt'))
   })
 
-  const call = await render(repo, [repo])
+  const call = await render([repo])
   assert.strictEqual(call.command, 'vscode.changes')
 
   const [file, original, modified] = entryFor(call, 'keep.txt')
@@ -47,11 +47,11 @@ check('each turn addresses its before-image by a distinct uri', async () => {
   commitAll(repo)
 
   await runTurn(repo, 'chat', [repo], () => write(path.join(repo, 'f.txt'), 'two\n'))
-  const first = entryFor(await render(repo, [repo]), 'f.txt')[1]
+  const first = entryFor(await render([repo]), 'f.txt')[1]
 
   await nextSecond()
   await runTurn(repo, 'chat', [repo], () => write(path.join(repo, 'f.txt'), 'three\n'))
-  const second = entryFor(await render(repo, [repo]), 'f.txt')[1]
+  const second = entryFor(await render([repo]), 'f.txt')[1]
 
   assert.notStrictEqual(
     first.toString(),
@@ -68,7 +68,7 @@ check('the before-image provider serves that turn, and nothing it does not know'
   await runTurn(repo, 'chat', [repo], () => write(path.join(repo, 'f.txt'), 'after\n'))
 
   view.registerBeforeImageProvider()
-  const original = entryFor(await render(repo, [repo]), 'f.txt')[1]
+  const original = entryFor(await render([repo]), 'f.txt')[1]
 
   assert.strictEqual(vscode.state.provider.provideTextDocumentContent(original), 'before\n')
   assert.strictEqual(
@@ -90,7 +90,7 @@ check('a file reverted by hand drops out of the diff', async () => {
   })
   write(path.join(repo, 'f.txt'), 'one\n')
 
-  const call = await render(repo, [repo])
+  const call = await render([repo])
   assert.deepStrictEqual(
     call.resources.map(([fileUri]) => path.basename(fileUri.fsPath)),
     ['g.txt'],

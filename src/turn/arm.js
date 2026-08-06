@@ -35,11 +35,11 @@ const targetedFile = (payload) => {
   return file && path.isAbsolute(file) ? file : null
 }
 
-const arm = async ({ workingDir, sessionId, payload, workspaceFolders }) => {
+const arm = async ({ project, sessionId, payload, workspaceFolders }) => {
   const file = targetedFile(payload)
   if (file) watchOutsideWorkspace([file], workspaceFolders, sessionId)
 
-  const chatDir = chatDirFor(workingDir, sessionId)
+  const chatDir = chatDirFor(project, sessionId)
   fs.mkdirSync(chatDir, { recursive: true })
 
   const reposFile = path.join(chatDir, 'repos.tsv')

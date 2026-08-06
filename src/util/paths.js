@@ -19,21 +19,24 @@ const TRANSCRIPTS_ROOT = path.join(CLAUDE_DIR, 'projects')
 const SETTINGS_FILE = path.join(CLAUDE_DIR, 'settings.json')
 const INSTALLED_HOOK = path.join(CLAUDE_DIR, 'hooks', 'turn-diff.sh')
 
-// Derived from the literal path, never a canonicalised one: the hook and the
-// extension each compute this independently and must agree byte for byte.
+// Derived from the literal path, never a canonicalised one, so it matches the
+// directory name Claude Code files the session under. The hook does not compute
+// this: a session keeps the key of the directory it started in, while the hook's
+// cwd follows every `cd` Claude runs, so the hook reads the key straight out of
+// the transcript path instead.
 const projectKey = (directory) => directory.replace(/[^a-zA-Z0-9]/g, '-')
 
-const projectDirFor = (directory) => path.join(STATE_ROOT, projectKey(directory))
-const chatsDirFor = (directory) => path.join(projectDirFor(directory), 'chats')
-const chatDirFor = (directory, sessionId) => path.join(chatsDirFor(directory), sessionId)
-const manifestFor = (directory) => path.join(projectDirFor(directory), 'open.json')
-const serverDirFor = (directory) => path.join(projectDirFor(directory), 'servers')
-const serverFileFor = (directory, pid) => path.join(serverDirFor(directory), `${pid}.json`)
+const projectDirFor = (project) => path.join(STATE_ROOT, project)
+const chatsDirFor = (project) => path.join(projectDirFor(project), 'chats')
+const chatDirFor = (project, sessionId) => path.join(chatsDirFor(project), sessionId)
+const manifestFor = (project) => path.join(projectDirFor(project), 'open.json')
+const serverDirFor = (project) => path.join(projectDirFor(project), 'servers')
+const serverFileFor = (project, pid) => path.join(serverDirFor(project), `${pid}.json`)
 
 // Claude Code keeps one transcript per chat here and removes it when the chat
 // is deleted or expires, which is how we notice state for a chat that is gone.
-const transcriptFor = (directory, sessionId) =>
-  path.join(TRANSCRIPTS_ROOT, projectKey(directory), `${sessionId}.jsonl`)
+const transcriptFor = (project, sessionId) =>
+  path.join(TRANSCRIPTS_ROOT, project, `${sessionId}.jsonl`)
 
 module.exports = {
   CLAUDE_DIR,

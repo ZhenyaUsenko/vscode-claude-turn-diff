@@ -19,8 +19,14 @@ case "$MODE" in begin | arm | end) ;; *) exit 0 ;; esac
 IFS= read -r -d '' payload || true
 [ -n "$payload" ] || exit 0
 
-# project key, matching ~/.claude/projects and the extension, without spawning
-PROJECT=${PWD//[^a-zA-Z0-9]/-}
+# The session's project key, read out of the transcript path Claude Code sends:
+#   ~/.claude/projects/<key>/<sessionId>.jsonl
+# Deriving it from $PWD instead would follow every `cd` Claude runs mid-turn and
+# send the turn's state to a project nobody is serving.
+PROJECT=${payload#*\"transcript_path\":\"}
+PROJECT=${PROJECT%%\"*}
+PROJECT=${PROJECT%/*}
+PROJECT=${PROJECT##*/}
 
 for advert in "$HOME/.claude/turn-diff/$PROJECT/servers/"*.json; do
   [ -f "$advert" ] || continue
@@ -36,7 +42,7 @@ for advert in "$HOME/.claude/turn-diff/$PROJECT/servers/"*.json; do
 
   { exec 3<>"/dev/tcp/127.0.0.1/$port"; } 2>/dev/null || continue
   # header line is tab-separated; paths containing tabs are unsupported anyway
-  printf '%s\t%s\t%s\n%s\n' "$token" "$MODE" "$PWD" "$payload" >&3
+  printf '%s\t%s\t%s\n%s\n' "$token" "$MODE" "$PROJECT" "$payload" >&3
   IFS= read -r -t 30 reply <&3 2>/dev/null
   exec 3<&- 2>/dev/null
   [ "$reply" = "ok" ] && exit 0

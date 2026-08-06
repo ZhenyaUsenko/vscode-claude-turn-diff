@@ -6,7 +6,7 @@ const view = require('./view')
 const install = require('./install')
 const { start: startServer } = require('./server')
 const { disposeAllWatchers } = require('./watch')
-const { projectDirFor } = require('./util/paths')
+const { projectKey, projectDirFor } = require('./util/paths')
 
 const activate = (context) => {
   const output = vscode.window.createOutputChannel('Turn Diff', { log: true })
@@ -27,7 +27,7 @@ const activate = (context) => {
     const folders = view.workspaceFolders()
     if (!folders.length) return
     try {
-      const directory = projectDirFor(folders[0])
+      const directory = projectDirFor(projectKey(folders[0]))
       fs.mkdirSync(directory, { recursive: true })
       watcher = fs.watch(directory, (_event, filename) => {
         if (filename !== 'open.json') return

@@ -2,6 +2,7 @@
 
 const {
   assert, fs, path, paths, check, repoAt, commitAll, write, runTurn, manifest, nextSecond, forgetChat,
+  projectKey,
 } = require('./support')
 
 check('a later chat supersedes an earlier one in the same project', async () => {
@@ -25,7 +26,7 @@ check('a chat deleted in Claude Code has its whole directory reclaimed', async (
   commitAll(repo)
 
   await runTurn(repo, 'ghost', [repo], () => write(path.join(repo, 'f.txt'), 'two\n'))
-  const ghostDir = paths.chatDirFor(repo, 'ghost')
+  const ghostDir = paths.chatDirFor(projectKey(repo), 'ghost')
   const images = fs.readdirSync(ghostDir).filter((name) => name.startsWith('before-'))
   assert.strictEqual(images.length, 1, 'the finished turn left its before-images behind')
 
@@ -41,7 +42,7 @@ check('a finishing turn leaves the server advert alone', async () => {
   write(path.join(repo, 'f.txt'), 'one\n')
   commitAll(repo)
 
-  const advert = paths.serverFileFor(repo, process.pid)
+  const advert = paths.serverFileFor(projectKey(repo), process.pid)
   write(advert, '{"port":1,"token":"t","pid":1}')
 
   await runTurn(repo, 'chat', [repo], () => write(path.join(repo, 'f.txt'), 'two\n'))
@@ -55,10 +56,10 @@ check('a turn that changes nothing leaves the previous manifest alone', async ()
   commitAll(repo)
 
   await runTurn(repo, 'chat', [repo], () => write(path.join(repo, 'f.txt'), 'two\n'))
-  const published = fs.readFileSync(paths.manifestFor(repo), 'utf8')
+  const published = fs.readFileSync(paths.manifestFor(projectKey(repo)), 'utf8')
 
   await nextSecond()
   await runTurn(repo, 'chat', [repo], () => {})
 
-  assert.strictEqual(fs.readFileSync(paths.manifestFor(repo), 'utf8'), published)
+  assert.strictEqual(fs.readFileSync(paths.manifestFor(projectKey(repo)), 'utf8'), published)
 })

@@ -5,5 +5,6 @@ require('./capture.test')
 require('./workspace.test')
 require('./retention.test')
 require('./view.test')
+require('./server.test')
 
 run()

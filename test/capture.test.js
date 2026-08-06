@@ -2,7 +2,7 @@
 
 const {
   assert, fs, path, turn, check, repoAt, commitAll, write, runTurn, manifest, statuses,
-  registerChat, nextSecond,
+  registerChat, nextSecond, projectKey,
 } = require('./support')
 
 check('reports A, M and D with correct before-images', async () => {
@@ -78,11 +78,11 @@ check('a same-size edit is still seen when the snapshot lands a second later', a
   commitAll(repo)
 
   registerChat(repo, 'chat')
-  await turn.handle('begin', repo, { session_id: 'chat', prompt: 'p' }, [repo])
-  await turn.handle('arm', repo, { session_id: 'chat' }, [repo])
+  await turn.handle('begin', projectKey(repo), { session_id: 'chat', prompt: 'p' }, [repo])
+  await turn.handle('arm', projectKey(repo), { session_id: 'chat' }, [repo])
   write(path.join(repo, 'f.txt'), 'two\n')
   await nextSecond()
-  await turn.handle('end', repo, { session_id: 'chat' }, [repo])
+  await turn.handle('end', projectKey(repo), { session_id: 'chat' }, [repo])
 
   assert.deepStrictEqual(statuses(repo), ['M f.txt'])
 })

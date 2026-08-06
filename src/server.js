@@ -1,7 +1,7 @@
 // Loopback server the hook talks to.
 //
 // Wire format, two lines:
-//   <token>\t<mode>\t<workingDir>\n
+//   <token>\t<mode>\t<project>\n
 //   <raw hook payload json>\n
 // reply: "ok\n" or "err\n". The hook waits for it, because `arm` has to finish
 // snapshotting before the tool it precedes is allowed to run.
@@ -15,7 +15,7 @@ const fs = require('fs')
 const net = require('net')
 const path = require('path')
 
-const { serverDirFor, serverFileFor } = require('./util/paths')
+const { projectKey, serverDirFor, serverFileFor } = require('./util/paths')
 const { handle } = require('./turn')
 
 const dropDeadAdvertisements = (directory) => {
@@ -47,9 +47,9 @@ const parseRequest = (buffer) => {
   const endOfBody = buffer.indexOf('\n', endOfHeader + 1)
   if (endOfBody < 0) return null
 
-  const [token, mode, workingDir] = buffer.slice(0, endOfHeader).split('\t')
+  const [token, mode, project] = buffer.slice(0, endOfHeader).split('\t')
   const body = buffer.slice(endOfHeader + 1, endOfBody)
-  return { token, mode, workingDir, body }
+  return { token, mode, project, body }
 }
 
 const start = (getWorkspaceFolders, log) => {
@@ -79,7 +79,7 @@ const start = (getWorkspaceFolders, log) => {
         return
       }
       try {
-        await handle(request.mode, request.workingDir, JSON.parse(request.body), getWorkspaceFolders())
+        await handle(request.mode, request.project, JSON.parse(request.body), getWorkspaceFolders())
         socket.end('ok\n')
       } catch (error) {
         log?.(`${request.mode} failed: ${error && error.stack ? error.stack : error}`)
@@ -95,15 +95,22 @@ const start = (getWorkspaceFolders, log) => {
   // the project key derives from. Only ever writes and removes this process's
   // own file, so a second window on the same project is left alone.
   const advertise = () => {
-    withdraw()
     const folders = getWorkspaceFolders()
     const port = server.address()?.port
-    if (!folders.length || !port) return
+    if (!folders.length || !port) {
+      withdraw()
+      return
+    }
+
+    const project = projectKey(folders[0])
+    const file = serverFileFor(project, process.pid)
+    if (file === advertisedAt && fs.existsSync(file)) return
+
+    withdraw()
     try {
-      const directory = serverDirFor(folders[0])
+      const directory = serverDirFor(project)
       fs.mkdirSync(directory, { recursive: true })
       dropDeadAdvertisements(directory)
-      const file = serverFileFor(folders[0], process.pid)
       fs.writeFileSync(file, JSON.stringify({ port, token, pid: process.pid }), { mode: 0o600 })
       advertisedAt = file
     } catch (error) {

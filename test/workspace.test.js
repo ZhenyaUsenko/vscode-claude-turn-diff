@@ -3,7 +3,7 @@
 
 const {
   assert, fs, path, paths, HOME, check, repoAt, commitAll, write, runTurn, manifest, statuses,
-  vscode, turn, registerChat,
+  vscode, turn, registerChat, projectKey,
 } = require('./support')
 
 check('a turn spanning two repositories produces one manifest', async () => {
@@ -81,8 +81,8 @@ check('a chat ending leaves a parallel chat mid-turn still watching', async () =
 
   vscode.reset([repo])
   registerChat(repo, 'b')
-  await turn.handle('begin', repo, { session_id: 'b', prompt: 'p' }, [repo])
-  await turn.handle('arm', repo, { session_id: 'b', tool_input: { file_path: forB } }, [repo])
+  await turn.handle('begin', projectKey(repo), { session_id: 'b', prompt: 'p' }, [repo])
+  await turn.handle('arm', projectKey(repo), { session_id: 'b', tool_input: { file_path: forB } }, [repo])
 
   await runTurn(repo, 'a', [repo], () => write(forA, 'after\n'), { touch: [forA] })
 
@@ -103,7 +103,7 @@ check('two projects do not overwrite each other', async () => {
   await runTurn(repoA, 'chat-a', [repoA], () => write(path.join(repoA, 'f.txt'), 'A\n'))
   await runTurn(repoB, 'chat-b', [repoB], () => write(path.join(repoB, 'f.txt'), 'B\n'))
 
-  assert.notStrictEqual(paths.manifestFor(repoA), paths.manifestFor(repoB))
+  assert.notStrictEqual(paths.manifestFor(projectKey(repoA)), paths.manifestFor(projectKey(repoB)))
   assert.ok(
     fs.existsSync(manifest(repoA).files[0][1]),
     "project A's before-image survived project B's turn",

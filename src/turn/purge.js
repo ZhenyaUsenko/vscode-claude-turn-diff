@@ -11,9 +11,9 @@ const { removeRecursive, listDirectories } = require('../util/files')
 const beforeStamp = (name) =>
   name.startsWith('before-') ? Number(name.slice('before-'.length)) : NaN
 
-const purgeSupersededTurns = ({ workingDir, sessionId, stamp, currentBeforeDir }) => {
-  const chatsDir = chatsDirFor(workingDir)
-  const ownChatDir = chatDirFor(workingDir, sessionId)
+const purgeSupersededTurns = ({ project, sessionId, stamp, currentBeforeDir }) => {
+  const chatsDir = chatsDirFor(project)
+  const ownChatDir = chatDirFor(project, sessionId)
 
   for (const name of listDirectories(ownChatDir)) {
     const dir = path.join(ownChatDir, name)
@@ -23,7 +23,7 @@ const purgeSupersededTurns = ({ workingDir, sessionId, stamp, currentBeforeDir }
   // Finding our own transcript proves the project key maps onto Claude Code's
   // the way we expect. Without that check a mismatched key would make every
   // sibling look deleted.
-  const keyIsTrustworthy = fs.existsSync(transcriptFor(workingDir, sessionId))
+  const keyIsTrustworthy = fs.existsSync(transcriptFor(project, sessionId))
 
   for (const name of listDirectories(chatsDir)) {
     const siblingDir = path.join(chatsDir, name)
@@ -32,7 +32,7 @@ const purgeSupersededTurns = ({ workingDir, sessionId, stamp, currentBeforeDir }
     // A chat that no longer exists takes its whole directory. Nothing else
     // ever reclaims it: the sweep below leaves `prompt`, and anything an
     // abandoned mid-turn chat left behind, sitting there indefinitely.
-    if (keyIsTrustworthy && !fs.existsSync(transcriptFor(workingDir, name))) {
+    if (keyIsTrustworthy && !fs.existsSync(transcriptFor(project, name))) {
       removeRecursive(siblingDir)
       continue
     }
