@@ -34,7 +34,7 @@ the chat panel instead. This closes that gap.
 
 ## Install
 
-Install the extension, then accept the prompt to register three hooks in
+Install the extension, then accept the prompt to register its hooks in
 `~/.claude/settings.json`. A backup is written to
 `settings.json.turn-diff-backup` first.
 
@@ -60,6 +60,9 @@ from the palette, or add this yourself:
     ],
     "Stop": [
       { "hooks": [{ "type": "command", "command": "\"$HOME\"/.claude/hooks/turn-diff.sh end", "timeout": 30 }] }
+    ],
+    "StopFailure": [
+      { "hooks": [{ "type": "command", "command": "\"$HOME\"/.claude/hooks/turn-diff.sh end", "timeout": 30 }] }
     ]
   }
 }
@@ -81,6 +84,7 @@ from the palette, or add this yourself:
 | `PreToolUse` | first write-capable tool of the turn | snapshots every git repo in the workspace to dangling tree objects |
 | `PreToolUse` | every `Edit`/`Write` naming a path | if that path is outside all those repos, copies its before-image |
 | `Stop` | Claude finishes | diffs and opens the editor |
+| `StopFailure` | the turn dies on an API error | the same, so the work still gets a diff |
 
 Snapshots use a throwaway copy of `.git/index`, so your real index and staging
 area are never touched.

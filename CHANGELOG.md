@@ -3,9 +3,9 @@
 ## 0.2.0
 
 Mostly an internal rewrite. What changed for you is that the last-turn diff is
-now kept per project — keyed by the working directory, the way Claude Code keys
-`~/.claude/projects` — so several VS Code windows no longer overwrite each
-other's diff.
+now kept per project — keyed by the directory the session started in, the way
+Claude Code keys `~/.claude/projects` — so several VS Code windows no longer
+overwrite each other's diff.
 
 - The hook is now a 44-line client that hands the payload to the extension over
   a loopback socket. All capture logic moved into the extension, so it is one
@@ -15,6 +15,9 @@ other's diff.
   two can never be pruned apart.
 - Each window advertises its own server, so two windows on one project cannot
   delete each other's advertisement.
+- A turn cut short by an API error now produces a diff too, via the
+  `StopFailure` hook. Reloading is not enough to pick this up — the extension
+  will offer to register the new hook.
 - Fixed: an edit that left a file the same size went unreported if it landed in
   the same second as the last commit. Snapshots copy `.git/index`, and the
   copy's fresh timestamp is what stopped git re-reading a file it had cached.

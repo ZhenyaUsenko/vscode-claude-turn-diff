@@ -27,12 +27,12 @@ const installHookScript = (context) => {
 const isOurEntry = (entry) =>
   typeof entry?.command === 'string' && entry.command.includes(HOOK_MARKER)
 
-const hooksRegistered = (settings) => {
-  const hooks = settings.hooks || {}
-  return Object.keys(HOOK_SPEC).every((event) =>
-    (hooks[event] || []).some((group) => (group.hooks || []).some(isOurEntry)),
-  )
-}
+const hooksRegistered = (settings) =>
+  Object.entries(HOOK_SPEC).every(([event, groups]) => {
+    const hooks = settings.hooks || {}
+    const ours = (hooks[event] || []).filter((group) => (group.hooks || []).some(isOurEntry))
+    return JSON.stringify(ours) === JSON.stringify(groups)
+  })
 
 const readSettings = () => {
   let raw = ''
@@ -147,7 +147,7 @@ const promptToRegister = async (context) => {
   if (hooksRegistered(settings)) return
 
   const choice = await vscode.window.showInformationMessage(
-    'Turn Diff needs three hooks in ~/.claude/settings.json to observe what Claude Code changes. Register them? A backup is written first.',
+    `Turn Diff needs ${Object.keys(HOOK_SPEC).length} hooks in ~/.claude/settings.json to observe what Claude Code changes. Register them? A backup is written first.`,
     'Register',
     'Not now',
     'Never',
@@ -160,6 +160,7 @@ const clearDeclined = (context) => context.globalState.update(DECLINED_KEY, fals
 
 module.exports = {
   installHookScript,
+  hooksRegistered,
   registerHooks,
   removeHooks,
   promptToRegister,

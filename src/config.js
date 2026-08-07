@@ -6,7 +6,9 @@ const MAX_UNTRACKED_BYTES = 1024 * 1024
 
 // What gets written into ~/.claude/settings.json. `arm` matches every tool
 // that can write, including Bash, because a shell command is exactly the case
-// per-file capture cannot see coming.
+// per-file capture cannot see coming. `end` is registered for StopFailure too:
+// a turn cut short by an API error never reaches Stop, and its snapshot would
+// sit unclaimed until the next prompt discarded it.
 const HOOK_COMMAND = '"$HOME"/.claude/hooks/turn-diff.sh'
 
 const HOOK_SPEC = {
@@ -20,6 +22,7 @@ const HOOK_SPEC = {
     },
   ],
   Stop: [{ hooks: [{ type: 'command', command: `${HOOK_COMMAND} end`, timeout: 30 }] }],
+  StopFailure: [{ hooks: [{ type: 'command', command: `${HOOK_COMMAND} end`, timeout: 30 }] }],
 }
 
 // Recognises our own entries in a settings file we do not otherwise own.
