@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Build, then replace whatever copy is currently installed.
 
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 

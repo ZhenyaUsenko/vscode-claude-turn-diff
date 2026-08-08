@@ -1,4 +1,3 @@
-// node test/index.js   (or: npm test)
 const { run } = require('./support')
 
 require('./capture.test')

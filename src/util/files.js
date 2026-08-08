@@ -3,6 +3,10 @@ const path = require('path')
 
 const removeRecursive = (target) => fs.rmSync(target, { recursive: true, force: true })
 
+const isUnder = (child, parent) => child === parent || child.startsWith(parent + path.sep)
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 const readLines = (file) => {
   try {
     return fs.readFileSync(file, 'utf8').split('\n').filter(Boolean)
@@ -11,30 +15,32 @@ const readLines = (file) => {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 const listDirectories = (parent) => {
   try {
-    return fs
-      .readdirSync(parent, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name)
+    const entries = fs.readdirSync(parent, { withFileTypes: true })
+
+    return entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name)
   } catch {
     return []
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 const sameContents = (left, right) => {
   try {
     if (fs.statSync(left).size !== fs.statSync(right).size) return false
+
     return fs.readFileSync(left).equals(fs.readFileSync(right))
   } catch {
     return false
   }
 }
 
-// git reports canonical paths, so a symlinked working directory — /var being
-// /private/var on macOS, or a symlinked checkout — would never look like it was
-// inside its own repository. Used for containment tests only: project keys must
-// stay derived from the literal path or they stop matching the hook's.
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 const canonical = (target) => {
   try {
     return fs.realpathSync(target)
@@ -46,7 +52,5 @@ const canonical = (target) => {
     }
   }
 }
-
-const isUnder = (child, parent) => child === parent || child.startsWith(parent + path.sep)
 
 module.exports = { removeRecursive, readLines, listDirectories, sameContents, canonical, isUnder }

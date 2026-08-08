@@ -7,3 +7,4 @@ images/**
 **/*.vsix
 test/**
 scripts/**
+TECHNICAL.md

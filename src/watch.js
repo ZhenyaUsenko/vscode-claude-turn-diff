@@ -5,36 +5,49 @@ const { isUnder, canonical } = require('./util/files')
 
 const bySession = new Map()
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 const watchersFor = (sessionId) => {
   let watchers = bySession.get(sessionId)
+
   if (!watchers) {
     watchers = new Map()
+
     bySession.set(sessionId, watchers)
   }
+
   return watchers
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const watchOutsideWorkspace = (targets, workspaceFolders, sessionId) => {
   const roots = workspaceFolders.map(canonical)
   const watchers = watchersFor(sessionId)
+
   for (const target of targets) {
     if (watchers.has(target)) continue
     if (roots.some((root) => isUnder(canonical(target), root))) continue
-    watchers.set(
-      target,
-      vscode.workspace.createFileSystemWatcher(
-        new vscode.RelativePattern(vscode.Uri.file(path.dirname(target)), path.basename(target)),
-      ),
-    )
+
+    const directory = vscode.Uri.file(path.dirname(target))
+    const pattern = new vscode.RelativePattern(directory, path.basename(target))
+
+    watchers.set(target, vscode.workspace.createFileSystemWatcher(pattern))
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 const disposeWatchers = (sessionId) => {
   const watchers = bySession.get(sessionId)
+
   if (!watchers) return
+
   watchers.forEach((watcher) => watcher.dispose())
   bySession.delete(sessionId)
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const disposeAllWatchers = () => {
   bySession.forEach((watchers) => watchers.forEach((watcher) => watcher.dispose()))

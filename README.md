@@ -102,6 +102,9 @@ anything happening inside a git worktree however it happened, but cannot see
 outside a repo; **per-file capture** catches paths outside every repo, but only
 when a tool names them.
 
+[TECHNICAL.md](TECHNICAL.md) covers why the internals are shaped the way they
+are — the pieces that are not visible from reading the source.
+
 ## Storage
 
 Before-images live in `~/.claude/turn-diff/`, and only the most recent turn is

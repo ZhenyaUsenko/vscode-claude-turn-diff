@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Run the tests, then package a .vsix. Refuses to package if the suite is red.
 
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 

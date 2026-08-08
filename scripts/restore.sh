@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Put the published build back, undoing ./scripts/install.sh.
 
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
