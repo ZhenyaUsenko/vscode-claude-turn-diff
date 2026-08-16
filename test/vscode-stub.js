@@ -78,4 +78,4 @@ const commands = {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-module.exports = { Uri, RelativePattern, state, reset, workspace, commands }
+export { Uri, RelativePattern, state, reset, workspace, commands }

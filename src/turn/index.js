@@ -1,6 +1,6 @@
-const { arm } = require('./arm')
-const { begin } = require('./begin')
-const { end } = require('./end')
+import { arm } from './arm.js'
+import { begin } from './begin.js'
+import { end } from './end.js'
 
 const HANDLERS = { begin, arm, end }
 
@@ -17,4 +17,4 @@ const handle = async (mode, project, payload, workspaceFolders) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-module.exports = { handle }
+export { handle }

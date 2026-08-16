@@ -1,7 +1,7 @@
-const { MAX_UNTRACKED_BYTES } = require('../config')
-const { execFile } = require('child_process')
-const fs = require('fs')
-const path = require('path')
+import { MAX_UNTRACKED_BYTES } from '../config.js'
+import { execFile } from 'child_process'
+import fs from 'fs'
+import path from 'path'
 
 const run = (args, env) => new Promise((resolve) => {
   const childEnv = env ? { ...process.env, ...env } : process.env
@@ -108,4 +108,4 @@ const isBinaryChange = async (repository, fromTree, toTree, relativePath) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-module.exports = { run, runNulSeparated, listRepositories, snapshotTree, isBinaryChange }
+export { run, runNulSeparated, listRepositories, snapshotTree, isBinaryChange }

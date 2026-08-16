@@ -1,7 +1,7 @@
-const { HOOK_SPEC } = require('../src/config')
-const settings = require('../src/settings')
-const { check } = require('./support')
-const assert = require('assert')
+import { HOOK_SPEC } from '../src/config.js'
+import * as settings from '../src/settings.js'
+import { check } from './support.js'
+import assert from 'assert'
 
 const registeredSettings = () => JSON.parse(JSON.stringify({ hooks: HOOK_SPEC }))
 

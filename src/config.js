@@ -22,4 +22,4 @@ const HOOK_SPEC = { UserPromptSubmit: beginHook, PreToolUse: armHook, Stop: endH
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-module.exports = { MAX_UNTRACKED_BYTES, HOOK_SPEC, HOOK_MARKER, DECLINED_KEY }
+export { MAX_UNTRACKED_BYTES, HOOK_SPEC, HOOK_MARKER, DECLINED_KEY }

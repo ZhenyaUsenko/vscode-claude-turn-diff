@@ -1,10 +1,10 @@
-const turn = require('./turn')
-const { projectKey, serverDirFor, serverFileFor } = require('./util/paths')
-const { getWorkspaceFolders } = require('./util/workspace')
-const crypto = require('crypto')
-const fs = require('fs')
-const net = require('net')
-const path = require('path')
+import * as turn from './turn/index.js'
+import { projectKey, serverDirFor, serverFileFor } from './util/paths.js'
+import { getWorkspaceFolders } from './util/workspace.js'
+import crypto from 'crypto'
+import fs from 'fs'
+import net from 'net'
+import path from 'path'
 
 const parseRequest = (buffer) => {
   const endOfHeader = buffer.indexOf('\n')
@@ -144,4 +144,4 @@ const start = (log) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-module.exports = { start }
+export { start }

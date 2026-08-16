@@ -29,6 +29,7 @@
     "code review",
     "hooks"
   ],
+  "type": "module",
   "main": "./src/extension.js",
   "activationEvents": [
     "onStartupFinished"
@@ -50,7 +51,7 @@
     ]
   },
   "scripts": {
-    "test": "node test/index.js",
+    "test": "node --import ./test/setup.js test/index.js",
     "build": "./scripts/build.sh",
     "dev:install": "./scripts/install.sh",
     "dev:restore": "./scripts/restore.sh"

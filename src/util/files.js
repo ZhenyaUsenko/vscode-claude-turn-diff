@@ -1,5 +1,5 @@
-const fs = require('fs')
-const path = require('path')
+import fs from 'fs'
+import path from 'path'
 
 const removeRecursive = (target) => fs.rmSync(target, { recursive: true, force: true })
 
@@ -51,4 +51,4 @@ const canonical = (target) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-module.exports = { removeRecursive, readLines, listDirectories, sameContents, canonical, isUnder }
+export { removeRecursive, readLines, listDirectories, sameContents, canonical, isUnder }

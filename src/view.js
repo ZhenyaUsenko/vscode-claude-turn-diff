@@ -1,8 +1,8 @@
-const { sameContents } = require('./util/files')
-const { projectKey, manifestFor } = require('./util/paths')
-const { getWorkspaceFolders } = require('./util/workspace')
-const fs = require('fs')
-const vscode = require('vscode')
+import { sameContents } from './util/files.js'
+import { projectKey, manifestFor } from './util/paths.js'
+import { getWorkspaceFolders } from './util/workspace.js'
+import fs from 'fs'
+import * as vscode from 'vscode'
 
 const SCHEME = 'claude-before'
 
@@ -115,4 +115,4 @@ const forgetLastRendered = () => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-module.exports = { showLastTurn, registerBeforeImageProvider, markCurrentAsSeen, forgetLastRendered }
+export { showLastTurn, registerBeforeImageProvider, markCurrentAsSeen, forgetLastRendered }

@@ -1,9 +1,9 @@
-const { HOOK_SPEC, DECLINED_KEY } = require('./config')
-const settings = require('./settings')
-const { INSTALLED_HOOK } = require('./util/paths')
-const fs = require('fs')
-const path = require('path')
-const vscode = require('vscode')
+import { HOOK_SPEC, DECLINED_KEY } from './config.js'
+import * as settings from './settings.js'
+import { INSTALLED_HOOK } from './util/paths.js'
+import fs from 'fs'
+import path from 'path'
+import * as vscode from 'vscode'
 
 const MALFORMED_SETTINGS = (
   'Turn Diff: ~/.claude/settings.json is not valid JSON, so it was left untouched. ' +
@@ -136,4 +136,4 @@ const clearDeclined = (context) => context.globalState.update(DECLINED_KEY, fals
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-module.exports = { installHookScript, registerHooks, removeHooks, promptToRegister, clearDeclined }
+export { installHookScript, registerHooks, removeHooks, promptToRegister, clearDeclined }

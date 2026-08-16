@@ -1,10 +1,10 @@
-const turn = require('../src/turn')
-const { manifestFor, projectKey } = require('../src/util/paths')
-const { HOME, check, createRepo, commitAll, write, runTurn, manifest, statuses, registerChat } = require('./support')
-const vscode = require('./vscode-stub')
-const assert = require('assert')
-const fs = require('fs')
-const path = require('path')
+import * as turn from '../src/turn/index.js'
+import { manifestFor, projectKey } from '../src/util/paths.js'
+import { HOME, check, createRepo, commitAll, write, runTurn, manifest, statuses, registerChat } from './support.js'
+import * as vscode from './vscode-stub.js'
+import assert from 'assert'
+import fs from 'fs'
+import path from 'path'
 
 const seedRepo = () => {
   const repo = createRepo()

@@ -1,5 +1,5 @@
-const os = require('os')
-const path = require('path')
+import os from 'os'
+import path from 'path'
 
 const CLAUDE_DIR = path.join(os.homedir(), '.claude')
 
@@ -31,7 +31,7 @@ const transcriptFor = (project, sessionId) => path.join(TRANSCRIPTS_ROOT, projec
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-module.exports = {
+export {
   CLAUDE_DIR,
   SETTINGS_FILE,
   INSTALLED_HOOK,

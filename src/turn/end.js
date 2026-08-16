@@ -1,10 +1,10 @@
-const { readLines, removeRecursive } = require('../util/files')
-const git = require('../util/git')
-const { chatDirFor, manifestFor } = require('../util/paths')
-const { disposeWatchers } = require('../watch')
-const { purgeSupersededTurns } = require('./purge')
-const fs = require('fs')
-const path = require('path')
+import { readLines, removeRecursive } from '../util/files.js'
+import * as git from '../util/git.js'
+import { chatDirFor, manifestFor } from '../util/paths.js'
+import { disposeWatchers } from '../watch.js'
+import { purgeSupersededTurns } from './purge.js'
+import fs from 'fs'
+import path from 'path'
 
 const SNAPSHOTS = ['repos.tsv', 'touched.tsv']
 
@@ -113,4 +113,4 @@ const end = async ({ project, sessionId }) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-module.exports = { end }
+export { end }

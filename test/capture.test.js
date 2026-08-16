@@ -1,11 +1,11 @@
-const turn = require('../src/turn')
-const { projectKey } = require('../src/util/paths')
-const {
+import * as turn from '../src/turn/index.js'
+import { projectKey } from '../src/util/paths.js'
+import {
   check, createRepo, commitAll, write, runTurn, manifest, statuses, registerChat, nextSecond,
-} = require('./support')
-const assert = require('assert')
-const fs = require('fs')
-const path = require('path')
+} from './support.js'
+import assert from 'assert'
+import fs from 'fs'
+import path from 'path'
 
 check('reports A, M and D with correct before-images', async () => {
   const repo = createRepo()

@@ -1,6 +1,6 @@
-const { isUnder, canonical } = require('./util/files')
-const path = require('path')
-const vscode = require('vscode')
+import { isUnder, canonical } from './util/files.js'
+import path from 'path'
+import * as vscode from 'vscode'
 
 const watchersBySession = new Map()
 
@@ -55,4 +55,4 @@ const disposeAllWatchers = () => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-module.exports = { watchOutsideWorkspace, disposeWatchers, disposeAllWatchers }
+export { watchOutsideWorkspace, disposeWatchers, disposeAllWatchers }

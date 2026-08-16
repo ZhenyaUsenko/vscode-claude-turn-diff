@@ -1,11 +1,11 @@
-const install = require('./install')
-const server = require('./server')
-const { projectKey, projectDirFor } = require('./util/paths')
-const { getWorkspaceFolders } = require('./util/workspace')
-const view = require('./view')
-const { disposeAllWatchers } = require('./watch')
-const fs = require('fs')
-const vscode = require('vscode')
+import * as install from './install.js'
+import * as server from './server.js'
+import { projectKey, projectDirFor } from './util/paths.js'
+import { getWorkspaceFolders } from './util/workspace.js'
+import * as view from './view.js'
+import { disposeAllWatchers } from './watch.js'
+import fs from 'fs'
+import * as vscode from 'vscode'
 
 const WATCH_DEBOUNCE_MS = 60
 
@@ -119,4 +119,4 @@ const deactivate = () => {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-module.exports = { activate, deactivate }
+export { activate, deactivate }

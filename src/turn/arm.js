@@ -1,9 +1,9 @@
-const { readLines, canonical, isUnder } = require('../util/files')
-const git = require('../util/git')
-const { chatDirFor } = require('../util/paths')
-const { watchOutsideWorkspace } = require('../watch')
-const fs = require('fs')
-const path = require('path')
+import { readLines, canonical, isUnder } from '../util/files.js'
+import * as git from '../util/git.js'
+import { chatDirFor } from '../util/paths.js'
+import { watchOutsideWorkspace } from '../watch.js'
+import fs from 'fs'
+import path from 'path'
 
 const targetedFile = (payload) => {
   const input = payload.tool_input
@@ -78,4 +78,4 @@ const arm = async ({ project, sessionId, payload, workspaceFolders }) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-module.exports = { arm }
+export { arm }

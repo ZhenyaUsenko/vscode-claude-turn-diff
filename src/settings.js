@@ -1,6 +1,6 @@
-const { HOOK_SPEC, HOOK_MARKER } = require('./config')
-const { CLAUDE_DIR, SETTINGS_FILE } = require('./util/paths')
-const fs = require('fs')
+import { HOOK_SPEC, HOOK_MARKER } from './config.js'
+import { CLAUDE_DIR, SETTINGS_FILE } from './util/paths.js'
+import fs from 'fs'
 
 const isOurEntry = (entry) => typeof entry?.command === 'string' && entry.command.includes(HOOK_MARKER)
 
@@ -72,4 +72,4 @@ const applyHookSpec = (settings) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-module.exports = { readSettings, writeSettings, hooksRegistered, stripOurHooks, applyHookSpec }
+export { readSettings, writeSettings, hooksRegistered, stripOurHooks, applyHookSpec }

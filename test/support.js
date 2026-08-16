@@ -1,21 +1,13 @@
-const { execFileSync } = require('child_process')
-const fs = require('fs')
-const os = require('os')
-const path = require('path')
+import * as turn from '../src/turn/index.js'
+import { manifestFor, projectKey } from '../src/util/paths.js'
+import { execFileSync } from 'child_process'
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
 
-const HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'turn-diff-test-'))
+const HOME = process.env.HOME
 
-process.env.HOME = HOME
-
-const vscode = require('./vscode-stub')
-const Module = require('module')
-
-const loadModule = Module._load
-
-Module._load = (request, ...rest) => request === 'vscode' ? vscode : loadModule.call(Module, request, ...rest)
-
-const turn = require('../src/turn')
-const { manifestFor, projectKey } = require('../src/util/paths')
+if (!HOME.startsWith(os.tmpdir())) throw new Error('run the tests through npm test, HOME must be a temp directory')
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -117,7 +109,7 @@ const runTurn = async (dir, sessionId, workspaceFolders, mutate, { prompt = 'p',
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-module.exports = {
+export {
   HOME,
   check,
   run,

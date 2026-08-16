@@ -1,7 +1,7 @@
-const { removeRecursive } = require('../util/files')
-const { chatDirFor } = require('../util/paths')
-const fs = require('fs')
-const path = require('path')
+import { removeRecursive } from '../util/files.js'
+import { chatDirFor } from '../util/paths.js'
+import fs from 'fs'
+import path from 'path'
 
 const begin = ({ project, sessionId }) => {
   const chatDir = chatDirFor(project, sessionId)
@@ -13,4 +13,4 @@ const begin = ({ project, sessionId }) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-module.exports = { begin }
+export { begin }

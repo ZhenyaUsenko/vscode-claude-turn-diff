@@ -1,7 +1,7 @@
-const vscode = require('vscode')
+import * as vscode from 'vscode'
 
 const getWorkspaceFolders = () => vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath) ?? []
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-module.exports = { getWorkspaceFolders }
+export { getWorkspaceFolders }

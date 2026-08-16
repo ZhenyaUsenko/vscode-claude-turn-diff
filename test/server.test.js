@@ -1,14 +1,14 @@
-const server = require('../src/server')
-const { chatDirFor, serverFileFor, projectKey } = require('../src/util/paths')
-const { HOME, check, createRepo } = require('./support')
-const vscode = require('./vscode-stub')
-const assert = require('assert')
-const { execFile } = require('child_process')
-const fs = require('fs')
-const os = require('os')
-const path = require('path')
+import * as server from '../src/server.js'
+import { chatDirFor, serverFileFor, projectKey } from '../src/util/paths.js'
+import { HOME, check, createRepo } from './support.js'
+import * as vscode from './vscode-stub.js'
+import assert from 'assert'
+import { execFile } from 'child_process'
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
 
-const HOOK = path.join(__dirname, '..', 'hooks', 'turn-diff.sh')
+const HOOK = path.join(import.meta.dirname, '..', 'hooks', 'turn-diff.sh')
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 60))
 

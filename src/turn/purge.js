@@ -1,7 +1,7 @@
-const { removeRecursive, listDirectories } = require('../util/files')
-const { chatsDirFor, chatDirFor, transcriptFor } = require('../util/paths')
-const fs = require('fs')
-const path = require('path')
+import { removeRecursive, listDirectories } from '../util/files.js'
+import { chatsDirFor, chatDirFor, transcriptFor } from '../util/paths.js'
+import fs from 'fs'
+import path from 'path'
 
 const beforeStamp = (name) => name.startsWith('before-') ? Number(name.slice('before-'.length)) : NaN
 
@@ -51,4 +51,4 @@ const purgeSupersededTurns = ({ project, sessionId, stamp, currentBeforeDir }) =
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-module.exports = { purgeSupersededTurns }
+export { purgeSupersededTurns }

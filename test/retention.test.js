@@ -1,8 +1,8 @@
-const { chatDirFor, manifestFor, serverFileFor, projectKey } = require('../src/util/paths')
-const { check, createRepo, commitAll, write, runTurn, manifest, nextSecond, forgetChat } = require('./support')
-const assert = require('assert')
-const fs = require('fs')
-const path = require('path')
+import { chatDirFor, manifestFor, serverFileFor, projectKey } from '../src/util/paths.js'
+import { check, createRepo, commitAll, write, runTurn, manifest, nextSecond, forgetChat } from './support.js'
+import assert from 'assert'
+import fs from 'fs'
+import path from 'path'
 
 check('a later chat supersedes an earlier one in the same project', async () => {
   const repo = createRepo()

@@ -1,9 +1,9 @@
-const { run } = require('./support')
-require('./capture.test')
-require('./workspace.test')
-require('./retention.test')
-require('./view.test')
-require('./server.test')
-require('./install.test')
+import { run } from './support.js'
+import './capture.test.js'
+import './workspace.test.js'
+import './retention.test.js'
+import './view.test.js'
+import './server.test.js'
+import './install.test.js'
 
 run()

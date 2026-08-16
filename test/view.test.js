@@ -1,9 +1,9 @@
-const view = require('../src/view')
-const { check, createRepo, commitAll, write, runTurn, nextSecond } = require('./support')
-const vscode = require('./vscode-stub')
-const assert = require('assert')
-const fs = require('fs')
-const path = require('path')
+import * as view from '../src/view.js'
+import { check, createRepo, commitAll, write, runTurn, nextSecond } from './support.js'
+import * as vscode from './vscode-stub.js'
+import assert from 'assert'
+import fs from 'fs'
+import path from 'path'
 
 const entryFor = (changesCall, name) => {
   return changesCall.resources.find(([fileUri]) => path.basename(fileUri.fsPath) === name)
