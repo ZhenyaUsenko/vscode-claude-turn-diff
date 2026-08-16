@@ -1,8 +1,12 @@
-const os = require('os')
+const server = require('../src/server')
+const { chatDirFor, serverFileFor, projectKey } = require('../src/util/paths')
+const { HOME, check, createRepo } = require('./support')
+const vscode = require('./vscode-stub')
+const assert = require('assert')
 const { execFile } = require('child_process')
-
-const { assert, fs, path, paths, HOME, check, repoAt, projectKey } = require('./support')
-const { start } = require('../src/server')
+const fs = require('fs')
+const os = require('os')
+const path = require('path')
 
 const HOOK = path.join(__dirname, '..', 'hooks', 'turn-diff.sh')
 
@@ -20,87 +24,97 @@ const runHook = (mode, payload, cwd) => new Promise((resolve, reject) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const advertOf = (directory) => {
-  const file = paths.serverFileFor(projectKey(directory), process.pid)
+const advertOf = (dir) => {
+  const advertFile = serverFileFor(projectKey(dir), process.pid)
 
-  return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null
+  return fs.existsSync(advertFile) ? fs.readFileSync(advertFile, 'utf8') : null
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 check('re-advertising an unchanged workspace leaves the advert in place', async () => {
-  const repo = repoAt()
-  const server = start(() => [repo], () => {})
+  const repo = createRepo()
+
+  vscode.reset([repo])
+
+  const hookServer = server.start(() => {})
 
   await settle()
 
-  const first = advertOf(repo)
+  const firstAdvert = advertOf(repo)
 
-  assert.ok(first, 'the window advertises once it is listening')
+  assert.ok(firstAdvert, 'the window advertises once it is listening')
 
-  server.readvertise()
+  hookServer.readvertise()
 
-  assert.strictEqual(advertOf(repo), first, 'a no-op re-advertise must not disturb it')
+  assert.strictEqual(advertOf(repo), firstAdvert, 'a no-op re-advertise must not disturb it')
 
-  server.dispose()
+  hookServer.dispose()
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 check('a window with no folders advertises nothing', async () => {
-  let folders = []
+  const repo = createRepo()
 
-  const repo = repoAt()
-  const server = start(() => folders, () => {})
+  vscode.reset([])
+
+  const hookServer = server.start(() => {})
 
   await settle()
 
   assert.strictEqual(advertOf(repo), null, 'nothing to serve, nothing advertised')
 
-  folders = [repo]
+  vscode.state.folders = [repo]
 
-  server.readvertise()
+  hookServer.readvertise()
 
   assert.ok(advertOf(repo), 'it advertises once a folder arrives')
 
-  folders = []
+  vscode.state.folders = []
 
-  server.readvertise()
+  hookServer.readvertise()
 
   assert.strictEqual(advertOf(repo), null, 'and withdraws when the last one goes')
 
-  server.dispose()
+  hookServer.dispose()
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 check('an advert deleted underneath the window is written again', async () => {
-  const repo = repoAt()
-  const server = start(() => [repo], () => {})
+  const repo = createRepo()
+
+  vscode.reset([repo])
+
+  const hookServer = server.start(() => {})
 
   await settle()
 
-  const file = paths.serverFileFor(projectKey(repo), process.pid)
+  const advertFile = serverFileFor(projectKey(repo), process.pid)
 
-  fs.unlinkSync(file)
-  server.readvertise()
+  fs.unlinkSync(advertFile)
+  hookServer.readvertise()
 
-  assert.ok(fs.existsSync(file), 'the window notices its advert is gone')
+  assert.ok(fs.existsSync(advertFile), 'the window notices its advert is gone')
 
-  server.dispose()
+  hookServer.dispose()
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 check('disposing removes the advert', async () => {
-  const repo = repoAt()
-  const server = start(() => [repo], () => {})
+  const repo = createRepo()
+
+  vscode.reset([repo])
+
+  const hookServer = server.start(() => {})
 
   await settle()
 
   assert.ok(advertOf(repo))
 
-  server.dispose()
+  hookServer.dispose()
 
   assert.strictEqual(advertOf(repo), null)
 })
@@ -108,22 +122,25 @@ check('disposing removes the advert', async () => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 check('the hook keys state by the session, not by a cwd Claude has moved', async () => {
-  const repo = repoAt()
+  const repo = createRepo()
   const project = projectKey(repo)
-  const server = start(() => [repo], () => {})
+
+  vscode.reset([repo])
+
+  const hookServer = server.start(() => {})
 
   await settle()
 
   const elsewhere = fs.mkdtempSync(path.join(os.tmpdir(), 'wandered-'))
-  const transcript = path.join(HOME, '.claude', 'projects', project, 'drifted.jsonl')
+  const transcriptFile = path.join(HOME, '.claude', 'projects', project, 'drifted.jsonl')
 
-  await runHook('begin', { session_id: 'drifted', transcript_path: transcript }, elsewhere)
+  await runHook('begin', { session_id: 'drifted', transcript_path: transcriptFile }, elsewhere)
 
-  const belongsToSession = fs.existsSync(paths.chatDirFor(project, 'drifted'))
-  const belongsToCwd = fs.existsSync(paths.chatDirFor(projectKey(elsewhere), 'drifted'))
+  const belongsToSession = fs.existsSync(chatDirFor(project, 'drifted'))
+  const belongsToCwd = fs.existsSync(chatDirFor(projectKey(elsewhere), 'drifted'))
 
   assert.ok(belongsToSession, 'the turn belongs to the project the session started in')
   assert.ok(!belongsToCwd, 'and never to the directory Claude happened to cd into')
 
-  server.dispose()
+  hookServer.dispose()
 })

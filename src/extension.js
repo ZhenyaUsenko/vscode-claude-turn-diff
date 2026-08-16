@@ -1,31 +1,35 @@
+const install = require('./install')
+const server = require('./server')
+const { projectKey, projectDirFor } = require('./util/paths')
+const { getWorkspaceFolders } = require('./util/workspace')
+const view = require('./view')
+const { disposeAllWatchers } = require('./watch')
 const fs = require('fs')
 const vscode = require('vscode')
-
-const view = require('./view')
-const install = require('./install')
-const { start: startServer } = require('./server')
-const { disposeAllWatchers } = require('./watch')
-const { projectKey, projectDirFor } = require('./util/paths')
 
 const WATCH_DEBOUNCE_MS = 60
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const watchProject = (log, onManifestChanged) => {
-  const folders = view.workspaceFolders()
+const watchProject = (watchState) => {
+  const workspaceFolders = getWorkspaceFolders()
 
-  if (!folders.length) return null
+  if (!workspaceFolders.length) return null
 
   try {
-    const directory = projectDirFor(projectKey(folders[0]))
+    const projectDir = projectDirFor(projectKey(workspaceFolders[0]))
 
-    fs.mkdirSync(directory, { recursive: true })
+    fs.mkdirSync(projectDir, { recursive: true })
 
-    return fs.watch(directory, (_event, filename) => {
-      if (filename === 'open.json') onManifestChanged()
+    return fs.watch(projectDir, (_event, filename) => {
+      if (filename !== 'open.json') return
+
+      clearTimeout(watchState.debounceTimer)
+
+      watchState.debounceTimer = setTimeout(() => view.showLastTurn(), WATCH_DEBOUNCE_MS)
     })
   } catch (error) {
-    log(`could not watch project directory: ${error.message}`)
+    watchState.logError(`could not watch project directory: ${error.message}`)
 
     return null
   }
@@ -33,29 +37,26 @@ const watchProject = (log, onManifestChanged) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const createManifestWatch = (log) => {
-  let debounce = null
-  let watcher = null
+const rewatchProject = (watchState) => {
+  if (watchState.projectWatcher) watchState.projectWatcher.close()
 
-  const onManifestChanged = () => {
-    clearTimeout(debounce)
+  watchState.projectWatcher = watchProject(watchState)
+}
 
-    debounce = setTimeout(() => view.showLastTurn(), WATCH_DEBOUNCE_MS)
-  }
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  const rewatch = () => {
-    if (watcher) watcher.close()
+const disposeWatch = (watchState) => {
+  clearTimeout(watchState.debounceTimer)
 
-    watcher = watchProject(log, onManifestChanged)
-  }
+  if (watchState.projectWatcher) watchState.projectWatcher.close()
+}
 
-  const dispose = () => {
-    clearTimeout(debounce)
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    if (watcher) watcher.close()
-  }
+const createManifestWatch = (logError) => {
+  const watchState = { logError, debounceTimer: null, projectWatcher: null }
 
-  return { rewatch, dispose }
+  return { rewatch: () => rewatchProject(watchState), dispose: () => disposeWatch(watchState) }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -76,25 +77,27 @@ const registerHooksCommand = async (context) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const activate = (context) => {
-  const output = vscode.window.createOutputChannel('Turn Diff', { log: true })
-  const log = (message) => output.error(message)
-  const watch = createManifestWatch(log)
+  const outputChannel = vscode.window.createOutputChannel('Turn Diff', { log: true })
+
+  const logError = (message) => outputChannel.error(message)
+
+  const manifestWatch = createManifestWatch(logError)
 
   view.markCurrentAsSeen()
-  watch.rewatch()
+  manifestWatch.rewatch()
 
-  const server = startServer(view.workspaceFolders, log)
+  const hookServer = server.start(logError)
 
   context.subscriptions.push(
-    output,
-    server,
-    watch,
+    outputChannel,
+    hookServer,
+    manifestWatch,
     view.registerBeforeImageProvider(),
     { dispose: disposeAllWatchers },
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
       view.forgetLastRendered()
-      watch.rewatch()
-      server.readvertise()
+      manifestWatch.rewatch()
+      hookServer.readvertise()
     }),
     vscode.commands.registerCommand('claudeTurnDiff.showLast', () => view.showLastTurn({ force: true })),
     vscode.commands.registerCommand('claudeTurnDiff.installHooks', () => registerHooksCommand(context)),
@@ -104,7 +107,7 @@ const activate = (context) => {
   try {
     install.installHookScript(context)
   } catch (error) {
-    log(`could not install the hook script: ${error.message}`)
+    logError(`could not install the hook script: ${error.message}`)
   }
 
   void install.promptToRegister(context)
@@ -113,5 +116,7 @@ const activate = (context) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const deactivate = () => {}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 module.exports = { activate, deactivate }

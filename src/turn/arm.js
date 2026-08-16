@@ -1,14 +1,13 @@
+const { readLines, canonical, isUnder } = require('../util/files')
+const git = require('../util/git')
+const { chatDirFor } = require('../util/paths')
+const { watchOutsideWorkspace } = require('../watch')
 const fs = require('fs')
 const path = require('path')
 
-const { chatDirFor } = require('../util/paths')
-const { readLines, canonical, isUnder } = require('../util/files')
-const { listRepositories, snapshotTree } = require('../util/git')
-const { watchOutsideWorkspace } = require('../watch')
-
 const targetedFile = (payload) => {
-  const input = payload.tool_input || {}
-  const file = input.file_path || input.notebook_path
+  const input = payload.tool_input
+  const file = input?.file_path || input?.notebook_path
 
   return file && path.isAbsolute(file) ? file : null
 }
@@ -18,15 +17,15 @@ const targetedFile = (payload) => {
 const snapshotWorkspace = async (chatDir, workspaceFolders) => {
   const snapshots = []
 
-  for (const repository of await listRepositories(workspaceFolders)) {
-    const tree = await snapshotTree(repository, chatDir)
+  for (const repository of await git.listRepositories(workspaceFolders)) {
+    const tree = await git.snapshotTree(repository, chatDir)
 
     if (tree) snapshots.push([repository, tree])
   }
 
-  const body = snapshots.map((entry) => entry.join('\t')).join('\n')
+  const tsvBody = snapshots.map((entry) => entry.join('\t')).join('\n')
 
-  fs.writeFileSync(path.join(chatDir, 'repos.tsv'), snapshots.length ? `${body}\n` : '')
+  fs.writeFileSync(path.join(chatDir, 'repos.tsv'), snapshots.length ? `${tsvBody}\n` : '')
 
   return snapshots
 }
@@ -45,10 +44,10 @@ const captureBeforeImage = (chatDir, file) => {
     return
   }
 
-  const copy = path.join(chatDir, 'blobs', file)
+  const blobPath = path.join(chatDir, 'blobs', file)
 
-  fs.mkdirSync(path.dirname(copy), { recursive: true })
-  fs.copyFileSync(file, copy)
+  fs.mkdirSync(path.dirname(blobPath), { recursive: true })
+  fs.copyFileSync(file, blobPath)
   fs.appendFileSync(touchedFile, `${file}\t1\n`)
 }
 
@@ -76,5 +75,7 @@ const arm = async ({ project, sessionId, payload, workspaceFolders }) => {
 
   captureBeforeImage(chatDir, file)
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 module.exports = { arm }

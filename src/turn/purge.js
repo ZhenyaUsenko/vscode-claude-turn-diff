@@ -1,8 +1,7 @@
+const { removeRecursive, listDirectories } = require('../util/files')
+const { chatsDirFor, chatDirFor, transcriptFor } = require('../util/paths')
 const fs = require('fs')
 const path = require('path')
-
-const { chatsDirFor, chatDirFor, transcriptFor } = require('../util/paths')
-const { removeRecursive, listDirectories } = require('../util/files')
 
 const beforeStamp = (name) => name.startsWith('before-') ? Number(name.slice('before-'.length)) : NaN
 
@@ -10,9 +9,9 @@ const beforeStamp = (name) => name.startsWith('before-') ? Number(name.slice('be
 
 const dropOwnSupersededTurns = (ownChatDir, currentBeforeDir) => {
   for (const name of listDirectories(ownChatDir)) {
-    const dir = path.join(ownChatDir, name)
+    const candidateDir = path.join(ownChatDir, name)
 
-    if (name.startsWith('before-') && dir !== currentBeforeDir) removeRecursive(dir)
+    if (name.startsWith('before-') && candidateDir !== currentBeforeDir) removeRecursive(candidateDir)
   }
 }
 
@@ -49,5 +48,7 @@ const purgeSupersededTurns = ({ project, sessionId, stamp, currentBeforeDir }) =
     dropSiblingSupersededTurns(siblingDir, stamp)
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 module.exports = { purgeSupersededTurns }

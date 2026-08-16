@@ -1,10 +1,9 @@
+const { HOOK_SPEC, DECLINED_KEY } = require('./config')
+const settings = require('./settings')
+const { INSTALLED_HOOK } = require('./util/paths')
 const fs = require('fs')
 const path = require('path')
 const vscode = require('vscode')
-
-const { INSTALLED_HOOK } = require('./util/paths')
-const { HOOK_SPEC, DECLINED_KEY } = require('./config')
-const settings = require('./settings')
 
 const MALFORMED_SETTINGS = (
   'Turn Diff: ~/.claude/settings.json is not valid JSON, so it was left untouched. ' +
@@ -35,18 +34,16 @@ const writeFailed = (error) => `Turn Diff: could not write ~/.claude/settings.js
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const installHookScript = (context) => {
-  const bundled = fs.readFileSync(path.join(context.extensionPath, 'hooks', 'turn-diff.sh'))
+  const bundledScript = fs.readFileSync(path.join(context.extensionPath, 'hooks', 'turn-diff.sh'))
 
-  let installed = null
+  let installedScript = null
 
-  try {
-    installed = fs.readFileSync(INSTALLED_HOOK)
-  } catch {}
+  try { installedScript = fs.readFileSync(INSTALLED_HOOK) } catch {}
 
-  if (installed && installed.equals(bundled)) return false
+  if (installedScript && installedScript.equals(bundledScript)) return false
 
   fs.mkdirSync(path.dirname(INSTALLED_HOOK), { recursive: true })
-  fs.writeFileSync(INSTALLED_HOOK, bundled, { mode: 0o755 })
+  fs.writeFileSync(INSTALLED_HOOK, bundledScript, { mode: 0o755 })
 
   return true
 }
@@ -54,26 +51,26 @@ const installHookScript = (context) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const registerHooks = async ({ interactive }) => {
-  let current
+  let currentSettings
 
   try {
-    current = settings.readSettings()
+    currentSettings = settings.readSettings()
   } catch {
     vscode.window.showErrorMessage(MALFORMED_SETTINGS)
 
     return false
   }
 
-  if (settings.hooksRegistered(current)) {
+  if (settings.hooksRegistered(currentSettings)) {
     if (interactive) vscode.window.showInformationMessage(ALREADY_REGISTERED)
 
     return false
   }
 
-  settings.applyHookSpec(current)
+  settings.applyHookSpec(currentSettings)
 
   try {
-    settings.writeSettings(current)
+    settings.writeSettings(currentSettings)
   } catch (error) {
     vscode.window.showErrorMessage(writeFailed(error))
 
@@ -90,20 +87,20 @@ const registerHooks = async ({ interactive }) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const removeHooks = async () => {
-  let current
+  let currentSettings
 
   try {
-    current = settings.readSettings()
+    currentSettings = settings.readSettings()
   } catch {
     vscode.window.showErrorMessage(MALFORMED_ON_REMOVE)
 
     return
   }
 
-  settings.stripOurHooks(current)
+  settings.stripOurHooks(currentSettings)
 
   try {
-    settings.writeSettings(current)
+    settings.writeSettings(currentSettings)
   } catch (error) {
     vscode.window.showErrorMessage(writeFailed(error))
 
@@ -118,15 +115,11 @@ const removeHooks = async () => {
 const promptToRegister = async (context) => {
   if (context.globalState.get(DECLINED_KEY)) return
 
-  let current
+  let currentSettings
 
-  try {
-    current = settings.readSettings()
-  } catch {
-    return
-  }
+  try { currentSettings = settings.readSettings() } catch { return }
 
-  if (settings.hooksRegistered(current)) return
+  if (settings.hooksRegistered(currentSettings)) return
 
   const choice = await vscode.window.showInformationMessage(invitation(), 'Register', 'Not now', 'Never')
 
@@ -140,5 +133,7 @@ const promptToRegister = async (context) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const clearDeclined = (context) => context.globalState.update(DECLINED_KEY, false)
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 module.exports = { installHookScript, registerHooks, removeHooks, promptToRegister, clearDeclined }

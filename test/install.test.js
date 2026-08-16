@@ -1,52 +1,53 @@
-const { assert, check } = require('./support')
-const { hooksRegistered } = require('../src/settings')
 const { HOOK_SPEC } = require('../src/config')
+const settings = require('../src/settings')
+const { check } = require('./support')
+const assert = require('assert')
 
-const registered = () => JSON.parse(JSON.stringify({ hooks: HOOK_SPEC }))
+const registeredSettings = () => JSON.parse(JSON.stringify({ hooks: HOOK_SPEC }))
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 check('a settings file holding exactly our spec counts as registered', () => {
-  assert.strictEqual(hooksRegistered(registered()), true)
+  assert.strictEqual(settings.hooksRegistered(registeredSettings()), true)
 })
 
 check('an empty settings file does not', () => {
-  assert.strictEqual(hooksRegistered({}), false)
+  assert.strictEqual(settings.hooksRegistered({}), false)
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 check('a missing event does not', () => {
-  const settings = registered()
+  const withoutStopFailure = registeredSettings()
 
-  delete settings.hooks.StopFailure
+  delete withoutStopFailure.hooks.StopFailure
 
-  assert.strictEqual(hooksRegistered(settings), false)
+  assert.strictEqual(settings.hooksRegistered(withoutStopFailure), false)
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 check('an entry that no longer matches the spec does not', () => {
-  const changedMatcher = registered()
-  const changedTimeout = registered()
-  const changedCommand = registered()
+  const changedMatcher = registeredSettings()
+  const changedTimeout = registeredSettings()
+  const changedCommand = registeredSettings()
 
   changedMatcher.hooks.PreToolUse[0].matcher = 'Edit'
   changedTimeout.hooks.Stop[0].hooks[0].timeout = 5
   changedCommand.hooks.UserPromptSubmit[0].hooks[0].command = '"$HOME"/.claude/hooks/turn-diff.sh start'
 
-  assert.strictEqual(hooksRegistered(changedMatcher), false, 'a changed matcher must re-prompt')
-  assert.strictEqual(hooksRegistered(changedTimeout), false, 'a changed timeout must re-prompt')
-  assert.strictEqual(hooksRegistered(changedCommand), false, 'a changed command must re-prompt')
+  assert.strictEqual(settings.hooksRegistered(changedMatcher), false, 'a changed matcher must re-prompt')
+  assert.strictEqual(settings.hooksRegistered(changedTimeout), false, 'a changed timeout must re-prompt')
+  assert.strictEqual(settings.hooksRegistered(changedCommand), false, 'a changed command must re-prompt')
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-check("someone else's hooks on the same events are ignored", () => {
-  const settings = registered()
+check('someone else\'s hooks on the same events are ignored', () => {
+  const withForeignHooks = registeredSettings()
 
-  settings.hooks.Stop.unshift({ hooks: [{ type: 'command', command: 'say done' }] })
-  settings.hooks.Lint = [{ hooks: [{ type: 'command', command: 'eslint' }] }]
+  withForeignHooks.hooks.Stop.unshift({ hooks: [{ type: 'command', command: 'say done' }] })
+  withForeignHooks.hooks.Lint = [{ hooks: [{ type: 'command', command: 'eslint' }] }]
 
-  assert.strictEqual(hooksRegistered(settings), true)
+  assert.strictEqual(settings.hooksRegistered(withForeignHooks), true)
 })

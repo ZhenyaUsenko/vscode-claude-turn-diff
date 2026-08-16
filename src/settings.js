@@ -1,24 +1,19 @@
-const fs = require('fs')
-
-const { CLAUDE_DIR, SETTINGS_FILE } = require('./util/paths')
 const { HOOK_SPEC, HOOK_MARKER } = require('./config')
+const { CLAUDE_DIR, SETTINGS_FILE } = require('./util/paths')
+const fs = require('fs')
 
 const isOurEntry = (entry) => typeof entry?.command === 'string' && entry.command.includes(HOOK_MARKER)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const readSettings = () => {
-  let raw = ''
+  let rawSettings = ''
 
-  try {
-    raw = fs.readFileSync(SETTINGS_FILE, 'utf8')
-  } catch {
-    return {}
-  }
+  try { rawSettings = fs.readFileSync(SETTINGS_FILE, 'utf8') } catch { return {} }
 
-  if (!raw.trim()) return {}
+  if (!rawSettings.trim()) return {}
 
-  return JSON.parse(raw)
+  return JSON.parse(rawSettings)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -33,12 +28,13 @@ const writeSettings = (settings) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const hooksRegistered = (settings) => Object.entries(HOOK_SPEC).every(([event, groups]) => {
-  const hooks = settings.hooks || {}
-  const ours = (hooks[event] || []).filter((group) => (group.hooks || []).some(isOurEntry))
+const hooksRegistered = (settings) => {
+  return Object.entries(HOOK_SPEC).every(([event, groups]) => {
+    const ourGroups = settings.hooks?.[event]?.filter((group) => group.hooks?.some(isOurEntry)) ?? []
 
-  return JSON.stringify(ours) === JSON.stringify(groups)
-})
+    return JSON.stringify(ourGroups) === JSON.stringify(groups)
+  })
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -50,7 +46,7 @@ const stripOurHooks = (settings) => {
   for (const event of Object.keys(hooks)) {
     if (!Array.isArray(hooks[event])) continue
 
-    hooks[event] = hooks[event].filter((group) => !(group.hooks || []).some(isOurEntry))
+    hooks[event] = hooks[event].filter((group) => !group.hooks?.some(isOurEntry))
 
     if (!hooks[event].length) delete hooks[event]
   }
@@ -65,13 +61,15 @@ const stripOurHooks = (settings) => {
 const applyHookSpec = (settings) => {
   stripOurHooks(settings)
 
-  settings.hooks = settings.hooks || {}
+  settings.hooks ??= {}
 
   for (const [event, groups] of Object.entries(HOOK_SPEC)) {
-    settings.hooks[event] = (settings.hooks[event] || []).concat(groups)
+    settings.hooks[event] = settings.hooks[event]?.concat(groups) ?? [...groups]
   }
 
   return settings
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 module.exports = { readSettings, writeSettings, hooksRegistered, stripOurHooks, applyHookSpec }

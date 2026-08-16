@@ -1,10 +1,14 @@
+const turn = require('../src/turn')
+const { projectKey } = require('../src/util/paths')
 const {
-  assert, fs, path, turn, check, repoAt, commitAll, write, runTurn, manifest, statuses,
-  registerChat, nextSecond, projectKey,
+  check, createRepo, commitAll, write, runTurn, manifest, statuses, registerChat, nextSecond,
 } = require('./support')
+const assert = require('assert')
+const fs = require('fs')
+const path = require('path')
 
 check('reports A, M and D with correct before-images', async () => {
-  const repo = repoAt()
+  const repo = createRepo()
 
   write(path.join(repo, 'keep.txt'), 'one\n')
   write(path.join(repo, 'gone.txt'), 'bye\n')
@@ -16,8 +20,8 @@ check('reports A, M and D with correct before-images', async () => {
     fs.unlinkSync(path.join(repo, 'gone.txt'))
   })
 
-  const modified = manifest(repo).files.find((entry) => entry[0].endsWith('keep.txt'))
-  const beforeContents = fs.readFileSync(modified[1], 'utf8')
+  const modifiedEntry = manifest(repo).files.find((entry) => entry[0].endsWith('keep.txt'))
+  const beforeContents = fs.readFileSync(modifiedEntry[1], 'utf8')
 
   assert.deepStrictEqual(statuses(repo), ['A added.txt', 'D gone.txt', 'M keep.txt'])
   assert.strictEqual(beforeContents, 'one\n', 'the before-image holds the pre-turn content')
@@ -26,7 +30,7 @@ check('reports A, M and D with correct before-images', async () => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 check('a file changed and changed back is not reported', async () => {
-  const repo = repoAt()
+  const repo = createRepo()
 
   write(path.join(repo, 'a.txt'), 'same\n')
   commitAll(repo)
@@ -43,7 +47,7 @@ check('a file changed and changed back is not reported', async () => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 check('binary files are skipped', async () => {
-  const repo = repoAt()
+  const repo = createRepo()
 
   fs.writeFileSync(path.join(repo, 'pic.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 1, 2, 3]))
   write(path.join(repo, 'notes.txt'), 'x\n')
@@ -62,7 +66,7 @@ check('binary files are skipped', async () => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 check('untracked files over the size cap are excluded from both snapshots', async () => {
-  const repo = repoAt()
+  const repo = createRepo()
 
   write(path.join(repo, 'seed.txt'), 'x\n')
   commitAll(repo)
@@ -79,7 +83,7 @@ check('untracked files over the size cap are excluded from both snapshots', asyn
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 check('a same-size edit is still seen when the snapshot lands a second later', async () => {
-  const repo = repoAt()
+  const repo = createRepo()
   const project = projectKey(repo)
 
   write(path.join(repo, 'f.txt'), 'one\n')

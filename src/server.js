@@ -1,10 +1,10 @@
+const turn = require('./turn')
+const { projectKey, serverDirFor, serverFileFor } = require('./util/paths')
+const { getWorkspaceFolders } = require('./util/workspace')
 const crypto = require('crypto')
 const fs = require('fs')
 const net = require('net')
 const path = require('path')
-
-const { projectKey, serverDirFor, serverFileFor } = require('./util/paths')
-const { handle } = require('./turn')
 
 const parseRequest = (buffer) => {
   const endOfHeader = buffer.indexOf('\n')
@@ -23,16 +23,12 @@ const parseRequest = (buffer) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const dropDeadAdvertisements = (directory) => {
-  let names = []
+const dropDeadAdvertisements = (serverDir) => {
+  let advertNames = []
 
-  try {
-    names = fs.readdirSync(directory)
-  } catch {
-    return
-  }
+  try { advertNames = fs.readdirSync(serverDir) } catch { return }
 
-  for (const name of names) {
+  for (const name of advertNames) {
     const pid = Number(name.replace(/\.json$/, ''))
 
     if (!Number.isInteger(pid) || pid === process.pid) continue
@@ -42,19 +38,17 @@ const dropDeadAdvertisements = (directory) => {
     } catch (error) {
       if (error.code !== 'ESRCH') continue
 
-      try {
-        fs.unlinkSync(path.join(directory, name))
-      } catch {}
+      try { fs.unlinkSync(path.join(serverDir, name)) } catch {}
     }
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const serve = (socket, token, getWorkspaceFolders, log) => {
-  socket.setEncoding('utf8')
-
+const serve = (socket, token, log) => {
   let buffer = ''
+
+  socket.setEncoding('utf8')
 
   socket.on('data', async (chunk) => {
     buffer += chunk
@@ -72,7 +66,7 @@ const serve = (socket, token, getWorkspaceFolders, log) => {
     }
 
     try {
-      await handle(request.mode, request.project, JSON.parse(request.body), getWorkspaceFolders())
+      await turn.handle(request.mode, request.project, JSON.parse(request.body), getWorkspaceFolders())
 
       socket.end('ok\n')
     } catch (error) {
@@ -86,64 +80,68 @@ const serve = (socket, token, getWorkspaceFolders, log) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const start = (getWorkspaceFolders, log) => {
+const withdrawAdvert = (advertState) => {
+  if (!advertState.writtenAdvert) return
+
+  try { fs.unlinkSync(advertState.writtenAdvert) } catch {}
+
+  advertState.writtenAdvert = null
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const advertise = (advertState) => {
+  const { server, token, log } = advertState
+  const workspaceFolders = getWorkspaceFolders()
+  const port = server.address()?.port
+
+  if (!workspaceFolders.length || !port) {
+    withdrawAdvert(advertState)
+
+    return
+  }
+
+  const project = projectKey(workspaceFolders[0])
+  const targetAdvert = serverFileFor(project, process.pid)
+
+  if (targetAdvert === advertState.writtenAdvert && fs.existsSync(targetAdvert)) return
+
+  withdrawAdvert(advertState)
+
+  try {
+    const serverDir = serverDirFor(project)
+
+    fs.mkdirSync(serverDir, { recursive: true })
+    dropDeadAdvertisements(serverDir)
+    fs.writeFileSync(targetAdvert, JSON.stringify({ port, token, pid: process.pid }), { mode: 0o600 })
+
+    advertState.writtenAdvert = targetAdvert
+  } catch (error) {
+    log?.(`could not advertise: ${error.message}`)
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const disposeServer = (advertState) => {
+  withdrawAdvert(advertState)
+
+  try { advertState.server.close() } catch {}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const start = (log) => {
   const token = crypto.randomBytes(24).toString('hex')
-  const server = net.createServer((socket) => serve(socket, token, getWorkspaceFolders, log))
-
-  let advertisedAt = null
-
-  const withdraw = () => {
-    if (!advertisedAt) return
-
-    try {
-      fs.unlinkSync(advertisedAt)
-    } catch {}
-
-    advertisedAt = null
-  }
-
-  const advertise = () => {
-    const folders = getWorkspaceFolders()
-    const port = server.address()?.port
-
-    if (!folders.length || !port) {
-      withdraw()
-
-      return
-    }
-
-    const project = projectKey(folders[0])
-    const file = serverFileFor(project, process.pid)
-
-    if (file === advertisedAt && fs.existsSync(file)) return
-
-    withdraw()
-
-    try {
-      const directory = serverDirFor(project)
-
-      fs.mkdirSync(directory, { recursive: true })
-      dropDeadAdvertisements(directory)
-      fs.writeFileSync(file, JSON.stringify({ port, token, pid: process.pid }), { mode: 0o600 })
-
-      advertisedAt = file
-    } catch (error) {
-      log?.(`could not advertise: ${error.message}`)
-    }
-  }
-
-  const dispose = () => {
-    withdraw()
-
-    try {
-      server.close()
-    } catch {}
-  }
+  const server = net.createServer((socket) => serve(socket, token, log))
+  const advertState = { server, token, log, writtenAdvert: null }
 
   server.on('error', (error) => log?.(`server error: ${error.message}`))
-  server.listen(0, '127.0.0.1', advertise)
+  server.listen(0, '127.0.0.1', () => advertise(advertState))
 
-  return { readvertise: advertise, dispose }
+  return { readvertise: () => advertise(advertState), dispose: () => disposeServer(advertState) }
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 module.exports = { start }

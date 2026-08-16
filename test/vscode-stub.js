@@ -48,35 +48,34 @@ const reset = (folders) => {
   state.watchers = []
 }
 
-const createFileSystemWatcher = (pattern) => {
-  const watcher = { pattern, disposed: false, dispose: () => { watcher.disposed = true } }
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  state.watchers.push(watcher)
-
-  return watcher
-}
-
-const registerTextDocumentContentProvider = (scheme, provider) => {
-  state.provider = provider
-
-  return { dispose: () => {} }
-}
-
-const executeCommand = async (command, title, resources) => {
-  state.executed.push({ command, title, resources })
-}
-
-module.exports = {
-  Uri,
-  RelativePattern,
-  state,
-  reset,
-  workspace: {
-    get workspaceFolders() {
-      return state.folders.map((folder) => ({ uri: Uri.file(folder) }))
-    },
-    createFileSystemWatcher,
-    registerTextDocumentContentProvider,
+const workspace = {
+  get workspaceFolders() {
+    return state.folders.map((folder) => ({ uri: Uri.file(folder) }))
   },
-  commands: { executeCommand },
+  createFileSystemWatcher: (pattern) => {
+    const watcher = { pattern, disposed: false, dispose: () => { watcher.disposed = true } }
+
+    state.watchers.push(watcher)
+
+    return watcher
+  },
+  registerTextDocumentContentProvider: (scheme, provider) => {
+    state.provider = provider
+
+    return { dispose: () => {} }
+  },
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const commands = {
+  executeCommand: async (command, title, resources) => {
+    state.executed.push({ command, title, resources })
+  },
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+module.exports = { Uri, RelativePattern, state, reset, workspace, commands }

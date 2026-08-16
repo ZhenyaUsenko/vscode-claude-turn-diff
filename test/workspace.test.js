@@ -1,15 +1,26 @@
-const {
-  assert, fs, path, paths, HOME, check, repoAt, commitAll, write, runTurn, manifest, statuses,
-  vscode, turn, registerChat, projectKey,
-} = require('./support')
+const turn = require('../src/turn')
+const { manifestFor, projectKey } = require('../src/util/paths')
+const { HOME, check, createRepo, commitAll, write, runTurn, manifest, statuses, registerChat } = require('./support')
+const vscode = require('./vscode-stub')
+const assert = require('assert')
+const fs = require('fs')
+const path = require('path')
 
 const seedRepo = () => {
-  const repo = repoAt()
+  const repo = createRepo()
 
   write(path.join(repo, 'f.txt'), 'one\n')
   commitAll(repo)
 
   return repo
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const watcherFor = (target) => {
+  const dir = path.dirname(target)
+
+  return vscode.state.watchers.find((watcher) => watcher.pattern.base.fsPath === dir)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -30,16 +41,16 @@ check('a turn spanning two repositories produces one manifest', async () => {
 
 check('a file outside every repository is captured', async () => {
   const repo = seedRepo()
-  const outside = path.join(HOME, 'outside', 'notes.md')
+  const outsideFile = path.join(HOME, 'outside', 'notes.md')
 
-  write(outside, 'before\n')
+  write(outsideFile, 'before\n')
 
   const mutate = () => {
-    write(outside, 'after\n')
+    write(outsideFile, 'after\n')
     write(path.join(repo, 'f.txt'), 'two\n')
   }
 
-  await runTurn(repo, 'chat', [repo], mutate, { touch: [outside] })
+  await runTurn(repo, 'chat', [repo], mutate, { touch: [outsideFile] })
 
   assert.deepStrictEqual(statuses(repo), ['M f.txt', 'M notes.md'])
 })
@@ -48,24 +59,24 @@ check('a file outside every repository is captured', async () => {
 
 check('arming a file outside the workspace watches it, once', async () => {
   const repo = seedRepo()
-  const outside = path.join(HOME, 'watched', 'notes.md')
+  const outsideFile = path.join(HOME, 'watched', 'notes.md')
 
-  write(outside, 'before\n')
+  write(outsideFile, 'before\n')
   vscode.reset([repo])
 
   const mutate = () => {
     write(path.join(repo, 'f.txt'), 'two\n')
-    write(outside, 'after\n')
+    write(outsideFile, 'after\n')
   }
 
-  const touch = [outside, outside, path.join(repo, 'f.txt')]
+  const touchedFiles = [outsideFile, outsideFile, path.join(repo, 'f.txt')]
 
-  await runTurn(repo, 'chat', [repo], mutate, { touch })
+  await runTurn(repo, 'chat', [repo], mutate, { touch: touchedFiles })
 
   const [watcher] = vscode.state.watchers
 
   assert.strictEqual(vscode.state.watchers.length, 1, 'the in-workspace file needs no watcher')
-  assert.strictEqual(watcher.pattern.base.fsPath, path.dirname(outside))
+  assert.strictEqual(watcher.pattern.base.fsPath, path.dirname(outsideFile))
   assert.ok(watcher.disposed, 'the turn releases its watchers when it ends')
 })
 
@@ -74,26 +85,20 @@ check('arming a file outside the workspace watches it, once', async () => {
 check('a chat ending leaves a parallel chat mid-turn still watching', async () => {
   const repo = seedRepo()
   const project = projectKey(repo)
-  const forA = path.join(HOME, 'chat-a', 'notes.md')
-  const forB = path.join(HOME, 'chat-b', 'notes.md')
+  const fileForA = path.join(HOME, 'chat-a', 'notes.md')
+  const fileForB = path.join(HOME, 'chat-b', 'notes.md')
 
-  write(forA, 'before\n')
-  write(forB, 'before\n')
+  write(fileForA, 'before\n')
+  write(fileForB, 'before\n')
   vscode.reset([repo])
   registerChat(repo, 'b')
 
   await turn.handle('begin', project, { session_id: 'b', prompt: 'p' }, [repo])
-  await turn.handle('arm', project, { session_id: 'b', tool_input: { file_path: forB } }, [repo])
-  await runTurn(repo, 'a', [repo], () => write(forA, 'after\n'), { touch: [forA] })
+  await turn.handle('arm', project, { session_id: 'b', tool_input: { file_path: fileForB } }, [repo])
+  await runTurn(repo, 'a', [repo], () => write(fileForA, 'after\n'), { touch: [fileForA] })
 
-  const watcherFor = (target) => {
-    const directory = path.dirname(target)
-
-    return vscode.state.watchers.find((watcher) => watcher.pattern.base.fsPath === directory)
-  }
-
-  assert.ok(watcherFor(forA).disposed, 'the chat that finished released its own')
-  assert.ok(!watcherFor(forB).disposed, 'the chat still mid-turn keeps watching')
+  assert.ok(watcherFor(fileForA).disposed, 'the chat that finished released its own')
+  assert.ok(!watcherFor(fileForB).disposed, 'the chat still mid-turn keeps watching')
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -105,11 +110,11 @@ check('two projects do not overwrite each other', async () => {
   await runTurn(repoA, 'chat-a', [repoA], () => write(path.join(repoA, 'f.txt'), 'A\n'))
   await runTurn(repoB, 'chat-b', [repoB], () => write(path.join(repoB, 'f.txt'), 'B\n'))
 
-  const manifestA = paths.manifestFor(projectKey(repoA))
-  const manifestB = paths.manifestFor(projectKey(repoB))
-  const survived = "project A's before-image survived project B's turn"
+  const manifestFileA = manifestFor(projectKey(repoA))
+  const manifestFileB = manifestFor(projectKey(repoB))
+  const survived = 'project A\'s before-image survived project B\'s turn'
 
-  assert.notStrictEqual(manifestA, manifestB)
+  assert.notStrictEqual(manifestFileA, manifestFileB)
   assert.ok(fs.existsSync(manifest(repoA).files[0][1]), survived)
   assert.ok(fs.existsSync(manifest(repoB).files[0][1]))
 })

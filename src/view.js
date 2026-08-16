@@ -1,8 +1,8 @@
+const { sameContents } = require('./util/files')
+const { projectKey, manifestFor } = require('./util/paths')
+const { getWorkspaceFolders } = require('./util/workspace')
 const fs = require('fs')
 const vscode = require('vscode')
-
-const { projectKey, manifestFor } = require('./util/paths')
-const { sameContents } = require('./util/files')
 
 const SCHEME = 'claude-before'
 
@@ -14,20 +14,16 @@ let lastRendered = null
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const workspaceFolders = () => (vscode.workspace.workspaceFolders || []).map((folder) => folder.uri.fsPath)
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 const readManifest = () => {
-  const folders = workspaceFolders()
+  const workspaceFolders = getWorkspaceFolders()
 
-  if (!folders.length) return null
+  if (!workspaceFolders.length) return null
 
-  const file = manifestFor(projectKey(folders[0]))
+  const manifestFile = manifestFor(projectKey(workspaceFolders[0]))
 
-  if (!fs.existsSync(file)) return null
+  if (!fs.existsSync(manifestFile)) return null
 
-  return JSON.parse(fs.readFileSync(file, 'utf8'))
+  return JSON.parse(fs.readFileSync(manifestFile, 'utf8'))
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -93,19 +89,17 @@ const showLastTurn = async ({ force = false } = {}) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const registerBeforeImageProvider = () => vscode.workspace.registerTextDocumentContentProvider(SCHEME, {
-  provideTextDocumentContent: (uri) => {
-    const source = beforeImageByUri.get(uri.toString())
+const registerBeforeImageProvider = () => {
+  return vscode.workspace.registerTextDocumentContentProvider(SCHEME, {
+    provideTextDocumentContent: (uri) => {
+      const beforeImageFile = beforeImageByUri.get(uri.toString())
 
-    if (!source) return ''
+      if (!beforeImageFile) return ''
 
-    try {
-      return fs.readFileSync(source, 'utf8')
-    } catch {
-      return ''
-    }
-  },
-})
+      try { return fs.readFileSync(beforeImageFile, 'utf8') } catch { return '' }
+    },
+  })
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -113,14 +107,12 @@ const markCurrentAsSeen = () => {
   lastRendered = readManifest()?.ts ?? null
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 const forgetLastRendered = () => {
   lastRendered = null
 }
 
-module.exports = {
-  showLastTurn,
-  registerBeforeImageProvider,
-  markCurrentAsSeen,
-  forgetLastRendered,
-  workspaceFolders,
-}
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+module.exports = { showLastTurn, registerBeforeImageProvider, markCurrentAsSeen, forgetLastRendered }

@@ -1,8 +1,7 @@
+const { MAX_UNTRACKED_BYTES } = require('../config')
+const { execFile } = require('child_process')
 const fs = require('fs')
 const path = require('path')
-const { execFile } = require('child_process')
-
-const { MAX_UNTRACKED_BYTES } = require('../config')
 
 const run = (args, env) => new Promise((resolve) => {
   const childEnv = env ? { ...process.env, ...env } : process.env
@@ -13,7 +12,7 @@ const run = (args, env) => new Promise((resolve) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const text = async (args, env) => {
+const runText = async (args, env) => {
   const output = await run(args, env)
 
   return output === null ? null : output.toString('utf8').trim()
@@ -21,7 +20,7 @@ const text = async (args, env) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const nulSeparated = async (args, env) => {
+const runNulSeparated = async (args, env) => {
   const output = await run(args, env)
 
   return output === null ? [] : output.toString('utf8').split('\0').filter(Boolean)
@@ -30,15 +29,15 @@ const nulSeparated = async (args, env) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const listRepositories = async (folders) => {
-  const roots = new Set()
+  const repositoryRoots = new Set()
 
   for (const folder of folders) {
-    const root = await text(['-C', folder, 'rev-parse', '--show-toplevel'])
+    const root = await runText(['-C', folder, 'rev-parse', '--show-toplevel'])
 
-    if (root) roots.add(root)
+    if (root) repositoryRoots.add(root)
   }
 
-  return [...roots]
+  return [...repositoryRoots]
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -54,13 +53,13 @@ const copyPreservingMtime = (source, destination) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const smallUntrackedFiles = async (repository, env) => {
-  const listing = ['-C', repository, 'ls-files', '-o', '--exclude-standard', '-z']
+  const listingArgs = ['-C', repository, 'ls-files', '-o', '--exclude-standard', '-z']
 
-  const untracked = await nulSeparated(listing, env)
+  const untrackedFiles = await runNulSeparated(listingArgs, env)
 
-  return untracked.filter((relative) => {
+  return untrackedFiles.filter((relativePath) => {
     try {
-      return fs.statSync(path.join(repository, relative)).size <= MAX_UNTRACKED_BYTES
+      return fs.statSync(path.join(repository, relativePath)).size <= MAX_UNTRACKED_BYTES
     } catch {
       return false
     }
@@ -70,7 +69,7 @@ const smallUntrackedFiles = async (repository, env) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const snapshotTree = async (repository, scratchDir) => {
-  const gitDir = await text(['-C', repository, 'rev-parse', '--absolute-git-dir'])
+  const gitDir = await runText(['-C', repository, 'rev-parse', '--absolute-git-dir'])
 
   if (!gitDir) return null
 
@@ -86,11 +85,11 @@ const snapshotTree = async (repository, scratchDir) => {
 
   await run(['-C', repository, 'add', '-u'], env)
 
-  const untracked = await smallUntrackedFiles(repository, env)
+  const untrackedFiles = await smallUntrackedFiles(repository, env)
 
-  if (untracked.length) await run(['-C', repository, 'add', '-f', '--', ...untracked], env)
+  if (untrackedFiles.length) await run(['-C', repository, 'add', '-f', '--', ...untrackedFiles], env)
 
-  const tree = await text(['-C', repository, 'write-tree'], env)
+  const tree = await runText(['-C', repository, 'write-tree'], env)
 
   fs.unlinkSync(indexCopy)
 
@@ -99,12 +98,14 @@ const snapshotTree = async (repository, scratchDir) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const isBinaryChange = async (repository, fromTree, toTree, relative) => {
-  const numstat = ['-C', repository, 'diff', '--numstat', fromTree, toTree, '--', relative]
+const isBinaryChange = async (repository, fromTree, toTree, relativePath) => {
+  const numstatArgs = ['-C', repository, 'diff', '--numstat', fromTree, toTree, '--', relativePath]
 
-  const stat = await text(numstat)
+  const numstat = await runText(numstatArgs)
 
-  return Boolean(stat && stat.startsWith('-'))
+  return Boolean(numstat && numstat.startsWith('-'))
 }
 
-module.exports = { run, text, nulSeparated, listRepositories, snapshotTree, isBinaryChange }
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+module.exports = { run, runNulSeparated, listRepositories, snapshotTree, isBinaryChange }

@@ -1,5 +1,4 @@
 const { run } = require('./support')
-
 require('./capture.test')
 require('./workspace.test')
 require('./retention.test')

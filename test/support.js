@@ -1,4 +1,3 @@
-const assert = require('assert')
 const { execFileSync } = require('child_process')
 const fs = require('fs')
 const os = require('os')
@@ -8,29 +7,26 @@ const HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'turn-diff-test-'))
 
 process.env.HOME = HOME
 
-const Module = require('module')
 const vscode = require('./vscode-stub')
+const Module = require('module')
 
 const loadModule = Module._load
 
 Module._load = (request, ...rest) => request === 'vscode' ? vscode : loadModule.call(Module, request, ...rest)
 
 const turn = require('../src/turn')
-const paths = require('../src/util/paths')
-const view = require('../src/view')
-
-const { projectKey } = paths
+const { manifestFor, projectKey } = require('../src/util/paths')
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const registered = []
+const registeredChecks = []
 
-const check = (name, body) => registered.push({ name, body })
+const check = (name, body) => registeredChecks.push({ name, body })
 
 const run = async () => {
   let failed = 0
 
-  for (const { name, body } of registered) {
+  for (const { name, body } of registeredChecks) {
     try {
       await body()
 
@@ -43,31 +39,31 @@ const run = async () => {
   }
 
   fs.rmSync(HOME, { recursive: true, force: true })
-  console.log(failed ? `\n  ${failed} failing` : `\n  all ${registered.length} passing`)
+  console.log(failed ? `\n  ${failed} failing` : `\n  all ${registeredChecks.length} passing`)
   process.exit(failed ? 1 : 0)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-let counter = 0
+let repoCounter = 0
 
-const repoAt = () => {
-  const dir = path.join(HOME, 'work', `repo${counter++}`)
+const gitIn = (dir, ...args) => execFileSync('git', ['-C', dir, ...args], { stdio: 'ignore' })
 
-  fs.mkdirSync(dir, { recursive: true })
+const createRepo = () => {
+  const repoDir = path.join(HOME, 'work', `repo${repoCounter++}`)
 
-  const git = (...args) => execFileSync('git', ['-C', dir, ...args], { stdio: 'ignore' })
+  fs.mkdirSync(repoDir, { recursive: true })
 
-  git('init', '-q')
-  git('config', 'user.email', 'test@example.com')
-  git('config', 'user.name', 'test')
+  gitIn(repoDir, 'init', '-q')
+  gitIn(repoDir, 'config', 'user.email', 'test@example.com')
+  gitIn(repoDir, 'config', 'user.name', 'test')
 
-  return dir
+  return repoDir
 }
 
 const commitAll = (dir) => {
-  execFileSync('git', ['-C', dir, 'add', '-A'], { stdio: 'ignore' })
-  execFileSync('git', ['-C', dir, 'commit', '-qm', 'fixture'], { stdio: 'ignore' })
+  gitIn(dir, 'add', '-A')
+  gitIn(dir, 'commit', '-qm', 'fixture')
 }
 
 const write = (file, contents) => {
@@ -75,23 +71,23 @@ const write = (file, contents) => {
   fs.writeFileSync(file, contents)
 }
 
-const registerChat = (directory, sessionId) => {
-  const dir = path.join(HOME, '.claude', 'projects', projectKey(directory))
+const registerChat = (dir, sessionId) => {
+  const projectDir = path.join(HOME, '.claude', 'projects', projectKey(dir))
 
-  fs.mkdirSync(dir, { recursive: true })
-  fs.writeFileSync(path.join(dir, `${sessionId}.jsonl`), '')
+  fs.mkdirSync(projectDir, { recursive: true })
+  fs.writeFileSync(path.join(projectDir, `${sessionId}.jsonl`), '')
 }
 
-const forgetChat = (directory, sessionId) => {
-  const dir = path.join(HOME, '.claude', 'projects', projectKey(directory))
+const forgetChat = (dir, sessionId) => {
+  const projectDir = path.join(HOME, '.claude', 'projects', projectKey(dir))
 
-  fs.unlinkSync(path.join(dir, `${sessionId}.jsonl`))
+  fs.unlinkSync(path.join(projectDir, `${sessionId}.jsonl`))
 }
 
-const manifest = (directory) => JSON.parse(fs.readFileSync(paths.manifestFor(projectKey(directory)), 'utf8'))
+const manifest = (dir) => JSON.parse(fs.readFileSync(manifestFor(projectKey(dir)), 'utf8'))
 
-const statuses = (directory) => {
-  const labels = manifest(directory).files.map((entry) => `${entry[3]} ${path.basename(entry[0])}`)
+const statuses = (dir) => {
+  const labels = manifest(dir).files.map((entry) => `${entry[3]} ${path.basename(entry[0])}`)
 
   return labels.sort()
 }
@@ -100,35 +96,32 @@ const nextSecond = () => new Promise((resolve) => setTimeout(resolve, 1100))
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const runTurn = async (directory, sessionId, folders, mutate, { prompt = 'p', touch = [] } = {}) => {
-  const project = projectKey(directory)
+const runTurn = async (dir, sessionId, workspaceFolders, mutate, { prompt = 'p', touch = [] } = {}) => {
+  const project = projectKey(dir)
 
-  registerChat(directory, sessionId)
+  registerChat(dir, sessionId)
 
-  await turn.handle('begin', project, { session_id: sessionId, prompt }, folders)
-  await turn.handle('arm', project, { session_id: sessionId }, folders)
+  await turn.handle('begin', project, { session_id: sessionId, prompt }, workspaceFolders)
+  await turn.handle('arm', project, { session_id: sessionId }, workspaceFolders)
 
   for (const file of touch) {
     const payload = { session_id: sessionId, tool_input: { file_path: file } }
 
-    await turn.handle('arm', project, payload, folders)
+    await turn.handle('arm', project, payload, workspaceFolders)
   }
 
   mutate()
 
-  await turn.handle('end', project, { session_id: sessionId }, folders)
+  await turn.handle('end', project, { session_id: sessionId }, workspaceFolders)
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 module.exports = {
-  assert,
-  fs,
-  path,
   HOME,
-  turn,
-  paths,
   check,
   run,
-  repoAt,
+  createRepo,
   commitAll,
   write,
   registerChat,
@@ -137,7 +130,4 @@ module.exports = {
   nextSecond,
   runTurn,
   statuses,
-  projectKey,
-  view,
-  vscode,
 }
