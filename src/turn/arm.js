@@ -17,10 +17,10 @@ const targetedFile = (payload) => {
 const snapshotWorkspace = async (chatDir, workspaceFolders) => {
   const snapshots = []
 
-  for (const repository of await git.listRepositories(workspaceFolders)) {
-    const tree = await git.snapshotTree(repository, chatDir)
+  for (const [repository, gitDir] of await git.listRepositories(workspaceFolders)) {
+    const tree = await git.snapshotTree(repository, gitDir, chatDir)
 
-    if (tree) snapshots.push([repository, tree])
+    if (tree) snapshots.push([repository, gitDir, tree])
   }
 
   const tsvBody = snapshots.map((entry) => entry.join('\t')).join('\n')

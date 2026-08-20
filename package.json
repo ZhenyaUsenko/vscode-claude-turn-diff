@@ -32,7 +32,8 @@
   "type": "module",
   "main": "./src/extension.js",
   "activationEvents": [
-    "onStartupFinished"
+    "onStartupFinished",
+    "onFileSystem:claude-before"
   ],
   "contributes": {
     "commands": [

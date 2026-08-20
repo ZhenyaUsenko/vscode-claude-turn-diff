@@ -11,6 +11,9 @@ overwrite each other's diff.
   a loopback socket. All capture logic moved into the extension, so it is one
   language, unit-tested, and the hook runs on bash builtins alone instead of
   spawning `jq` and `git` before every tool call. `jq` is no longer required.
+- Ending a turn no longer spawns a git process per changed file. It reads every
+  before-image in one batch, so a turn touching fifty files costs the same as
+  one touching two.
 - A project's manifest now lives beside the before-images it points at, so the
   two can never be pruned apart.
 - Each window advertises its own server, so two windows on one project cannot
@@ -25,6 +28,14 @@ overwrite each other's diff.
   both sides of the diff until the window was refocused. VS Code only watches
   what is inside the workspace, so its copy of such a file lagged behind disk;
   those paths are now watched for as long as the turn that touches them.
+- Fixed: reopening VS Code showed the last turn's diff with every left side
+  empty. The editor is restored across a restart, but the before-images behind
+  it were only remembered by the render that opened it. They are now resolved
+  from the manifest on disk, and served over a scheme the editor waits for, so
+  a diff restored as the active tab no longer races the extension loading.
+- Fixed: a binary file outside every repository was counted in the diff title
+  and then rendered as nothing. Binaries are now detected by their contents
+  wherever they were captured, not just inside a repository.
 - Removed `refs/claude/turns`. It only ever recorded the repository containing
   the folder Claude Code was started in, so in a multi-root workspace it stayed
   silently out of date as soon as you edited anything in one of the other

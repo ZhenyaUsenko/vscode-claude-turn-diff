@@ -1,5 +1,7 @@
 const MAX_UNTRACKED_BYTES = 1024 * 1024
 
+const BINARY_SNIFF_BYTES = 8000
+
 const HOOK_COMMAND = '"$HOME"/.claude/hooks/turn-diff.sh'
 
 const HOOK_MARKER = 'turn-diff.sh'
@@ -22,4 +24,4 @@ const HOOK_SPEC = { UserPromptSubmit: beginHook, PreToolUse: armHook, Stop: endH
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export { MAX_UNTRACKED_BYTES, HOOK_SPEC, HOOK_MARKER, DECLINED_KEY }
+export { MAX_UNTRACKED_BYTES, BINARY_SNIFF_BYTES, HOOK_SPEC, HOOK_MARKER, DECLINED_KEY }

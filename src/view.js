@@ -4,13 +4,17 @@ import { getWorkspaceFolders } from './util/workspace.js'
 import fs from 'fs'
 import * as vscode from 'vscode'
 
+let lastRendered = null
+
 const SCHEME = 'claude-before'
 
 const DEFAULT_TITLE = 'Last turn changes'
 
-const beforeImageByUri = new Map()
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-let lastRendered = null
+const beforeUriFor = (absolutePath, stamp) => {
+  return vscode.Uri.file(absolutePath).with({ scheme: SCHEME, query: stamp })
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -21,9 +25,7 @@ const readManifest = () => {
 
   const manifestFile = manifestFor(projectKey(workspaceFolders[0]))
 
-  if (!fs.existsSync(manifestFile)) return null
-
-  return JSON.parse(fs.readFileSync(manifestFile, 'utf8'))
+  try { return JSON.parse(fs.readFileSync(manifestFile, 'utf8')) } catch { return null }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -42,18 +44,14 @@ const stillRenderable = (absolutePath, beforeImage, status) => {
 const toResources = (manifest) => {
   const resources = []
 
-  beforeImageByUri.clear()
-
   for (const [absolutePath, beforeImage, , status] of manifest.files) {
     if (!stillRenderable(absolutePath, beforeImage, status)) continue
 
     const fileUri = vscode.Uri.file(absolutePath)
-    const beforeUri = fileUri.with({ scheme: SCHEME, query: manifest.ts })
 
-    const original = status === 'A' ? undefined : beforeUri
+    const original = status === 'A' ? undefined : beforeUriFor(absolutePath, manifest.ts)
     const modified = status === 'D' ? undefined : fileUri
 
-    beforeImageByUri.set(beforeUri.toString(), beforeImage)
     resources.push([fileUri, original, modified])
   }
 
@@ -89,16 +87,40 @@ const showLastTurn = async ({ force = false } = {}) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+const readBeforeImage = (uri, params = {}) => {
+  const manifest = readManifest()
+
+  if (manifest && uri.query === manifest.ts) {
+    for (const [absolutePath, beforeImage] of manifest.files) {
+      if (absolutePath !== uri.fsPath) continue
+
+      try { return params.size ? fs.statSync(beforeImage).size : fs.readFileSync(beforeImage) } catch { break }
+    }
+  }
+
+  throw vscode.FileSystemError.FileNotFound(uri)
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const beforeImageProvider = {
+  onDidChangeFile: () => new vscode.Disposable(() => {}),
+  watch: () => new vscode.Disposable(() => {}),
+  stat: (uri) => ({ type: vscode.FileType.File, ctime: 0, mtime: 0, size: readBeforeImage(uri, { size: true }) }),
+  readFile: (uri) => readBeforeImage(uri),
+  readDirectory: () => { throw vscode.FileSystemError.FileNotADirectory() },
+  createDirectory: () => { throw vscode.FileSystemError.NoPermissions() },
+  writeFile: () => { throw vscode.FileSystemError.NoPermissions() },
+  delete: () => { throw vscode.FileSystemError.NoPermissions() },
+  rename: () => { throw vscode.FileSystemError.NoPermissions() },
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 const registerBeforeImageProvider = () => {
-  return vscode.workspace.registerTextDocumentContentProvider(SCHEME, {
-    provideTextDocumentContent: (uri) => {
-      const beforeImageFile = beforeImageByUri.get(uri.toString())
+  const options = { isReadonly: true, isCaseSensitive: true }
 
-      if (!beforeImageFile) return ''
-
-      try { return fs.readFileSync(beforeImageFile, 'utf8') } catch { return '' }
-    },
-  })
+  return vscode.workspace.registerFileSystemProvider(SCHEME, beforeImageProvider, options)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

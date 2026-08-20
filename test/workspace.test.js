@@ -57,6 +57,26 @@ check('a file outside every repository is captured', async () => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+check('a binary file outside every repository is skipped, not counted', async () => {
+  const repo = seedRepo()
+  const outsideFile = path.join(HOME, 'outside', 'pic.png')
+
+  fs.writeFileSync(outsideFile, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 1, 2, 3]))
+
+  const mutate = () => {
+    fs.writeFileSync(outsideFile, Buffer.from([0x89, 0x50, 0x4e, 0x47, 9, 9, 9, 9]))
+    write(path.join(repo, 'f.txt'), 'two\n')
+  }
+
+  await runTurn(repo, 'chat', [repo], mutate, { touch: [outsideFile] })
+
+  const reason = 'a listed binary is counted in the title and then fails to render, so the count would lie'
+
+  assert.deepStrictEqual(statuses(repo), ['M f.txt'], reason)
+})
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 check('arming a file outside the workspace watches it, once', async () => {
   const repo = seedRepo()
   const outsideFile = path.join(HOME, 'watched', 'notes.md')

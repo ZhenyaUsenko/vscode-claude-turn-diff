@@ -7,13 +7,7 @@ const isOurEntry = (entry) => typeof entry?.command === 'string' && entry.comman
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const readSettings = () => {
-  let rawSettings = ''
-
-  try { rawSettings = fs.readFileSync(SETTINGS_FILE, 'utf8') } catch { return {} }
-
-  if (!rawSettings.trim()) return {}
-
-  return JSON.parse(rawSettings)
+  try { return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')) } catch { return {} }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

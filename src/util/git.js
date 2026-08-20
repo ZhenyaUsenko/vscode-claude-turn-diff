@@ -3,9 +3,13 @@ import { execFile } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 
+const MAX_OUTPUT_BYTES = 64 * 1024 * 1024
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 const run = (args, env) => new Promise((resolve) => {
   const childEnv = env ? { ...process.env, ...env } : process.env
-  const options = { env: childEnv, maxBuffer: 64 * 1024 * 1024, encoding: 'buffer' }
+  const options = { env: childEnv, maxBuffer: MAX_OUTPUT_BYTES, encoding: 'buffer' }
 
   execFile('git', args, options, (error, stdout) => resolve(error ? null : stdout))
 })
@@ -29,15 +33,17 @@ const runNulSeparated = async (args, env) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const listRepositories = async (folders) => {
-  const repositoryRoots = new Set()
+  const gitDirByRoot = new Map()
 
   for (const folder of folders) {
-    const root = await runText(['-C', folder, 'rev-parse', '--show-toplevel'])
+    const output = await runText(['-C', folder, 'rev-parse', '--show-toplevel', '--absolute-git-dir'])
 
-    if (root) repositoryRoots.add(root)
+    const [root, gitDir] = output === null ? [] : output.split('\n')
+
+    if (root && gitDir) gitDirByRoot.set(root, gitDir)
   }
 
-  return [...repositoryRoots]
+  return [...gitDirByRoot]
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -68,18 +74,10 @@ const smallUntrackedFiles = async (repository, env) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const snapshotTree = async (repository, scratchDir) => {
-  const gitDir = await runText(['-C', repository, 'rev-parse', '--absolute-git-dir'])
-
-  if (!gitDir) return null
-
+const snapshotTree = async (repository, gitDir, scratchDir) => {
   const indexCopy = path.join(scratchDir, 'index.tmp')
 
-  try {
-    copyPreservingMtime(path.join(gitDir, 'index'), indexCopy)
-  } catch {
-    return null
-  }
+  try { copyPreservingMtime(path.join(gitDir, 'index'), indexCopy) } catch { return null }
 
   const env = { GIT_INDEX_FILE: indexCopy }
 
@@ -98,14 +96,43 @@ const snapshotTree = async (repository, scratchDir) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const isBinaryChange = async (repository, fromTree, toTree, relativePath) => {
-  const numstatArgs = ['-C', repository, 'diff', '--numstat', fromTree, toTree, '--', relativePath]
+const splitBlobs = (output, expected) => {
+  let at = 0
 
-  const numstat = await runText(numstatArgs)
+  const blobs = []
 
-  return Boolean(numstat && numstat.startsWith('-'))
+  while (blobs.length < expected) {
+    const endOfHeader = output.indexOf(0x0a, at)
+    const header = output.toString('utf8', at, endOfHeader)
+
+    if (header.endsWith(' missing')) {
+      blobs.push(null)
+
+      at = endOfHeader + 1
+    } else {
+      const size = Number(header.slice(header.lastIndexOf(' ') + 1))
+
+      blobs.push(output.subarray(endOfHeader + 1, endOfHeader + 1 + size))
+
+      at = endOfHeader + 1 + size + 1
+    }
+  }
+
+  return blobs
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export { run, runNulSeparated, listRepositories, snapshotTree, isBinaryChange }
+const readBlobs = (repository, tree, relativePaths) => new Promise((resolve) => {
+  const options = { maxBuffer: MAX_OUTPUT_BYTES, encoding: 'buffer' }
+
+  const collect = (error, stdout) => resolve(error ? null : splitBlobs(stdout, relativePaths.length))
+
+  const child = execFile('git', ['-C', repository, 'cat-file', '--batch', '-z'], options, collect)
+
+  child.stdin.end(relativePaths.map((relativePath) => `${tree}:${relativePath}\0`).join(''))
+})
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export { run, runNulSeparated, listRepositories, snapshotTree, readBlobs }

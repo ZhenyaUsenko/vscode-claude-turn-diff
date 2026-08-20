@@ -80,6 +80,13 @@ so they cancel out and never appear. Tracked files are never size-filtered: git
 only re-hashes those whose stat info changed, whereas untracked ones are hashed
 from scratch on every snapshot.
 
+A repository's before-images are read by one `git cat-file --batch`, not by
+`git show` per file. Spawning git costs about 10 ms, so per-file reads made
+ending a turn scale with the number of files changed: 50 files spent half a
+second on process startup alone. A turn now spawns a constant eleven git
+processes. Input is NUL-terminated (`-z`) so paths containing newlines survive,
+matching the `-z` already used to list them.
+
 ## Publishing and reclaiming
 
 `end` writes the manifest to `open.json.tmp` and renames it into place. The
@@ -119,9 +126,57 @@ a distinct URI. Without it the URI is the file's own path with the scheme
 swapped — identical every turn — and VS Code may serve the text model it cached
 for the previous turn, which renders as no change at all.
 
+The provider answers from the manifest rather than from anything a render left
+behind. VS Code restores the multi-diff editor across a restart, but the
+extension host it was rendered by is gone, so a cache filled at render time no
+longer holds those before-images: every left side came back empty while the
+`A`/`M`/`D` badges, restored with the editor, still looked right.
+
+A URI it cannot serve throws `FileNotFound` rather than resolving to empty. A
+file-backed model is re-read, where the one-shot content of a
+`TextDocumentContentProvider` never was, and `TextFileEditorModel` keeps what it
+already has when that re-read reports this code — `isResolved() && result ===
+FILE_NOT_FOUND` returns early — so a diff left open from an earlier turn stays
+readable once a later turn has replaced the manifest. Empty bytes are a valid
+answer and the editor believes them: the left side blanks and the whole file
+reads as newly added.
+
+Before-images are served by a **file system provider** rather than a
+`TextDocumentContentProvider`, with `onFileSystem:claude-before` as an
+activation event. A restored diff that is the active tab asks for its content
+while the window is still starting, before `onStartupFinished` activates
+anything, and a text model content provider has no activation event of its own —
+nothing in the workbench activates an extension on behalf of one. Resolution
+failed outright, so every modified entry rendered as nothing while the title
+went on counting it; waiting a few seconds before switching to the tab worked,
+which is what a race looks like. The file service is the one resolver that
+waits: it fires `onWillActivateFileSystemProvider`, joins the activation
+promise, and only then looks for a provider.
+
+The provider implements the entire interface, including the write methods that
+`isReadonly` makes unreachable. `_validateFileSystemProvider` type-checks
+`watch`, `stat`, `readDirectory`, `createDirectory`, `readFile`, `writeFile`,
+`delete` and `rename` at registration, and `onDidChangeFile` is subscribed there
+without a check. Any one of them missing throws inside `activate`, which takes
+down the extension entirely — so the symptom is every command reporting itself
+as not found, with nothing pointing at the diff. The file service refusing
+writes on the readonly capability happens far later, and is no reason to leave
+them out.
+
+Firing `onDidChange` at registration was tried first, to refresh a model assumed
+to be stale. It dropped every modified entry from the restored editor, leaving
+only the added file — the one entry with no left side to resolve — and it
+treated the wrong problem: the model was never stale, it had never resolved.
+
 Binary files are skipped rather than listed. The editor resolves *both* sides
 through the text model service, so a binary entry cannot render: it would be
 counted in the title while missing from the view.
+
+Both sides are sniffed for a NUL byte within `BINARY_SNIFF_BYTES`, the same
+heuristic git uses, at the single point every entry passes through. It was once
+`git diff --numstat` per changed file — a subprocess each, and it covered only
+the repository collector, so a binary outside every repository was counted and
+then rendered as nothing.
 
 A manifest's statuses were frozen when it was written and the tree may have
 moved on, so entries that no longer represent something renderable are dropped

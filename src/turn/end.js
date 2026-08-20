@@ -1,3 +1,4 @@
+import { BINARY_SNIFF_BYTES } from '../config.js'
 import { readLines, removeRecursive } from '../util/files.js'
 import * as git from '../util/git.js'
 import { chatDirFor, manifestFor } from '../util/paths.js'
@@ -12,17 +13,25 @@ const CONSUMED_ENTRIES = [...SNAPSHOTS, 'blobs']
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+const isBinary = (contents) => {
+  return contents.subarray(0, BINARY_SNIFF_BYTES).includes(0)
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 const addEntry = (collector, absolutePath, beforeContents) => {
   const beforeImage = path.join(collector.beforeDir, absolutePath)
 
   fs.mkdirSync(path.dirname(beforeImage), { recursive: true })
   fs.writeFileSync(beforeImage, beforeContents === null ? '' : beforeContents)
 
-  const existsNow = fs.existsSync(absolutePath)
+  const before = fs.readFileSync(beforeImage)
+  const after = fs.existsSync(absolutePath) ? fs.readFileSync(absolutePath) : null
 
-  if (existsNow && fs.readFileSync(beforeImage).equals(fs.readFileSync(absolutePath))) return
+  if (after && before.equals(after)) return
+  if (isBinary(before) || (after && isBinary(after))) return
 
-  const status = beforeContents === null ? 'A' : existsNow ? 'M' : 'D'
+  const status = beforeContents === null ? 'A' : after ? 'M' : 'D'
 
   collector.entries.push({ beforeImage, absolutePath, status })
 }
@@ -31,11 +40,11 @@ const addEntry = (collector, absolutePath, beforeContents) => {
 
 const collectRepositoryChanges = async (chatDir, collector) => {
   for (const line of readLines(path.join(chatDir, 'repos.tsv'))) {
-    const [repository, treeBefore] = line.split('\t')
+    const [repository, gitDir, treeBefore] = line.split('\t')
 
     if (!repository || !treeBefore) continue
 
-    const treeAfter = await git.snapshotTree(repository, chatDir)
+    const treeAfter = await git.snapshotTree(repository, gitDir, chatDir)
 
     if (!treeAfter || treeAfter === treeBefore) continue
 
@@ -43,13 +52,13 @@ const collectRepositoryChanges = async (chatDir, collector) => {
 
     const changedFiles = await git.runNulSeparated(diffArgs)
 
-    for (const relativePath of changedFiles) {
-      if (await git.isBinaryChange(repository, treeBefore, treeAfter, relativePath)) continue
+    const blobs = await git.readBlobs(repository, treeBefore, changedFiles)
 
-      const contents = await git.run(['-C', repository, 'show', `${treeBefore}:${relativePath}`])
+    if (!blobs) continue
 
-      addEntry(collector, path.join(repository, relativePath), contents)
-    }
+    changedFiles.forEach((relativePath, index) => {
+      addEntry(collector, path.join(repository, relativePath), blobs[index])
+    })
   }
 }
 

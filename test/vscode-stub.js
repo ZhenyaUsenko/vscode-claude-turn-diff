@@ -3,6 +3,21 @@ const state = {
   executed: [],
   watchers: [],
   provider: null,
+  providerOptions: null,
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const FileType = {
+  File: 1,
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const FileSystemError = {
+  FileNotFound: () => new Error('file not found'),
+  NoPermissions: () => new Error('no permissions'),
+  FileNotADirectory: () => new Error('not a directory'),
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -42,6 +57,14 @@ class RelativePattern {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+class Disposable {
+  constructor(callOnDispose) {
+    this.dispose = callOnDispose
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 const reset = (folders) => {
   state.folders = folders
   state.executed = []
@@ -61,8 +84,9 @@ const workspace = {
 
     return watcher
   },
-  registerTextDocumentContentProvider: (scheme, provider) => {
+  registerFileSystemProvider: (scheme, provider, options) => {
     state.provider = provider
+    state.providerOptions = options
 
     return { dispose: () => {} }
   },
@@ -78,4 +102,4 @@ const commands = {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export { Uri, RelativePattern, state, reset, workspace, commands }
+export { Uri, RelativePattern, Disposable, FileType, FileSystemError, state, reset, workspace, commands }
