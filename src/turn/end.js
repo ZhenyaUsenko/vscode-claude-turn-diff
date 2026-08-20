@@ -25,13 +25,13 @@ const addEntry = (collector, absolutePath, beforeContents) => {
   fs.mkdirSync(path.dirname(beforeImage), { recursive: true })
   fs.writeFileSync(beforeImage, beforeContents === null ? '' : beforeContents)
 
-  const before = fs.readFileSync(beforeImage)
-  const after = fs.existsSync(absolutePath) ? fs.readFileSync(absolutePath) : null
+  const previousContents = fs.readFileSync(beforeImage)
+  const currentContents = fs.existsSync(absolutePath) ? fs.readFileSync(absolutePath) : null
 
-  if (after && before.equals(after)) return
-  if (isBinary(before) || (after && isBinary(after))) return
+  if (currentContents && previousContents.equals(currentContents)) return
+  if (isBinary(previousContents) || (currentContents && isBinary(currentContents))) return
 
-  const status = beforeContents === null ? 'A' : after ? 'M' : 'D'
+  const status = beforeContents === null ? 'A' : currentContents ? 'M' : 'D'
 
   collector.entries.push({ beforeImage, absolutePath, status })
 }

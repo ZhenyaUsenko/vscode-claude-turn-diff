@@ -96,25 +96,25 @@ const snapshotTree = async (repository, gitDir, scratchDir) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const splitBlobs = (output, expected) => {
-  let at = 0
+const splitBlobs = (output, expectedCount) => {
+  let offset = 0
 
   const blobs = []
 
-  while (blobs.length < expected) {
-    const endOfHeader = output.indexOf(0x0a, at)
-    const header = output.toString('utf8', at, endOfHeader)
+  while (blobs.length < expectedCount) {
+    const endOfHeader = output.indexOf(0x0a, offset)
+    const header = output.toString('utf8', offset, endOfHeader)
 
     if (header.endsWith(' missing')) {
       blobs.push(null)
 
-      at = endOfHeader + 1
+      offset = endOfHeader + 1
     } else {
       const size = Number(header.slice(header.lastIndexOf(' ') + 1))
 
       blobs.push(output.subarray(endOfHeader + 1, endOfHeader + 1 + size))
 
-      at = endOfHeader + 1 + size + 1
+      offset = endOfHeader + 1 + size + 1
     }
   }
 
@@ -126,9 +126,9 @@ const splitBlobs = (output, expected) => {
 const readBlobs = (repository, tree, relativePaths) => new Promise((resolve) => {
   const options = { maxBuffer: MAX_OUTPUT_BYTES, encoding: 'buffer' }
 
-  const collect = (error, stdout) => resolve(error ? null : splitBlobs(stdout, relativePaths.length))
+  const resolveBlobs = (error, stdout) => resolve(error ? null : splitBlobs(stdout, relativePaths.length))
 
-  const child = execFile('git', ['-C', repository, 'cat-file', '--batch', '-z'], options, collect)
+  const child = execFile('git', ['-C', repository, 'cat-file', '--batch', '-z'], options, resolveBlobs)
 
   child.stdin.end(relativePaths.map((relativePath) => `${tree}:${relativePath}\0`).join(''))
 })

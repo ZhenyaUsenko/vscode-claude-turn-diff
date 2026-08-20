@@ -15,7 +15,7 @@
   },
   "homepage": "https://github.com/ZhenyaUsenko/vscode-claude-turn-diff#readme",
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.129.0"
   },
   "categories": [
     "SCM Providers",

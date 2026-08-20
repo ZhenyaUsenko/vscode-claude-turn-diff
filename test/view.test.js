@@ -86,11 +86,11 @@ check('the before-image provider serves that turn, and nothing it does not know'
   view.registerBeforeImageProvider()
 
   const original = entryFor(await render([repo]), 'f.txt')[1]
-  const unknown = 'a uri it cannot serve must throw, so the editor keeps what it has instead of blanking'
+  const unknownUriReason = 'a uri it cannot serve must throw, so the editor keeps what it has instead of blanking'
 
   assert.strictEqual(beforeText(original), 'before\n')
   assert.strictEqual(vscode.state.provider.stat(original).size, 'before\n'.length, 'stat agrees with readFile')
-  assert.throws(() => beforeText(vscode.Uri.file('/nope')), unknown)
+  assert.throws(() => beforeText(vscode.Uri.file('/nope')), unknownUriReason)
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -110,9 +110,9 @@ check('a before-image resolves with no render to prime it, as after a restart', 
   const [absolutePath] = files[0]
 
   const beforeUri = beforeUriFor(absolutePath, ts)
-  const restored = 'a restored editor asks for its uri directly, so the provider cannot rely on a render'
+  const restartReason = 'a restored editor asks for its uri directly, so the provider cannot rely on a render'
 
-  assert.strictEqual(beforeText(beforeUri), 'before\n', restored)
+  assert.strictEqual(beforeText(beforeUri), 'before\n', restartReason)
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
