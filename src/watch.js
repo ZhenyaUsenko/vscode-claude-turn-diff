@@ -1,4 +1,4 @@
-import { isUnder, canonical } from './util/files.js'
+import { isUnder, canonicalize } from './util/files.js'
 import path from 'path'
 import * as vscode from 'vscode'
 
@@ -20,13 +20,13 @@ const watchersFor = (sessionId) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const watchOutsideWorkspace = (targets, workspaceFolders, sessionId) => {
-  const workspaceRoots = workspaceFolders.map(canonical)
+export const watchFilesOutsideWorkspace = (targets, workspaceFolders, sessionId) => {
+  const workspaceRoots = workspaceFolders.map(canonicalize)
   const watchers = watchersFor(sessionId)
 
   for (const target of targets) {
     if (watchers.has(target)) continue
-    if (workspaceRoots.some((root) => isUnder(canonical(target), root))) continue
+    if (workspaceRoots.some((root) => isUnder(canonicalize(target), root))) continue
 
     const dir = vscode.Uri.file(path.dirname(target))
     const pattern = new vscode.RelativePattern(dir, path.basename(target))
@@ -37,7 +37,7 @@ const watchOutsideWorkspace = (targets, workspaceFolders, sessionId) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const disposeWatchers = (sessionId) => {
+export const disposeWatchers = (sessionId) => {
   const watchers = watchersBySession.get(sessionId)
 
   if (!watchers) return
@@ -48,11 +48,7 @@ const disposeWatchers = (sessionId) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const disposeAllWatchers = () => {
+export const disposeAllWatchers = () => {
   watchersBySession.forEach((watchers) => watchers.forEach((watcher) => watcher.dispose()))
   watchersBySession.clear()
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export { watchOutsideWorkspace, disposeWatchers, disposeAllWatchers }

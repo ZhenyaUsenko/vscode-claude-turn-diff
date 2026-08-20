@@ -1,5 +1,5 @@
-import * as view from '../src/view.js'
-import { check, createRepo, commitAll, write, runTurn, nextSecond, manifest } from './support.js'
+import { registerBeforeImageProvider, showLastTurn } from '../src/view.js'
+import { check, createRepo, commitAll, write, runTurn, nextSecond, readManifest } from './support.js'
 import * as vscode from './vscode-stub.js'
 import assert from 'assert'
 import fs from 'fs'
@@ -20,7 +20,7 @@ const beforeText = (uri) => Buffer.from(vscode.state.provider.readFile(uri)).toS
 const render = async (workspaceFolders) => {
   vscode.reset(workspaceFolders)
 
-  await view.showLastTurn({ force: true })
+  await showLastTurn({ force: true })
 
   return vscode.state.executed[vscode.state.executed.length - 1]
 }
@@ -83,7 +83,7 @@ check('the before-image provider serves that turn, and nothing it does not know'
 
   await runTurn(repo, 'chat', [repo], () => write(path.join(repo, 'f.txt'), 'after\n'))
 
-  view.registerBeforeImageProvider()
+  registerBeforeImageProvider()
 
   const original = entryFor(await render([repo]), 'f.txt')[1]
   const unknownUriReason = 'a uri it cannot serve must throw, so the editor keeps what it has instead of blanking'
@@ -104,9 +104,9 @@ check('a before-image resolves with no render to prime it, as after a restart', 
   await runTurn(repo, 'chat', [repo], () => write(path.join(repo, 'f.txt'), 'after\n'))
 
   vscode.reset([repo])
-  view.registerBeforeImageProvider()
+  registerBeforeImageProvider()
 
-  const { ts, files } = manifest(repo)
+  const { ts, files } = readManifest(repo)
   const [absolutePath] = files[0]
 
   const beforeUri = beforeUriFor(absolutePath, ts)

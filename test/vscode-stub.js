@@ -1,4 +1,4 @@
-const state = {
+export const state = {
   folders: [],
   executed: [],
   watchers: [],
@@ -8,13 +8,13 @@ const state = {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const FileType = {
+export const FileType = {
   File: 1,
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const FileSystemError = {
+export const FileSystemError = {
   FileNotFound: () => new Error('file not found'),
   NoPermissions: () => new Error('no permissions'),
   FileNotADirectory: () => new Error('not a directory'),
@@ -22,7 +22,7 @@ const FileSystemError = {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class Uri {
+export class Uri {
   constructor(scheme, fsPath, query) {
     this.scheme = scheme
     this.path = fsPath
@@ -48,7 +48,7 @@ class Uri {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class RelativePattern {
+export class RelativePattern {
   constructor(base, pattern) {
     this.base = base
     this.pattern = pattern
@@ -57,7 +57,7 @@ class RelativePattern {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class Disposable {
+export class Disposable {
   constructor(callOnDispose) {
     this.dispose = callOnDispose
   }
@@ -65,7 +65,7 @@ class Disposable {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const reset = (folders) => {
+export const reset = (folders) => {
   state.folders = folders
   state.executed = []
   state.watchers = []
@@ -73,7 +73,7 @@ const reset = (folders) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const workspace = {
+export const workspace = {
   get workspaceFolders() {
     return state.folders.map((folder) => ({ uri: Uri.file(folder) }))
   },
@@ -94,12 +94,8 @@ const workspace = {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const commands = {
+export const commands = {
   executeCommand: async (command, title, resources) => {
     state.executed.push({ command, title, resources })
   },
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export { Uri, RelativePattern, Disposable, FileType, FileSystemError, state, reset, workspace, commands }

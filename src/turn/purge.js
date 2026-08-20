@@ -1,5 +1,5 @@
 import { removeRecursive, listDirectories } from '../util/files.js'
-import { chatsDirFor, chatDirFor, transcriptFor } from '../util/paths.js'
+import { getChatsDir, getChatDir, getTranscriptFile } from '../util/paths.js'
 import fs from 'fs'
 import path from 'path'
 
@@ -27,10 +27,10 @@ const dropSiblingSupersededTurns = (siblingDir, stamp) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const purgeSupersededTurns = ({ project, sessionId, stamp, currentBeforeDir }) => {
-  const chatsDir = chatsDirFor(project)
-  const ownChatDir = chatDirFor(project, sessionId)
-  const keyIsTrustworthy = fs.existsSync(transcriptFor(project, sessionId))
+export const purgeSupersededTurns = ({ project, sessionId, stamp, currentBeforeDir }) => {
+  const chatsDir = getChatsDir(project)
+  const ownChatDir = getChatDir(project, sessionId)
+  const keyIsTrustworthy = fs.existsSync(getTranscriptFile(project, sessionId))
 
   dropOwnSupersededTurns(ownChatDir, currentBeforeDir)
 
@@ -39,7 +39,7 @@ const purgeSupersededTurns = ({ project, sessionId, stamp, currentBeforeDir }) =
 
     if (siblingDir === ownChatDir) continue
 
-    if (keyIsTrustworthy && !fs.existsSync(transcriptFor(project, name))) {
+    if (keyIsTrustworthy && !fs.existsSync(getTranscriptFile(project, name))) {
       removeRecursive(siblingDir)
 
       continue
@@ -48,7 +48,3 @@ const purgeSupersededTurns = ({ project, sessionId, stamp, currentBeforeDir }) =
     dropSiblingSupersededTurns(siblingDir, stamp)
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export { purgeSupersededTurns }

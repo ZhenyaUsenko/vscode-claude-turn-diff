@@ -1,7 +1,7 @@
-import { readLines, canonical, isUnder } from '../util/files.js'
-import * as git from '../util/git.js'
-import { chatDirFor } from '../util/paths.js'
-import { watchOutsideWorkspace } from '../watch.js'
+import { readLines, canonicalize, isUnder } from '../util/files.js'
+import { git } from '../util/git.js'
+import { getChatDir } from '../util/paths.js'
+import { watchFilesOutsideWorkspace } from '../watch.js'
 import fs from 'fs'
 import path from 'path'
 
@@ -53,14 +53,14 @@ const captureBeforeImage = (chatDir, file) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const arm = async ({ project, sessionId, payload, workspaceFolders }) => {
+export const armTurn = async ({ project, sessionId, payload, workspaceFolders }) => {
   let repositories
 
   const file = targetedFile(payload)
-  const chatDir = chatDirFor(project, sessionId)
+  const chatDir = getChatDir(project, sessionId)
   const reposFile = path.join(chatDir, 'repos.tsv')
 
-  if (file) watchOutsideWorkspace([file], workspaceFolders, sessionId)
+  if (file) watchFilesOutsideWorkspace([file], workspaceFolders, sessionId)
 
   fs.mkdirSync(chatDir, { recursive: true })
 
@@ -71,11 +71,7 @@ const arm = async ({ project, sessionId, payload, workspaceFolders }) => {
   }
 
   if (!file) return
-  if (repositories.some(([repository]) => isUnder(canonical(file), repository))) return
+  if (repositories.some(([repository]) => isUnder(canonicalize(file), repository))) return
 
   captureBeforeImage(chatDir, file)
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export { arm }

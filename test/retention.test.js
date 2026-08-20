@@ -1,5 +1,5 @@
-import { chatDirFor, manifestFor, serverFileFor, projectKey } from '../src/util/paths.js'
-import { check, createRepo, commitAll, write, runTurn, manifest, nextSecond, forgetChat } from './support.js'
+import { getChatDir, getManifestFile, getServerFile, getProjectKey } from '../src/util/paths.js'
+import { check, createRepo, commitAll, write, runTurn, readManifest, nextSecond, forgetChat } from './support.js'
 import assert from 'assert'
 import fs from 'fs'
 import path from 'path'
@@ -12,13 +12,13 @@ check('a later chat supersedes an earlier one in the same project', async () => 
 
   await runTurn(repo, 'first', [repo], () => write(path.join(repo, 'f.txt'), 'two\n'))
 
-  const supersededImage = manifest(repo).files[0][1]
+  const supersededImage = readManifest(repo).files[0][1]
 
   await nextSecond()
   await runTurn(repo, 'second', [repo], () => write(path.join(repo, 'f.txt'), 'three\n'))
 
   assert.ok(!fs.existsSync(supersededImage), 'the first chat\'s before-image was reclaimed')
-  assert.ok(fs.existsSync(manifest(repo).files[0][1]), 'the winning manifest still resolves')
+  assert.ok(fs.existsSync(readManifest(repo).files[0][1]), 'the winning manifest still resolves')
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -31,7 +31,7 @@ check('a chat deleted in Claude Code has its whole directory reclaimed', async (
 
   await runTurn(repo, 'ghost', [repo], () => write(path.join(repo, 'f.txt'), 'two\n'))
 
-  const ghostDir = chatDirFor(projectKey(repo), 'ghost')
+  const ghostDir = getChatDir(getProjectKey(repo), 'ghost')
   const beforeImageDirs = fs.readdirSync(ghostDir).filter((name) => name.startsWith('before-'))
 
   assert.strictEqual(beforeImageDirs.length, 1, 'the finished turn left its before-images behind')
@@ -48,7 +48,7 @@ check('a chat deleted in Claude Code has its whole directory reclaimed', async (
 
 check('a finishing turn leaves the server advert alone', async () => {
   const repo = createRepo()
-  const advertFile = serverFileFor(projectKey(repo), process.pid)
+  const advertFile = getServerFile(getProjectKey(repo), process.pid)
 
   write(path.join(repo, 'f.txt'), 'one\n')
   commitAll(repo)
@@ -63,7 +63,7 @@ check('a finishing turn leaves the server advert alone', async () => {
 
 check('a turn that changes nothing leaves the previous manifest alone', async () => {
   const repo = createRepo()
-  const manifestFile = manifestFor(projectKey(repo))
+  const manifestFile = getManifestFile(getProjectKey(repo))
 
   write(path.join(repo, 'f.txt'), 'one\n')
   commitAll(repo)

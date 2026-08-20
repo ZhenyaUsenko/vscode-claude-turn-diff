@@ -6,13 +6,13 @@ const isOurEntry = (entry) => typeof entry?.command === 'string' && entry.comman
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const readSettings = () => {
+export const readSettings = () => {
   try { return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')) } catch { return {} }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const writeSettings = (settings) => {
+export const writeSettings = (settings) => {
   fs.mkdirSync(CLAUDE_DIR, { recursive: true })
 
   if (fs.existsSync(SETTINGS_FILE)) fs.copyFileSync(SETTINGS_FILE, `${SETTINGS_FILE}.turn-diff-backup`)
@@ -22,7 +22,7 @@ const writeSettings = (settings) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const hooksRegistered = (settings) => {
+export const hooksMatchSpec = (settings) => {
   return Object.entries(HOOK_SPEC).every(([event, groups]) => {
     const ourGroups = settings.hooks?.[event]?.filter((group) => group.hooks?.some(isOurEntry)) ?? []
 
@@ -32,7 +32,7 @@ const hooksRegistered = (settings) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const stripOurHooks = (settings) => {
+export const stripOurHooks = (settings) => {
   const hooks = settings.hooks
 
   if (!hooks) return settings
@@ -52,7 +52,7 @@ const stripOurHooks = (settings) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const applyHookSpec = (settings) => {
+export const applyHookSpec = (settings) => {
   stripOurHooks(settings)
 
   settings.hooks ??= {}
@@ -63,7 +63,3 @@ const applyHookSpec = (settings) => {
 
   return settings
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export { readSettings, writeSettings, hooksRegistered, stripOurHooks, applyHookSpec }

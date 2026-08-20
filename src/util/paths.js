@@ -1,46 +1,32 @@
 import os from 'os'
 import path from 'path'
 
-const CLAUDE_DIR = path.join(os.homedir(), '.claude')
+export const CLAUDE_DIR = path.join(os.homedir(), '.claude')
+
+export const SETTINGS_FILE = path.join(CLAUDE_DIR, 'settings.json')
+
+export const INSTALLED_HOOK = path.join(CLAUDE_DIR, 'hooks', 'turn-diff.sh')
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const STATE_ROOT = path.join(CLAUDE_DIR, 'turn-diff')
 
 const TRANSCRIPTS_ROOT = path.join(CLAUDE_DIR, 'projects')
 
-const SETTINGS_FILE = path.join(CLAUDE_DIR, 'settings.json')
-
-const INSTALLED_HOOK = path.join(CLAUDE_DIR, 'hooks', 'turn-diff.sh')
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const projectKey = (dir) => dir.replace(/[^a-zA-Z0-9]/g, '-')
+export const getProjectKey = (dir) => dir.replace(/[^a-zA-Z0-9]/g, '-')
 
-const projectDirFor = (project) => path.join(STATE_ROOT, project)
+export const getProjectDir = (project) => path.join(STATE_ROOT, project)
 
-const chatsDirFor = (project) => path.join(projectDirFor(project), 'chats')
+export const getChatsDir = (project) => path.join(getProjectDir(project), 'chats')
 
-const chatDirFor = (project, sessionId) => path.join(chatsDirFor(project), sessionId)
+export const getChatDir = (project, sessionId) => path.join(getChatsDir(project), sessionId)
 
-const manifestFor = (project) => path.join(projectDirFor(project), 'open.json')
+export const getManifestFile = (project) => path.join(getProjectDir(project), 'open.json')
 
-const serverDirFor = (project) => path.join(projectDirFor(project), 'servers')
+export const getServerDir = (project) => path.join(getProjectDir(project), 'servers')
 
-const serverFileFor = (project, pid) => path.join(serverDirFor(project), `${pid}.json`)
+export const getServerFile = (project, pid) => path.join(getServerDir(project), `${pid}.json`)
 
-const transcriptFor = (project, sessionId) => path.join(TRANSCRIPTS_ROOT, project, `${sessionId}.jsonl`)
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export {
-  CLAUDE_DIR,
-  SETTINGS_FILE,
-  INSTALLED_HOOK,
-  projectKey,
-  projectDirFor,
-  chatsDirFor,
-  chatDirFor,
-  manifestFor,
-  serverDirFor,
-  serverFileFor,
-  transcriptFor,
-}
+export const getTranscriptFile = (project, sessionId) => path.join(TRANSCRIPTS_ROOT, project, `${sessionId}.jsonl`)

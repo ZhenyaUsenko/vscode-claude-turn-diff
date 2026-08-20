@@ -1,5 +1,5 @@
 import { sameContents } from './util/files.js'
-import { projectKey, manifestFor } from './util/paths.js'
+import { getProjectKey, getManifestFile } from './util/paths.js'
 import { getWorkspaceFolders } from './util/workspace.js'
 import fs from 'fs'
 import * as vscode from 'vscode'
@@ -23,7 +23,7 @@ const readManifest = () => {
 
   if (!workspaceFolders.length) return null
 
-  const manifestFile = manifestFor(projectKey(workspaceFolders[0]))
+  const manifestFile = getManifestFile(getProjectKey(workspaceFolders[0]))
 
   try { return JSON.parse(fs.readFileSync(manifestFile, 'utf8')) } catch { return null }
 }
@@ -60,7 +60,7 @@ const toResources = (manifest) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const showLastTurn = async ({ force = false } = {}) => {
+export const showLastTurn = async ({ force = false } = {}) => {
   const manifest = readManifest()
   const title = manifest?.title || DEFAULT_TITLE
 
@@ -117,7 +117,7 @@ const beforeImageProvider = {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const registerBeforeImageProvider = () => {
+export const registerBeforeImageProvider = () => {
   const options = { isReadonly: true, isCaseSensitive: true }
 
   return vscode.workspace.registerFileSystemProvider(SCHEME, beforeImageProvider, options)
@@ -125,16 +125,12 @@ const registerBeforeImageProvider = () => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const markCurrentAsSeen = () => {
+export const markCurrentTurnAsSeen = () => {
   lastRendered = readManifest()?.ts ?? null
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const forgetLastRendered = () => {
+export const forgetLastRenderedTurn = () => {
   lastRendered = null
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export { showLastTurn, registerBeforeImageProvider, markCurrentAsSeen, forgetLastRendered }

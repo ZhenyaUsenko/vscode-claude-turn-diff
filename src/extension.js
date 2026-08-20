@@ -1,8 +1,8 @@
-import * as install from './install.js'
-import * as server from './server.js'
-import { projectKey, projectDirFor } from './util/paths.js'
+import { clearDeclinedFlag, installHookScript, promptToRegisterHooks, registerHooks, removeHooks } from './install.js'
+import { startServer } from './server.js'
+import { getProjectKey, getProjectDir } from './util/paths.js'
 import { getWorkspaceFolders } from './util/workspace.js'
-import * as view from './view.js'
+import { forgetLastRenderedTurn, markCurrentTurnAsSeen, registerBeforeImageProvider, showLastTurn } from './view.js'
 import { disposeAllWatchers } from './watch.js'
 import fs from 'fs'
 import * as vscode from 'vscode'
@@ -17,7 +17,7 @@ const watchProject = (watchState) => {
   if (!workspaceFolders.length) return null
 
   try {
-    const projectDir = projectDirFor(projectKey(workspaceFolders[0]))
+    const projectDir = getProjectDir(getProjectKey(workspaceFolders[0]))
 
     fs.mkdirSync(projectDir, { recursive: true })
 
@@ -26,7 +26,7 @@ const watchProject = (watchState) => {
 
       clearTimeout(watchState.debounceTimer)
 
-      watchState.debounceTimer = setTimeout(() => view.showLastTurn(), WATCH_DEBOUNCE_MS)
+      watchState.debounceTimer = setTimeout(() => showLastTurn(), WATCH_DEBOUNCE_MS)
     })
   } catch (error) {
     watchState.logError(`could not watch project directory: ${error.message}`)
@@ -63,60 +63,56 @@ const createManifestWatch = (logError) => {
 
 const registerHooksCommand = async (context) => {
   try {
-    install.installHookScript(context)
+    installHookScript(context)
   } catch (error) {
     vscode.window.showErrorMessage(`Turn Diff: could not install the hook script — ${error.message}`)
 
     return
   }
 
-  await install.clearDeclined(context)
-  await install.registerHooks({ interactive: true })
+  await clearDeclinedFlag(context)
+  await registerHooks({ interactive: true })
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const activate = (context) => {
+export const activate = (context) => {
   const outputChannel = vscode.window.createOutputChannel('Turn Diff', { log: true })
 
   const logError = (message) => outputChannel.error(message)
 
   const manifestWatch = createManifestWatch(logError)
 
-  view.markCurrentAsSeen()
+  markCurrentTurnAsSeen()
   manifestWatch.rewatch()
 
-  const hookServer = server.start(logError)
+  const server = startServer(logError)
 
   context.subscriptions.push(
     outputChannel,
-    hookServer,
+    server,
     manifestWatch,
-    view.registerBeforeImageProvider(),
+    registerBeforeImageProvider(),
     { dispose: disposeAllWatchers },
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
-      view.forgetLastRendered()
+      forgetLastRenderedTurn()
       manifestWatch.rewatch()
-      hookServer.readvertise()
+      server.readvertise()
     }),
-    vscode.commands.registerCommand('claudeTurnDiff.showLast', () => view.showLastTurn({ force: true })),
+    vscode.commands.registerCommand('claudeTurnDiff.showLast', () => showLastTurn({ force: true })),
     vscode.commands.registerCommand('claudeTurnDiff.installHooks', () => registerHooksCommand(context)),
-    vscode.commands.registerCommand('claudeTurnDiff.uninstallHooks', install.removeHooks),
+    vscode.commands.registerCommand('claudeTurnDiff.uninstallHooks', removeHooks),
   )
 
   try {
-    install.installHookScript(context)
+    installHookScript(context)
   } catch (error) {
     logError(`could not install the hook script: ${error.message}`)
   }
 
-  void install.promptToRegister(context)
+  void promptToRegisterHooks(context)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const deactivate = () => {}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export { activate, deactivate }
+export const deactivate = () => {}

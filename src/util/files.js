@@ -1,13 +1,13 @@
 import fs from 'fs'
 import path from 'path'
 
-const removeRecursive = (target) => fs.rmSync(target, { recursive: true, force: true })
+export const removeRecursive = (target) => fs.rmSync(target, { recursive: true, force: true })
 
-const isUnder = (child, parent) => child === parent || child.startsWith(parent + path.sep)
+export const isUnder = (child, parent) => child === parent || child.startsWith(parent + path.sep)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const readLines = (file) => {
+export const readLines = (file) => {
   try {
     return fs.readFileSync(file, 'utf8').split('\n').filter(Boolean)
   } catch {
@@ -17,7 +17,7 @@ const readLines = (file) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const listDirectories = (parent) => {
+export const listDirectories = (parent) => {
   try {
     const entries = fs.readdirSync(parent, { withFileTypes: true })
 
@@ -29,7 +29,7 @@ const listDirectories = (parent) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const sameContents = (left, right) => {
+export const sameContents = (left, right) => {
   try {
     if (fs.statSync(left).size !== fs.statSync(right).size) return false
 
@@ -41,7 +41,7 @@ const sameContents = (left, right) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const canonical = (target) => {
+export const canonicalize = (target) => {
   try {
     return fs.realpathSync(target)
   } catch {
@@ -52,7 +52,3 @@ const canonical = (target) => {
     }
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export { removeRecursive, readLines, listDirectories, sameContents, canonical, isUnder }

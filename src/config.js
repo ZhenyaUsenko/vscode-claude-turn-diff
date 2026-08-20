@@ -1,14 +1,16 @@
-const MAX_UNTRACKED_BYTES = 1024 * 1024
+export const MAX_UNTRACKED_BYTES = 1024 * 1024
 
-const BINARY_SNIFF_BYTES = 8000
+export const BINARY_SNIFF_BYTES = 8000
+
+export const HOOK_MARKER = 'turn-diff.sh'
+
+export const DECLINED_KEY = 'claudeTurnDiff.declinedHookInstall'
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const HOOK_COMMAND = '"$HOME"/.claude/hooks/turn-diff.sh'
 
-const HOOK_MARKER = 'turn-diff.sh'
-
 const ARM_MATCHER = 'Edit|Write|MultiEdit|NotebookEdit|Bash'
-
-const DECLINED_KEY = 'claudeTurnDiff.declinedHookInstall'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -20,8 +22,4 @@ const endHook = [{ hooks: [{ type: 'command', command: `${HOOK_COMMAND} end`, ti
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const HOOK_SPEC = { UserPromptSubmit: beginHook, PreToolUse: armHook, Stop: endHook, StopFailure: endHook }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export { MAX_UNTRACKED_BYTES, BINARY_SNIFF_BYTES, HOOK_SPEC, HOOK_MARKER, DECLINED_KEY }
+export const HOOK_SPEC = { UserPromptSubmit: beginHook, PreToolUse: armHook, Stop: endHook, StopFailure: endHook }

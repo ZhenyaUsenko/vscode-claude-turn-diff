@@ -1,5 +1,5 @@
-import * as turn from './turn/index.js'
-import { projectKey, serverDirFor, serverFileFor } from './util/paths.js'
+import { handleTurn } from './turn/index.js'
+import { getProjectKey, getServerDir, getServerFile } from './util/paths.js'
 import { getWorkspaceFolders } from './util/workspace.js'
 import crypto from 'crypto'
 import fs from 'fs'
@@ -66,7 +66,7 @@ const serve = (socket, token, log) => {
     }
 
     try {
-      await turn.handle(request.mode, request.project, JSON.parse(request.body), getWorkspaceFolders())
+      await handleTurn(request.mode, request.project, JSON.parse(request.body), getWorkspaceFolders())
 
       socket.end('ok\n')
     } catch (error) {
@@ -101,15 +101,15 @@ const advertise = (advertState) => {
     return
   }
 
-  const project = projectKey(workspaceFolders[0])
-  const targetAdvert = serverFileFor(project, process.pid)
+  const project = getProjectKey(workspaceFolders[0])
+  const targetAdvert = getServerFile(project, process.pid)
 
   if (targetAdvert === advertState.writtenAdvert && fs.existsSync(targetAdvert)) return
 
   withdrawAdvert(advertState)
 
   try {
-    const serverDir = serverDirFor(project)
+    const serverDir = getServerDir(project)
 
     fs.mkdirSync(serverDir, { recursive: true })
     dropDeadAdvertisements(serverDir)
@@ -131,7 +131,7 @@ const disposeServer = (advertState) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const start = (log) => {
+export const startServer = (log) => {
   const token = crypto.randomBytes(24).toString('hex')
   const server = net.createServer((socket) => serve(socket, token, log))
   const advertState = { server, token, log, writtenAdvert: null }
@@ -141,7 +141,3 @@ const start = (log) => {
 
   return { readvertise: () => advertise(advertState), dispose: () => disposeServer(advertState) }
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export { start }

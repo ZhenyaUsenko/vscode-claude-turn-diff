@@ -1,6 +1,8 @@
-import * as turn from '../src/turn/index.js'
-import { manifestFor, projectKey } from '../src/util/paths.js'
-import { HOME, check, createRepo, commitAll, write, runTurn, manifest, statuses, registerChat } from './support.js'
+import { handleTurn } from '../src/turn/index.js'
+import { getManifestFile, getProjectKey } from '../src/util/paths.js'
+import {
+  HOME, check, createRepo, commitAll, write, runTurn, readManifest, readStatuses, registerChat,
+} from './support.js'
 import * as vscode from './vscode-stub.js'
 import assert from 'assert'
 import fs from 'fs'
@@ -34,7 +36,7 @@ check('a turn spanning two repositories produces one manifest', async () => {
     write(path.join(repoB, 'f.txt'), 'three\n')
   })
 
-  assert.strictEqual(manifest(repoA).files.length, 2, 'both repositories in one manifest')
+  assert.strictEqual(readManifest(repoA).files.length, 2, 'both repositories in one manifest')
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -52,7 +54,7 @@ check('a file outside every repository is captured', async () => {
 
   await runTurn(repo, 'chat', [repo], mutate, { touch: [outsideFile] })
 
-  assert.deepStrictEqual(statuses(repo), ['M f.txt', 'M notes.md'])
+  assert.deepStrictEqual(readStatuses(repo), ['M f.txt', 'M notes.md'])
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -72,7 +74,7 @@ check('a binary file outside every repository is skipped, not counted', async ()
 
   const reason = 'a listed binary is counted in the title and then fails to render, so the count would lie'
 
-  assert.deepStrictEqual(statuses(repo), ['M f.txt'], reason)
+  assert.deepStrictEqual(readStatuses(repo), ['M f.txt'], reason)
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -104,7 +106,7 @@ check('arming a file outside the workspace watches it, once', async () => {
 
 check('a chat ending leaves a parallel chat mid-turn still watching', async () => {
   const repo = seedRepo()
-  const project = projectKey(repo)
+  const project = getProjectKey(repo)
   const fileForA = path.join(HOME, 'chat-a', 'notes.md')
   const fileForB = path.join(HOME, 'chat-b', 'notes.md')
 
@@ -113,8 +115,8 @@ check('a chat ending leaves a parallel chat mid-turn still watching', async () =
   vscode.reset([repo])
   registerChat(repo, 'b')
 
-  await turn.handle('begin', project, { session_id: 'b', prompt: 'p' }, [repo])
-  await turn.handle('arm', project, { session_id: 'b', tool_input: { file_path: fileForB } }, [repo])
+  await handleTurn('begin', project, { session_id: 'b', prompt: 'p' }, [repo])
+  await handleTurn('arm', project, { session_id: 'b', tool_input: { file_path: fileForB } }, [repo])
   await runTurn(repo, 'a', [repo], () => write(fileForA, 'after\n'), { touch: [fileForA] })
 
   assert.ok(watcherFor(fileForA).disposed, 'the chat that finished released its own')
@@ -130,11 +132,11 @@ check('two projects do not overwrite each other', async () => {
   await runTurn(repoA, 'chat-a', [repoA], () => write(path.join(repoA, 'f.txt'), 'A\n'))
   await runTurn(repoB, 'chat-b', [repoB], () => write(path.join(repoB, 'f.txt'), 'B\n'))
 
-  const manifestFileA = manifestFor(projectKey(repoA))
-  const manifestFileB = manifestFor(projectKey(repoB))
+  const manifestFileA = getManifestFile(getProjectKey(repoA))
+  const manifestFileB = getManifestFile(getProjectKey(repoB))
   const survived = 'project A\'s before-image survived project B\'s turn'
 
   assert.notStrictEqual(manifestFileA, manifestFileB)
-  assert.ok(fs.existsSync(manifest(repoA).files[0][1]), survived)
-  assert.ok(fs.existsSync(manifest(repoB).files[0][1]))
+  assert.ok(fs.existsSync(readManifest(repoA).files[0][1]), survived)
+  assert.ok(fs.existsSync(readManifest(repoB).files[0][1]))
 })

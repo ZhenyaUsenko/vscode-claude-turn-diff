@@ -24,7 +24,7 @@ const runText = async (args, env) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const runNulSeparated = async (args, env) => {
+const listPaths = async (args, env) => {
   const output = await run(args, env)
 
   return output === null ? [] : output.toString('utf8').split('\0').filter(Boolean)
@@ -61,7 +61,7 @@ const copyPreservingMtime = (source, destination) => {
 const smallUntrackedFiles = async (repository, env) => {
   const listingArgs = ['-C', repository, 'ls-files', '-o', '--exclude-standard', '-z']
 
-  const untrackedFiles = await runNulSeparated(listingArgs, env)
+  const untrackedFiles = await listPaths(listingArgs, env)
 
   return untrackedFiles.filter((relativePath) => {
     try {
@@ -135,4 +135,4 @@ const readBlobs = (repository, tree, relativePaths) => new Promise((resolve) => 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export { run, runNulSeparated, listRepositories, snapshotTree, readBlobs }
+export const git = { listPaths, listRepositories, readBlobs, snapshotTree }

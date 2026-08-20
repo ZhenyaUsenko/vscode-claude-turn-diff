@@ -1,5 +1,5 @@
 import { HOOK_SPEC, DECLINED_KEY } from './config.js'
-import * as settings from './settings.js'
+import { applyHookSpec, hooksMatchSpec, readSettings, stripOurHooks, writeSettings } from './settings.js'
 import { INSTALLED_HOOK } from './util/paths.js'
 import fs from 'fs'
 import path from 'path'
@@ -33,7 +33,7 @@ const writeFailed = (error) => `Turn Diff: could not write ~/.claude/settings.js
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const installHookScript = (context) => {
+export const installHookScript = (context) => {
   const bundledScript = fs.readFileSync(path.join(context.extensionPath, 'hooks', 'turn-diff.sh'))
 
   let installedScript = null
@@ -50,27 +50,27 @@ const installHookScript = (context) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const registerHooks = async ({ interactive }) => {
+export const registerHooks = async ({ interactive }) => {
   let currentSettings
 
   try {
-    currentSettings = settings.readSettings()
+    currentSettings = readSettings()
   } catch {
     vscode.window.showErrorMessage(MALFORMED_SETTINGS)
 
     return false
   }
 
-  if (settings.hooksRegistered(currentSettings)) {
+  if (hooksMatchSpec(currentSettings)) {
     if (interactive) vscode.window.showInformationMessage(ALREADY_REGISTERED)
 
     return false
   }
 
-  settings.applyHookSpec(currentSettings)
+  applyHookSpec(currentSettings)
 
   try {
-    settings.writeSettings(currentSettings)
+    writeSettings(currentSettings)
   } catch (error) {
     vscode.window.showErrorMessage(writeFailed(error))
 
@@ -86,21 +86,21 @@ const registerHooks = async ({ interactive }) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const removeHooks = async () => {
+export const removeHooks = async () => {
   let currentSettings
 
   try {
-    currentSettings = settings.readSettings()
+    currentSettings = readSettings()
   } catch {
     vscode.window.showErrorMessage(MALFORMED_ON_REMOVE)
 
     return
   }
 
-  settings.stripOurHooks(currentSettings)
+  stripOurHooks(currentSettings)
 
   try {
-    settings.writeSettings(currentSettings)
+    writeSettings(currentSettings)
   } catch (error) {
     vscode.window.showErrorMessage(writeFailed(error))
 
@@ -112,14 +112,14 @@ const removeHooks = async () => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const promptToRegister = async (context) => {
+export const promptToRegisterHooks = async (context) => {
   if (context.globalState.get(DECLINED_KEY)) return
 
   let currentSettings
 
-  try { currentSettings = settings.readSettings() } catch { return }
+  try { currentSettings = readSettings() } catch { return }
 
-  if (settings.hooksRegistered(currentSettings)) return
+  if (hooksMatchSpec(currentSettings)) return
 
   const choice = await vscode.window.showInformationMessage(invitation(), 'Register', 'Not now', 'Never')
 
@@ -132,8 +132,4 @@ const promptToRegister = async (context) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const clearDeclined = (context) => context.globalState.update(DECLINED_KEY, false)
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export { installHookScript, registerHooks, removeHooks, promptToRegister, clearDeclined }
+export const clearDeclinedFlag = (context) => context.globalState.update(DECLINED_KEY, false)

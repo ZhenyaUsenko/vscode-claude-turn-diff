@@ -1,7 +1,7 @@
 import { BINARY_SNIFF_BYTES } from '../config.js'
 import { readLines, removeRecursive } from '../util/files.js'
-import * as git from '../util/git.js'
-import { chatDirFor, manifestFor } from '../util/paths.js'
+import { git } from '../util/git.js'
+import { getChatDir, getManifestFile } from '../util/paths.js'
 import { disposeWatchers } from '../watch.js'
 import { purgeSupersededTurns } from './purge.js'
 import fs from 'fs'
@@ -50,7 +50,7 @@ const collectRepositoryChanges = async (chatDir, collector) => {
 
     const diffArgs = ['-C', repository, 'diff', '--name-only', '-z', treeBefore, treeAfter]
 
-    const changedFiles = await git.runNulSeparated(diffArgs)
+    const changedFiles = await git.listPaths(diffArgs)
 
     const blobs = await git.readBlobs(repository, treeBefore, changedFiles)
 
@@ -80,7 +80,7 @@ const collectOutsideChanges = (chatDir, collector) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const publish = (project, stamp, entries) => {
-  const manifestFile = manifestFor(project)
+  const manifestFile = getManifestFile(project)
 
   const files = entries.map((entry) => [entry.absolutePath, entry.beforeImage, entry.absolutePath, entry.status])
 
@@ -92,8 +92,8 @@ const publish = (project, stamp, entries) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const end = async ({ project, sessionId }) => {
-  const chatDir = chatDirFor(project, sessionId)
+export const endTurn = async ({ project, sessionId }) => {
+  const chatDir = getChatDir(project, sessionId)
   const armed = SNAPSHOTS.some((name) => fs.existsSync(path.join(chatDir, name)))
 
   disposeWatchers(sessionId)
@@ -119,7 +119,3 @@ const end = async ({ project, sessionId }) => {
   publish(project, stamp, collector.entries)
   purgeSupersededTurns({ project, sessionId, stamp, currentBeforeDir: beforeDir })
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export { end }
