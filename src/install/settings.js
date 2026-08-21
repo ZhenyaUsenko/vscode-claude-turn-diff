@@ -7,7 +7,11 @@ const isOurEntry = (entry) => typeof entry?.command === 'string' && entry.comman
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const readSettings = () => {
-  try { return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')) } catch { return {} }
+  let rawSettings
+
+  try { rawSettings = fs.readFileSync(SETTINGS_FILE, 'utf8') } catch { return {} }
+
+  return rawSettings.trim() ? JSON.parse(rawSettings) : {}
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -35,7 +39,7 @@ export const hooksMatchSpec = (settings) => {
 export const stripOurHooks = (settings) => {
   const hooks = settings.hooks
 
-  if (!hooks) return settings
+  if (!hooks) return
 
   for (const event of Object.keys(hooks)) {
     if (!Array.isArray(hooks[event])) continue
@@ -46,8 +50,6 @@ export const stripOurHooks = (settings) => {
   }
 
   if (!Object.keys(hooks).length) delete settings.hooks
-
-  return settings
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -60,6 +62,4 @@ export const applyHookSpec = (settings) => {
   for (const [event, groups] of Object.entries(HOOK_SPEC)) {
     settings.hooks[event] = settings.hooks[event]?.concat(groups) ?? [...groups]
   }
-
-  return settings
 }

@@ -31,15 +31,15 @@ export const nextSecond = () => new Promise((resolve) => setTimeout(resolve, 110
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const runTurn = async (dir, sessionId, workspaceFolders, mutate, { prompt = 'p', touch = [] } = {}) => {
+export const runTurn = async (dir, sessionId, workspaceFolders, mutate, params) => {
   const project = getProjectKey(dir)
 
   registerChat(dir, sessionId)
 
-  await handleTurn('begin', project, { session_id: sessionId, prompt }, workspaceFolders)
+  await handleTurn('begin', project, { session_id: sessionId, prompt: 'p' }, workspaceFolders)
   await handleTurn('arm', project, { session_id: sessionId }, workspaceFolders)
 
-  for (const file of touch) {
+  for (const file of params?.touch ?? []) {
     const payload = { session_id: sessionId, tool_input: { file_path: file } }
 
     await handleTurn('arm', project, payload, workspaceFolders)

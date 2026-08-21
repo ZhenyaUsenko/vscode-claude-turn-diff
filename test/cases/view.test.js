@@ -15,7 +15,7 @@ const beforeUriFor = (absolutePath, stamp) => {
   return vscode.Uri.file(absolutePath).with({ scheme: 'claude-before', query: stamp })
 }
 
-const beforeText = (uri) => Buffer.from(vscode.state.provider.readFile(uri)).toString()
+const beforeText = (uri) => vscode.state.provider.readFile(uri).toString()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -9,8 +9,7 @@ const MAX_UNTRACKED_BYTES = 1024 * 1024
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const run = (args, env) => new Promise((resolve) => {
-  const childEnv = env ? { ...process.env, ...env } : process.env
-  const options = { env: childEnv, maxBuffer: MAX_OUTPUT_BYTES, encoding: 'buffer' }
+  const options = { env: { ...process.env, ...env }, maxBuffer: MAX_OUTPUT_BYTES, encoding: 'buffer' }
 
   execFile('git', args, options, (error, stdout) => resolve(error ? null : stdout))
 })
@@ -20,7 +19,7 @@ const run = (args, env) => new Promise((resolve) => {
 const runText = async (args, env) => {
   const output = await run(args, env)
 
-  return output === null ? null : output.toString('utf8').trim()
+  return output?.toString('utf8').trim()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -28,7 +27,7 @@ const runText = async (args, env) => {
 const listPaths = async (args, env) => {
   const output = await run(args, env)
 
-  return output === null ? [] : output.toString('utf8').split('\0').filter(Boolean)
+  return output?.toString('utf8').split('\0').filter(Boolean) ?? []
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -39,9 +38,11 @@ const listRepositories = async (folders) => {
   for (const folder of folders) {
     const output = await runText(['-C', folder, 'rev-parse', '--show-toplevel', '--absolute-git-dir'])
 
-    const [root, gitDir] = output === null ? [] : output.split('\n')
+    if (output == null) continue
 
-    if (root && gitDir) gitDirByRoot.set(root, gitDir)
+    const [root, gitDir] = output.split('\n')
+
+    gitDirByRoot.set(root, gitDir)
   }
 
   return [...gitDirByRoot]

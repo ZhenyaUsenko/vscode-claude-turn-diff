@@ -39,7 +39,7 @@ check('re-advertising an unchanged workspace leaves the advert in place', async 
 
   vscode.reset([repo])
 
-  const server = startServer(() => {})
+  const server = startServer()
 
   await settle()
 
@@ -61,7 +61,7 @@ check('a window with no folders advertises nothing', async () => {
 
   vscode.reset([])
 
-  const server = startServer(() => {})
+  const server = startServer()
 
   await settle()
 
@@ -89,7 +89,7 @@ check('an advert deleted underneath the window is written again', async () => {
 
   vscode.reset([repo])
 
-  const server = startServer(() => {})
+  const server = startServer()
 
   await settle()
 
@@ -110,7 +110,7 @@ check('disposing removes the advert', async () => {
 
   vscode.reset([repo])
 
-  const server = startServer(() => {})
+  const server = startServer()
 
   await settle()
 
@@ -129,7 +129,7 @@ check('the hook keys state by the session, not by a cwd Claude has moved', async
 
   vscode.reset([repo])
 
-  const server = startServer(() => {})
+  const server = startServer()
 
   await settle()
 

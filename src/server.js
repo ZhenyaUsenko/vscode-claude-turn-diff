@@ -24,7 +24,7 @@ const parseRequest = (buffer) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const dropDeadAdvertisements = (serverDir) => {
-  let advertNames = []
+  let advertNames
 
   try { advertNames = fs.readdirSync(serverDir) } catch { return }
 
@@ -70,7 +70,7 @@ const serve = (socket, token, log) => {
 
       socket.end('ok\n')
     } catch (error) {
-      log?.(`${request.mode} failed: ${error && error.stack ? error.stack : error}`)
+      log?.(`${request.mode} failed: ${error.stack}`)
       socket.end('err\n')
     }
   })

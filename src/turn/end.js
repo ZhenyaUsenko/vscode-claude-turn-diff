@@ -8,33 +8,30 @@ import path from 'path'
 
 const BINARY_SNIFF_BYTES = 8000
 
-const SNAPSHOTS = ['repos.tsv', 'touched.tsv']
-
-const CONSUMED_ENTRIES = [...SNAPSHOTS, 'blobs']
+const CONSUMED_ENTRIES = ['repos.tsv', 'touched.tsv', 'blobs']
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const isBinary = (contents) => {
-  return contents.subarray(0, BINARY_SNIFF_BYTES).includes(0)
+  return contents?.subarray(0, BINARY_SNIFF_BYTES).includes(0) ?? false
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const addEntry = (collector, beforePath, afterPath, beforeContents) => {
-  const beforeImage = path.join(collector.beforeDir, beforePath)
-
-  fs.mkdirSync(path.dirname(beforeImage), { recursive: true })
-  fs.writeFileSync(beforeImage, beforeContents === null ? '' : beforeContents)
-
-  const previousContents = fs.readFileSync(beforeImage)
+  const previousContents = beforeContents ?? Buffer.alloc(0)
   const currentContents = fs.existsSync(afterPath) ? fs.readFileSync(afterPath) : null
 
   const unchanged = currentContents && previousContents.equals(currentContents)
 
   if (unchanged && beforePath === afterPath) return
-  if (isBinary(previousContents) || (currentContents && isBinary(currentContents))) return
+  if (isBinary(previousContents) || isBinary(currentContents)) return
 
-  const status = beforeContents === null ? 'A' : currentContents ? 'M' : 'D'
+  const beforeImage = path.join(collector.beforeDir, beforePath)
+  const status = beforeContents == null ? 'A' : currentContents ? 'M' : 'D'
+
+  fs.mkdirSync(path.dirname(beforeImage), { recursive: true })
+  fs.writeFileSync(beforeImage, previousContents)
 
   collector.entries.push({ beforeImage, beforePath, afterPath, status })
 }
@@ -44,8 +41,6 @@ const addEntry = (collector, beforePath, afterPath, beforeContents) => {
 const collectRepositoryChanges = async (chatDir, collector) => {
   for (const line of readLines(path.join(chatDir, 'repos.tsv'))) {
     const [repository, gitDir, treeBefore] = line.split('\t')
-
-    if (!repository || !treeBefore) continue
 
     const treeAfter = await git.snapshotTree(repository, gitDir, chatDir)
 
@@ -69,8 +64,6 @@ const collectOutsideChanges = (chatDir, collector) => {
   for (const line of readLines(path.join(chatDir, 'touched.tsv'))) {
     const [absolutePath, existedBefore] = line.split('\t')
 
-    if (!absolutePath) continue
-
     const blobFile = path.join(chatDir, 'blobs', absolutePath)
     const contents = existedBefore === '1' ? fs.readFileSync(blobFile) : null
 
@@ -85,7 +78,7 @@ const publish = (project, stamp, entries) => {
 
   const files = entries.map((entry) => [entry.beforePath, entry.beforeImage, entry.afterPath, entry.status])
 
-  const manifestBody = { title: 'Last turn changes', ts: `${stamp}-${process.pid}`, files }
+  const manifestBody = { ts: `${stamp}-${process.pid}`, files }
 
   fs.writeFileSync(`${manifestFile}.tmp`, JSON.stringify(manifestBody))
   fs.renameSync(`${manifestFile}.tmp`, manifestFile)
@@ -95,7 +88,7 @@ const publish = (project, stamp, entries) => {
 
 export const endTurn = async ({ project, sessionId }) => {
   const chatDir = getChatDir(project, sessionId)
-  const armed = SNAPSHOTS.some((name) => fs.existsSync(path.join(chatDir, name)))
+  const armed = fs.existsSync(path.join(chatDir, 'repos.tsv'))
 
   disposeWatchers(sessionId)
 

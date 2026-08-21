@@ -8,7 +8,7 @@ let lastRendered = null
 
 const SCHEME = 'claude-before'
 
-const DEFAULT_TITLE = 'Last turn changes'
+const EDITOR_TITLE = 'Last turn changes'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -63,10 +63,9 @@ const toResources = (manifest) => {
 
 export const showLastTurn = async ({ force = false } = {}) => {
   const manifest = readManifest()
-  const title = manifest?.title || DEFAULT_TITLE
 
   if (!manifest) {
-    if (force) await vscode.commands.executeCommand('vscode.changes', title, [])
+    if (force) await vscode.commands.executeCommand('vscode.changes', EDITOR_TITLE, [])
 
     return
   }
@@ -78,12 +77,12 @@ export const showLastTurn = async ({ force = false } = {}) => {
   const resources = toResources(manifest)
 
   if (!resources.length) {
-    if (force) await vscode.commands.executeCommand('vscode.changes', title, [])
+    if (force) await vscode.commands.executeCommand('vscode.changes', EDITOR_TITLE, [])
 
     return
   }
 
-  await vscode.commands.executeCommand('vscode.changes', title, resources)
+  await vscode.commands.executeCommand('vscode.changes', EDITOR_TITLE, resources)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
