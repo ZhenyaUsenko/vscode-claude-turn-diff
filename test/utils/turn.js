@@ -11,6 +11,8 @@ export const registerChat = (dir, sessionId) => {
   fs.writeFileSync(path.join(projectDir, `${sessionId}.jsonl`), '')
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 export const forgetChat = (dir, sessionId) => {
   const projectDir = path.join(HOME, '.claude', 'projects', getProjectKey(dir))
 
@@ -19,7 +21,11 @@ export const forgetChat = (dir, sessionId) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const readManifest = (dir) => JSON.parse(fs.readFileSync(getManifestFile(getProjectKey(dir)), 'utf8'))
+export const readManifest = (dir) => {
+  return JSON.parse(fs.readFileSync(getManifestFile(getProjectKey(dir)), 'utf8'))
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const readStatuses = (dir) => {
   const labels = readManifest(dir).files.map((entry) => `${entry[3]} ${path.basename(entry[0])}`)
@@ -27,7 +33,11 @@ export const readStatuses = (dir) => {
   return labels.sort()
 }
 
-export const nextSecond = () => new Promise((resolve) => setTimeout(resolve, 1100))
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const nextSecond = () => {
+  return new Promise((resolve) => setTimeout(resolve, 1100))
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

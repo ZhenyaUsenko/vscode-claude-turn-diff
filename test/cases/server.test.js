@@ -12,17 +12,23 @@ import path from 'path'
 
 const HOOK = path.join(import.meta.dirname, '..', '..', 'hooks', 'turn-diff.sh')
 
-const settle = () => new Promise((resolve) => setTimeout(resolve, 60))
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const settle = () => {
+  return new Promise((resolve) => setTimeout(resolve, 60))
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const runHook = (mode, payload, cwd) => new Promise((resolve, reject) => {
-  const options = { cwd, env: { ...process.env, HOME } }
+const runHook = (mode, payload, cwd) => {
+  return new Promise((resolve, reject) => {
+    const options = { cwd, env: { ...process.env, HOME } }
 
-  const child = execFile(HOOK, [mode], options, (error) => error ? reject(error) : resolve())
+    const child = execFile(HOOK, [mode], options, (error) => error ? reject(error) : resolve())
 
-  child.stdin.end(JSON.stringify(payload))
-})
+    child.stdin.end(JSON.stringify(payload))
+  })
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

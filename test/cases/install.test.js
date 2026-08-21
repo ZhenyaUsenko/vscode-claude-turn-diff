@@ -3,7 +3,9 @@ import { HOOK_SPEC } from '../../src/install/spec.js'
 import { check } from '../utils/checks.js'
 import assert from 'assert'
 
-const registeredSettings = () => JSON.parse(JSON.stringify({ hooks: HOOK_SPEC }))
+const registeredSettings = () => {
+  return JSON.parse(JSON.stringify({ hooks: HOOK_SPEC }))
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

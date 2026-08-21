@@ -1,9 +1,15 @@
 import fs from 'fs'
 import path from 'path'
 
-export const removeRecursive = (target) => fs.rmSync(target, { recursive: true, force: true })
+export const removeRecursive = (target) => {
+  fs.rmSync(target, { recursive: true, force: true })
+}
 
-export const isUnder = (child, parent) => child === parent || child.startsWith(parent + path.sep)
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const isUnder = (child, parent) => {
+  return child === parent || child.startsWith(parent + path.sep)
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

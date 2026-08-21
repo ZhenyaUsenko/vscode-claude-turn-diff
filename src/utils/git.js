@@ -8,11 +8,13 @@ const MAX_UNTRACKED_BYTES = 1024 * 1024
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const run = (args, env) => new Promise((resolve) => {
-  const options = { env: { ...process.env, ...env }, maxBuffer: MAX_OUTPUT_BYTES, encoding: 'buffer' }
+const run = (args, env) => {
+  return new Promise((resolve) => {
+    const options = { env: { ...process.env, ...env }, maxBuffer: MAX_OUTPUT_BYTES, encoding: 'buffer' }
 
-  execFile('git', args, options, (error, stdout) => resolve(error ? null : stdout))
-})
+    execFile('git', args, options, (error, stdout) => resolve(error ? null : stdout))
+  })
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -155,15 +157,17 @@ const listChanges = async (repository, treeBefore, treeAfter) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const readBlobs = (repository, tree, relativePaths) => new Promise((resolve) => {
-  const options = { maxBuffer: MAX_OUTPUT_BYTES, encoding: 'buffer' }
+const readBlobs = (repository, tree, relativePaths) => {
+  return new Promise((resolve) => {
+    const options = { maxBuffer: MAX_OUTPUT_BYTES, encoding: 'buffer' }
 
-  const resolveBlobs = (error, stdout) => resolve(error ? null : splitBlobs(stdout, relativePaths.length))
+    const resolveBlobs = (error, stdout) => resolve(error ? null : splitBlobs(stdout, relativePaths.length))
 
-  const child = execFile('git', ['-C', repository, 'cat-file', '--batch', '-z'], options, resolveBlobs)
+    const child = execFile('git', ['-C', repository, 'cat-file', '--batch', '-z'], options, resolveBlobs)
 
-  child.stdin.end(relativePaths.map((relativePath) => `${tree}:${relativePath}\0`).join(''))
-})
+    child.stdin.end(relativePaths.map((relativePath) => `${tree}:${relativePath}\0`).join(''))
+  })
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -10,9 +10,13 @@ const MALFORMED_SETTINGS = (
   'Add the hooks manually — see the extension README.'
 )
 
-const MALFORMED_ON_REMOVE = 'Turn Diff: ~/.claude/settings.json is not valid JSON — nothing changed.'
+const MALFORMED_ON_REMOVE = (
+  'Turn Diff: ~/.claude/settings.json is not valid JSON — nothing changed.'
+)
 
-const ALREADY_REGISTERED = 'Turn Diff: hooks are already registered.'
+const ALREADY_REGISTERED = (
+  'Turn Diff: hooks are already registered.'
+)
 
 const REGISTERED = (
   'Turn Diff: hooks registered in ~/.claude/settings.json. Claude Code reads hooks at session ' +
@@ -24,14 +28,20 @@ const REMOVED = (
   '~/.claude/hooks/turn-diff.sh was left in place.'
 )
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 const invitation = () => (
   `Turn Diff needs ${Object.keys(HOOK_SPEC).length} hooks in ~/.claude/settings.json to observe ` +
   'what Claude Code changes. Register them? A backup is written first.'
 )
 
-const writeFailed = (error) => `Turn Diff: could not write ~/.claude/settings.json — ${error.message}`
+const writeFailed = (error) => (
+  `Turn Diff: could not write ~/.claude/settings.json — ${error.message}`
+)
 
-const scriptFailed = (error) => `Turn Diff: could not install the hook script — ${error.message}`
+const scriptFailed = (error) => (
+  `Turn Diff: could not install the hook script — ${error.message}`
+)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -134,7 +144,9 @@ export const promptToRegisterHooks = async (context) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const clearDeclinedFlag = (context) => context.globalState.update(DECLINED_KEY, false)
+const clearDeclinedFlag = (context) => {
+  return context.globalState.update(DECLINED_KEY, false)
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

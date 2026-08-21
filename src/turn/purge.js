@@ -3,7 +3,9 @@ import { getChatsDir, getChatDir, getTranscriptFile } from '../utils/paths.js'
 import fs from 'fs'
 import path from 'path'
 
-const beforeStamp = (name) => name.startsWith('before-') ? Number(name.slice('before-'.length)) : NaN
+const beforeStamp = (name) => {
+  return name.startsWith('before-') ? Number(name.slice('before-'.length)) : NaN
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
