@@ -29,7 +29,7 @@ const dropDeadAdvertisements = (serverDir) => {
   try { advertNames = fs.readdirSync(serverDir) } catch { return }
 
   for (const name of advertNames) {
-    const pid = Number(name.replace(/\.json$/, ''))
+    const pid = +name.replace(/\.json$/, '')
 
     if (!Number.isInteger(pid) || pid === process.pid) continue
 

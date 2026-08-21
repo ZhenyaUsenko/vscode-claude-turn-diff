@@ -3,10 +3,7 @@ import fs from 'fs'
 
 export const publishManifest = (project, stamp, entries) => {
   const manifestFile = getManifestFile(project)
-
-  const files = entries.map((entry) => [entry.beforePath, entry.beforeImage, entry.afterPath, entry.status])
-
-  const manifestBody = { ts: `${stamp}-${process.pid}`, files }
+  const manifestBody = { ts: `${stamp}-${process.pid}`, files: entries }
 
   fs.writeFileSync(`${manifestFile}.tmp`, JSON.stringify(manifestBody))
   fs.renameSync(`${manifestFile}.tmp`, manifestFile)

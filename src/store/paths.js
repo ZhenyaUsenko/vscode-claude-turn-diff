@@ -49,4 +49,4 @@ export const getBeforeDir = (chatDir, stamp) => path.join(chatDir, `${BEFORE_PRE
 
 export const isBeforeDirName = (dirName) => dirName.startsWith(BEFORE_PREFIX)
 
-export const getBeforeStamp = (dirName) => Number(dirName.slice(BEFORE_PREFIX.length))
+export const getBeforeStamp = (dirName) => +dirName.slice(BEFORE_PREFIX.length)

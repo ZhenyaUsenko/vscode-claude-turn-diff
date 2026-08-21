@@ -8,14 +8,6 @@ import { purgeSupersededTurns } from './purge.js'
 import fs from 'fs'
 import path from 'path'
 
-const getTargetedFile = (payload) => {
-  const file = payload.tool_input?.file_path || payload.tool_input?.notebook_path
-
-  return file && path.isAbsolute(file) ? file : null
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 const beginTurn = ({ project, sessionId }) => {
   const chatDir = getChatDir(project, sessionId)
 
@@ -29,7 +21,9 @@ const beginTurn = ({ project, sessionId }) => {
 const armTurn = async ({ project, sessionId, payload, workspaceFolders }) => {
   let repositories
 
-  const file = getTargetedFile(payload)
+  const toolFile = payload.tool_input?.file_path || payload.tool_input?.notebook_path
+  const file = toolFile && path.isAbsolute(toolFile) ? toolFile : null
+
   const chatDir = getChatDir(project, sessionId)
   const reposFile = getReposFile(chatDir)
 
@@ -66,14 +60,12 @@ const endTurn = async ({ project, sessionId }) => {
 
   for (const entryPath of getArmedTurnEntries(chatDir)) removeRecursive(entryPath)
 
-  if (!entries.length) {
+  if (entries.length) {
+    publishManifest(project, stamp, entries)
+    purgeSupersededTurns({ project, sessionId, stamp, currentBeforeDir: beforeDir })
+  } else {
     removeRecursive(beforeDir)
-
-    return
   }
-
-  publishManifest(project, stamp, entries)
-  purgeSupersededTurns({ project, sessionId, stamp, currentBeforeDir: beforeDir })
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

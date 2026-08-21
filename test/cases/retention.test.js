@@ -14,13 +14,13 @@ check('a later chat supersedes an earlier one in the same project', async () => 
 
   await runTurn(repo, 'first', [repo], () => write(path.join(repo, 'f.txt'), 'two\n'))
 
-  const supersededImage = readManifest(repo).files[0][1]
+  const supersededImage = readManifest(repo).files[0].beforeImage
 
   await nextSecond()
   await runTurn(repo, 'second', [repo], () => write(path.join(repo, 'f.txt'), 'three\n'))
 
   assert.ok(!fs.existsSync(supersededImage), 'the first chat\'s before-image was reclaimed')
-  assert.ok(fs.existsSync(readManifest(repo).files[0][1]), 'the winning manifest still resolves')
+  assert.ok(fs.existsSync(readManifest(repo).files[0].beforeImage), 'the winning manifest still resolves')
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

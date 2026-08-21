@@ -28,7 +28,7 @@ export const readManifest = (dir) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const readStatuses = (dir) => {
-  const labels = readManifest(dir).files.map((entry) => `${entry[3]} ${path.basename(entry[0])}`)
+  const labels = readManifest(dir).files.map((entry) => `${entry.status} ${path.basename(entry.beforePath)}`)
 
   return labels.sort()
 }

@@ -41,10 +41,8 @@ export const purgeSupersededTurns = ({ project, sessionId, stamp, currentBeforeD
 
     if (keyIsTrustworthy && !fs.existsSync(getTranscriptFile(project, siblingSessionId))) {
       removeRecursive(siblingDir)
-
-      continue
+    } else {
+      dropSiblingSupersededTurns(siblingDir, stamp)
     }
-
-    dropSiblingSupersededTurns(siblingDir, stamp)
   }
 }

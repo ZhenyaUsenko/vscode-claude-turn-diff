@@ -115,9 +115,9 @@ check('a before-image resolves with no render to prime it, as after a restart', 
   registerBeforeImageProvider()
 
   const { ts, files } = readManifest(repo)
-  const [absolutePath] = files[0]
+  const { beforePath } = files[0]
 
-  const beforeUri = getBeforeUri(absolutePath, ts)
+  const beforeUri = getBeforeUri(beforePath, ts)
   const restartReason = 'a restored editor asks for its uri directly, so the provider cannot rely on a render'
 
   assert.strictEqual(getBeforeText(beforeUri), 'before\n', restartReason)

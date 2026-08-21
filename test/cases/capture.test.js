@@ -20,8 +20,8 @@ check('reports A, M and D with correct before-images', async () => {
     fs.unlinkSync(path.join(repo, 'gone.txt'))
   })
 
-  const modifiedEntry = readManifest(repo).files.find((entry) => entry[0].endsWith('keep.txt'))
-  const beforeContents = fs.readFileSync(modifiedEntry[1], 'utf8')
+  const modifiedEntry = readManifest(repo).files.find((entry) => entry.beforePath.endsWith('keep.txt'))
+  const beforeContents = fs.readFileSync(modifiedEntry.beforeImage, 'utf8')
 
   assert.deepStrictEqual(readStatuses(repo), ['A added.txt', 'D gone.txt', 'M keep.txt'])
   assert.strictEqual(beforeContents, 'one\n', 'the before-image holds the pre-turn content')
@@ -120,7 +120,7 @@ check('a move is one entry naming both paths, not an addition', async () => {
   const root = fs.realpathSync(repo)
 
   const moves = readManifest(repo).files.map((entry) => {
-    return `${entry[3]} ${path.relative(root, entry[0])} -> ${path.relative(root, entry[2])}`
+    return `${entry.status} ${path.relative(root, entry.beforePath)} -> ${path.relative(root, entry.afterPath)}`
   })
 
   const reason = 'git names only a rename destination, so a move used to arrive as an addition out of nowhere'
@@ -144,7 +144,7 @@ check('a move keeps what the file held at its old path as the before-image', asy
     write(path.join(repo, 'new', 'f.txt'), 'one\ntwo CHANGED\nthree\nfour\n')
   })
 
-  const [, beforeImage] = readManifest(repo).files[0]
+  const { beforeImage } = readManifest(repo).files[0]
   const reason = 'a moved file diffs against its old contents, which is what makes the edit visible'
 
   assert.strictEqual(fs.readFileSync(beforeImage, 'utf8'), 'one\ntwo\nthree\nfour\n', reason)

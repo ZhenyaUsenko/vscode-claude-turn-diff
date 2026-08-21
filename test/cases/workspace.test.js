@@ -136,7 +136,9 @@ check('two projects do not overwrite each other', async () => {
   const manifestFileA = getManifestFile(getProjectKey(repoA))
   const manifestFileB = getManifestFile(getProjectKey(repoB))
 
+  const reason = 'project A\'s before-image survived project B\'s turn'
+
   assert.notStrictEqual(manifestFileA, manifestFileB)
-  assert.ok(fs.existsSync(readManifest(repoA).files[0][1]), 'project A\'s before-image survived project B\'s turn')
-  assert.ok(fs.existsSync(readManifest(repoB).files[0][1]))
+  assert.ok(fs.existsSync(readManifest(repoA).files[0].beforeImage), reason)
+  assert.ok(fs.existsSync(readManifest(repoB).files[0].beforeImage))
 })

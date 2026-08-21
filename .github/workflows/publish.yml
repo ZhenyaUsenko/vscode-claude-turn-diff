@@ -1,15 +1,12 @@
 name: Publish
 
-# Tag-driven release. package.json is the source of truth for the version;
-# the tag only confirms it, and the run fails if the two disagree — publishing
-# the wrong version is unrecoverable, since a version number cannot be reused.
 on:
   push:
     tags:
       - 'v*'
 
 permissions:
-  contents: write # create the GitHub release
+  contents: write
 
 jobs:
   publish:
@@ -38,9 +35,6 @@ jobs:
           node --check extension.js
           bash -n hooks/turn-diff.sh
 
-      # The README's relative image links are rewritten to raw.githubusercontent
-      # URLs at package time, so a missing file means a broken listing image
-      # that cannot be fixed without burning the version.
       - name: Verify README images exist
         run: |
           missing=0
@@ -56,11 +50,6 @@ jobs:
       - name: Package
         run: npx --yes @vscode/vsce@latest package --out "${{ steps.version.outputs.vsix }}"
 
-      # Runs after packaging so marketplace.json cannot end up inside the vsix.
-      # `vsce show` exits 0 even for an extension that does not exist, so the
-      # exit code proves nothing and the JSON has to be inspected. Skipping
-      # here — rather than letting publish fail on a duplicate — is what makes
-      # re-running a tag safe.
       - name: Check whether this version is already published
         id: marketplace
         run: |
@@ -96,8 +85,6 @@ jobs:
             echo "::warning::no CHANGELOG section for ${{ steps.version.outputs.version }}"
           fi
 
-      # Also idempotent: gh release create fails outright if the tag already
-      # has a release, which would turn a harmless re-run into a red build.
       - name: GitHub release
         env:
           GH_TOKEN: ${{ github.token }}

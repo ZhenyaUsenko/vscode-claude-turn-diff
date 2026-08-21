@@ -28,15 +28,13 @@ export const captureBeforeImage = (chatDir, file) => {
 
   if (alreadySeenFiles.includes(file)) return
 
-  if (!fs.existsSync(file)) {
+  if (fs.existsSync(file)) {
+    const blobPath = path.join(getBlobsDir(chatDir), file)
+
+    fs.mkdirSync(path.dirname(blobPath), { recursive: true })
+    fs.copyFileSync(file, blobPath)
+    fs.appendFileSync(touchesFile, `${file}\t1\n`)
+  } else {
     fs.appendFileSync(touchesFile, `${file}\t0\n`)
-
-    return
   }
-
-  const blobPath = path.join(getBlobsDir(chatDir), file)
-
-  fs.mkdirSync(path.dirname(blobPath), { recursive: true })
-  fs.copyFileSync(file, blobPath)
-  fs.appendFileSync(touchesFile, `${file}\t1\n`)
 }

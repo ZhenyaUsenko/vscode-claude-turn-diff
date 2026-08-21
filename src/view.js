@@ -44,7 +44,7 @@ const stillRenderable = (beforePath, beforeImage, afterPath, status) => {
 const getResources = (manifest) => {
   const resources = []
 
-  for (const [beforePath, beforeImage, afterPath, status] of manifest.files) {
+  for (const { beforePath, beforeImage, afterPath, status } of manifest.files) {
     if (!stillRenderable(beforePath, beforeImage, afterPath, status)) continue
 
     const fileUri = vscode.Uri.file(afterPath)
@@ -75,13 +75,9 @@ export const showLastTurn = async (params) => {
 
   const resources = getResources(manifest)
 
-  if (!resources.length) {
-    if (params?.force) await vscode.commands.executeCommand('vscode.changes', EDITOR_TITLE, [])
-
-    return
+  if (resources.length || params?.force) {
+    await vscode.commands.executeCommand('vscode.changes', EDITOR_TITLE, resources)
   }
-
-  await vscode.commands.executeCommand('vscode.changes', EDITOR_TITLE, resources)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -90,7 +86,7 @@ const readBeforeImage = (uri, params) => {
   const manifest = readCurrentManifest()
 
   if (manifest && uri.query === manifest.ts) {
-    for (const [beforePath, beforeImage] of manifest.files) {
+    for (const { beforePath, beforeImage } of manifest.files) {
       if (beforePath !== uri.fsPath) continue
 
       try { return params?.sizeOnly ? fs.statSync(beforeImage).size : fs.readFileSync(beforeImage) } catch { break }

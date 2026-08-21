@@ -114,7 +114,7 @@ const splitBlobs = (output, expectedCount) => {
 
       offset = endOfHeader + 1
     } else {
-      const size = Number(header.slice(header.lastIndexOf(' ') + 1))
+      const size = +header.slice(header.lastIndexOf(' ') + 1)
 
       blobs.push(output.subarray(endOfHeader + 1, endOfHeader + 1 + size))
 
