@@ -118,8 +118,22 @@ every turn after it silently did nothing until the window was reloaded.
 The multi-diff editor decides a file was **renamed** by comparing
 `originalUri.path !== modifiedUri.path`. Pointing `original` straight at the
 before-image on disk struck through every filename and stamped it `R`. Serving
-it through a scheme that keeps the real path verbatim means only the scheme
-differs, so no rename is inferred.
+it through a scheme that keeps the real path verbatim means the two sides differ
+only where a file genuinely moved, which is exactly when a rename should show.
+
+Changes are listed with `diff --name-status -z -M`, and an entry carries both
+the path a file had and the path it has. Rename detection is on by default in
+git, and `--name-only` prints only a rename's *destination* — so a moved file
+had no counterpart in the before tree, was recorded as an addition, and its
+deletion went unmentioned entirely. A move plus an edit was indistinguishable
+from a new file.
+
+An entry whose contents are unchanged is therefore dropped only when its two
+paths match as well, or a pure rename would vanish as "not a real change".
+Detection remains git's heuristic rather than a record of what happened: two
+files that start out identical can pair the wrong way, and a heavily rewritten
+move still arrives as a delete beside an add — the same as it would in staged
+changes.
 
 The turn stamp goes in the URI query, so each turn addresses its before-image by
 a distinct URI. Without it the URI is the file's own path with the scheme

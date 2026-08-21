@@ -100,3 +100,50 @@ check('a same-size edit is still seen when the snapshot lands a second later', a
 
   assert.deepStrictEqual(readStatuses(repo), ['M f.txt'])
 })
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+check('a move is one entry naming both paths, not an addition', async () => {
+  const repo = createRepo()
+
+  write(path.join(repo, 'old', 'moved.txt'), 'alpha\nbravo\ncharlie\ndelta\n')
+  write(path.join(repo, 'old', 'edited.txt'), 'one\ntwo\nthree\nfour\n')
+  commitAll(repo)
+
+  await runTurn(repo, 'chat', [repo], () => {
+    fs.mkdirSync(path.join(repo, 'new'), { recursive: true })
+    fs.renameSync(path.join(repo, 'old', 'moved.txt'), path.join(repo, 'new', 'moved.txt'))
+    fs.renameSync(path.join(repo, 'old', 'edited.txt'), path.join(repo, 'new', 'edited.txt'))
+    write(path.join(repo, 'new', 'edited.txt'), 'one\ntwo CHANGED\nthree\nfour\n')
+  })
+
+  const root = fs.realpathSync(repo)
+
+  const moves = readManifest(repo).files.map((entry) => {
+    return `${entry[3]} ${path.relative(root, entry[0])} -> ${path.relative(root, entry[2])}`
+  })
+
+  const lost = 'git names only a rename destination, so a move used to arrive as an addition out of nowhere'
+
+  assert.deepStrictEqual(moves.sort(), ['M old/edited.txt -> new/edited.txt', 'M old/moved.txt -> new/moved.txt'], lost)
+})
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+check('a move keeps what the file held at its old path as the before-image', async () => {
+  const repo = createRepo()
+
+  write(path.join(repo, 'old', 'f.txt'), 'one\ntwo\nthree\nfour\n')
+  commitAll(repo)
+
+  await runTurn(repo, 'chat', [repo], () => {
+    fs.mkdirSync(path.join(repo, 'new'), { recursive: true })
+    fs.renameSync(path.join(repo, 'old', 'f.txt'), path.join(repo, 'new', 'f.txt'))
+    write(path.join(repo, 'new', 'f.txt'), 'one\ntwo CHANGED\nthree\nfour\n')
+  })
+
+  const [, beforeImage] = readManifest(repo).files[0]
+  const reason = 'a moved file diffs against its old contents, which is what makes the edit visible'
+
+  assert.strictEqual(fs.readFileSync(beforeImage, 'utf8'), 'one\ntwo\nthree\nfour\n', reason)
+})

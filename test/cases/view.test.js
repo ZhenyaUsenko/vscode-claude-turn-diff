@@ -138,3 +138,27 @@ check('a file reverted by hand drops out of the diff', async () => {
 
   assert.deepStrictEqual(renderedNames, ['g.txt'])
 })
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+check('a move renders with its sides on different paths, so a rename is inferred', async () => {
+  const repo = createRepo()
+
+  write(path.join(repo, 'old', 'f.txt'), 'one\n')
+  commitAll(repo)
+
+  await runTurn(repo, 'chat', [repo], () => {
+    fs.mkdirSync(path.join(repo, 'new'), { recursive: true })
+    fs.renameSync(path.join(repo, 'old', 'f.txt'), path.join(repo, 'new', 'f.txt'))
+  })
+
+  const root = fs.realpathSync(repo)
+  const changesCall = await render([repo])
+  const [fileUri, original, modified] = entryFor(changesCall, 'f.txt')
+  const renameRule = 'the editor infers the rename from the two sides naming different paths'
+
+  assert.strictEqual(changesCall.resources.length, 1, 'a move is one entry, not a delete beside an add')
+  assert.strictEqual(fileUri.fsPath, path.join(root, 'new', 'f.txt'), 'the entry is named by where it landed')
+  assert.strictEqual(original.path, path.join(root, 'old', 'f.txt'), renameRule)
+  assert.strictEqual(modified.path, path.join(root, 'new', 'f.txt'), renameRule)
+})

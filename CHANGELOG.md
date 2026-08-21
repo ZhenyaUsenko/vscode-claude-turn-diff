@@ -36,6 +36,9 @@ overwrite each other's diff.
 - Fixed: a binary file outside every repository was counted in the diff title
   and then rendered as nothing. Binaries are now detected by their contents
   wherever they were captured, not just inside a repository.
+- Fixed: a moved file was reported as an addition, and the path it moved from
+  never appeared at all, so a file moved and edited in one turn looked brand
+  new. Moves now show as renames, old path to new, with the edit in the diff.
 - Removed `refs/claude/turns`. It only ever recorded the repository containing
   the folder Claude Code was started in, so in a multi-root workspace it stayed
   silently out of date as soon as you edited anything in one of the other

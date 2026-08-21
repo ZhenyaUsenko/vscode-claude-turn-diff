@@ -124,6 +124,36 @@ const splitBlobs = (output, expectedCount) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+const splitChanges = (records) => {
+  let offset = 0
+
+  const changes = []
+
+  while (offset < records.length) {
+    const renamed = records[offset].startsWith('R') || records[offset].startsWith('C')
+
+    if (renamed) {
+      changes.push({ beforePath: records[offset + 1], afterPath: records[offset + 2] })
+    } else {
+      changes.push({ beforePath: records[offset + 1], afterPath: records[offset + 1] })
+    }
+
+    offset += renamed ? 3 : 2
+  }
+
+  return changes
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const listChanges = async (repository, treeBefore, treeAfter) => {
+  const diffArgs = ['-C', repository, 'diff', '--name-status', '-z', '-M', treeBefore, treeAfter]
+
+  return splitChanges(await listPaths(diffArgs))
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 const readBlobs = (repository, tree, relativePaths) => new Promise((resolve) => {
   const options = { maxBuffer: MAX_OUTPUT_BYTES, encoding: 'buffer' }
 
@@ -136,4 +166,4 @@ const readBlobs = (repository, tree, relativePaths) => new Promise((resolve) => 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const git = { listPaths, listRepositories, readBlobs, snapshotTree }
+export const git = { listChanges, listRepositories, readBlobs, snapshotTree }

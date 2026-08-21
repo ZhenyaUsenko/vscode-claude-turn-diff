@@ -30,13 +30,14 @@ const readManifest = () => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const stillRenderable = (absolutePath, beforeImage, status) => {
-  const existsNow = fs.existsSync(absolutePath)
+const stillRenderable = (beforePath, beforeImage, afterPath, status) => {
+  const existsNow = fs.existsSync(afterPath)
 
   if (status === 'A') return existsNow
   if (!fs.existsSync(beforeImage)) return false
+  if (beforePath !== afterPath) return existsNow
 
-  return !(existsNow && sameContents(beforeImage, absolutePath))
+  return !(existsNow && sameContents(beforeImage, afterPath))
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -44,12 +45,12 @@ const stillRenderable = (absolutePath, beforeImage, status) => {
 const toResources = (manifest) => {
   const resources = []
 
-  for (const [absolutePath, beforeImage, , status] of manifest.files) {
-    if (!stillRenderable(absolutePath, beforeImage, status)) continue
+  for (const [beforePath, beforeImage, afterPath, status] of manifest.files) {
+    if (!stillRenderable(beforePath, beforeImage, afterPath, status)) continue
 
-    const fileUri = vscode.Uri.file(absolutePath)
+    const fileUri = vscode.Uri.file(afterPath)
 
-    const original = status === 'A' ? undefined : beforeUriFor(absolutePath, manifest.ts)
+    const original = status === 'A' ? undefined : beforeUriFor(beforePath, manifest.ts)
     const modified = status === 'D' ? undefined : fileUri
 
     resources.push([fileUri, original, modified])
@@ -91,8 +92,8 @@ const readBeforeImage = (uri, params = {}) => {
   const manifest = readManifest()
 
   if (manifest && uri.query === manifest.ts) {
-    for (const [absolutePath, beforeImage] of manifest.files) {
-      if (absolutePath !== uri.fsPath) continue
+    for (const [beforePath, beforeImage] of manifest.files) {
+      if (beforePath !== uri.fsPath) continue
 
       try { return params.size ? fs.statSync(beforeImage).size : fs.readFileSync(beforeImage) } catch { break }
     }

@@ -20,21 +20,23 @@ const isBinary = (contents) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const addEntry = (collector, absolutePath, beforeContents) => {
-  const beforeImage = path.join(collector.beforeDir, absolutePath)
+const addEntry = (collector, beforePath, afterPath, beforeContents) => {
+  const beforeImage = path.join(collector.beforeDir, beforePath)
 
   fs.mkdirSync(path.dirname(beforeImage), { recursive: true })
   fs.writeFileSync(beforeImage, beforeContents === null ? '' : beforeContents)
 
   const previousContents = fs.readFileSync(beforeImage)
-  const currentContents = fs.existsSync(absolutePath) ? fs.readFileSync(absolutePath) : null
+  const currentContents = fs.existsSync(afterPath) ? fs.readFileSync(afterPath) : null
 
-  if (currentContents && previousContents.equals(currentContents)) return
+  const unchanged = currentContents && previousContents.equals(currentContents)
+
+  if (unchanged && beforePath === afterPath) return
   if (isBinary(previousContents) || (currentContents && isBinary(currentContents))) return
 
   const status = beforeContents === null ? 'A' : currentContents ? 'M' : 'D'
 
-  collector.entries.push({ beforeImage, absolutePath, status })
+  collector.entries.push({ beforeImage, beforePath, afterPath, status })
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -49,16 +51,14 @@ const collectRepositoryChanges = async (chatDir, collector) => {
 
     if (!treeAfter || treeAfter === treeBefore) continue
 
-    const diffArgs = ['-C', repository, 'diff', '--name-only', '-z', treeBefore, treeAfter]
+    const changes = await git.listChanges(repository, treeBefore, treeAfter)
 
-    const changedFiles = await git.listPaths(diffArgs)
-
-    const blobs = await git.readBlobs(repository, treeBefore, changedFiles)
+    const blobs = await git.readBlobs(repository, treeBefore, changes.map((change) => change.beforePath))
 
     if (!blobs) continue
 
-    changedFiles.forEach((relativePath, index) => {
-      addEntry(collector, path.join(repository, relativePath), blobs[index])
+    changes.forEach(({ beforePath, afterPath }, index) => {
+      addEntry(collector, path.join(repository, beforePath), path.join(repository, afterPath), blobs[index])
     })
   }
 }
@@ -74,7 +74,7 @@ const collectOutsideChanges = (chatDir, collector) => {
     const blobFile = path.join(chatDir, 'blobs', absolutePath)
     const contents = existedBefore === '1' ? fs.readFileSync(blobFile) : null
 
-    addEntry(collector, absolutePath, contents)
+    addEntry(collector, absolutePath, absolutePath, contents)
   }
 }
 
@@ -83,7 +83,7 @@ const collectOutsideChanges = (chatDir, collector) => {
 const publish = (project, stamp, entries) => {
   const manifestFile = getManifestFile(project)
 
-  const files = entries.map((entry) => [entry.absolutePath, entry.beforeImage, entry.absolutePath, entry.status])
+  const files = entries.map((entry) => [entry.beforePath, entry.beforeImage, entry.afterPath, entry.status])
 
   const manifestBody = { title: 'Last turn changes', ts: `${stamp}-${process.pid}`, files }
 
