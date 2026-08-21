@@ -1,4 +1,4 @@
-import { INSTALLED_HOOK } from '../utils/paths.js'
+import { INSTALLED_HOOK } from '../store/paths.js'
 import { applyHookSpec, hooksMatchSpec, readSettings, stripOurHooks, writeSettings } from './settings.js'
 import { HOOK_SPEC, DECLINED_KEY } from './spec.js'
 import fs from 'fs'

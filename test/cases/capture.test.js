@@ -1,5 +1,5 @@
+import { getProjectKey } from '../../src/store/paths.js'
 import { handleTurn } from '../../src/turn/index.js'
-import { getProjectKey } from '../../src/utils/paths.js'
 import { check } from '../utils/checks.js'
 import { commitAll, createRepo, write } from '../utils/fixtures.js'
 import { nextSecond, readManifest, readStatuses, registerChat, runTurn } from '../utils/turn.js'

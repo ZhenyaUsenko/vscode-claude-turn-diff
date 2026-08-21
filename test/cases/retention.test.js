@@ -1,4 +1,4 @@
-import { getChatDir, getManifestFile, getServerFile, getProjectKey } from '../../src/utils/paths.js'
+import { getChatDir, getManifestFile, getServerFile, getProjectKey } from '../../src/store/paths.js'
 import { check } from '../utils/checks.js'
 import { commitAll, createRepo, write } from '../utils/fixtures.js'
 import { forgetChat, nextSecond, readManifest, runTurn } from '../utils/turn.js'

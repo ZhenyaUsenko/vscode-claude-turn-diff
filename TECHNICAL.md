@@ -43,7 +43,7 @@ written under a key nobody was serving and the diff silently never appeared. It
 looked intermittent because only long, `cd`-heavy turns hit it.
 
 For the same reason nothing below the wire boundary ever sees a directory —
-`turn/` and `util/paths` take a key, and `projectKey()` is called only where the
+`turn/` and `store/` take a key, and `getProjectKey()` is called only where the
 extension legitimately starts from a workspace folder.
 
 ## Two capture mechanisms

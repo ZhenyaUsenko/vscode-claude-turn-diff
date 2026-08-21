@@ -1,5 +1,6 @@
+import { readManifest } from './store/manifest.js'
+import { getProjectKey } from './store/paths.js'
 import { sameContents } from './utils/files.js'
-import { getProjectKey, getManifestFile } from './utils/paths.js'
 import { getWorkspaceFolders } from './utils/workspace.js'
 import fs from 'fs'
 import * as vscode from 'vscode'
@@ -18,14 +19,12 @@ const getBeforeUri = (absolutePath, stamp) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const readManifest = () => {
+const readCurrentManifest = () => {
   const workspaceFolders = getWorkspaceFolders()
 
   if (!workspaceFolders.length) return null
 
-  const manifestFile = getManifestFile(getProjectKey(workspaceFolders[0]))
-
-  try { return JSON.parse(fs.readFileSync(manifestFile, 'utf8')) } catch { return null }
+  return readManifest(getProjectKey(workspaceFolders[0]))
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -62,7 +61,7 @@ const getResources = (manifest) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const showLastTurn = async (params) => {
-  const manifest = readManifest()
+  const manifest = readCurrentManifest()
 
   if (!manifest) {
     if (params?.force) await vscode.commands.executeCommand('vscode.changes', EDITOR_TITLE, [])
@@ -88,7 +87,7 @@ export const showLastTurn = async (params) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const readBeforeImage = (uri, params) => {
-  const manifest = readManifest()
+  const manifest = readCurrentManifest()
 
   if (manifest && uri.query === manifest.ts) {
     for (const [beforePath, beforeImage] of manifest.files) {
@@ -126,7 +125,7 @@ export const registerBeforeImageProvider = () => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const markCurrentTurnAsSeen = () => {
-  lastRenderedStamp = readManifest()?.ts ?? null
+  lastRenderedStamp = readCurrentManifest()?.ts ?? null
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

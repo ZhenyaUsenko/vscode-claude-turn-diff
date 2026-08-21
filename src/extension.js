@@ -1,6 +1,6 @@
 import { installHookScript, promptToRegisterHooks, removeHooks, setUpHooks } from './install/hooks.js'
 import { startServer } from './server.js'
-import { getProjectKey, getProjectDir } from './utils/paths.js'
+import { getProjectKey, getProjectDir } from './store/paths.js'
 import { disposeAllWatchers } from './utils/watch.js'
 import { getWorkspaceFolders } from './utils/workspace.js'
 import { forgetLastRenderedTurn, markCurrentTurnAsSeen, registerBeforeImageProvider, showLastTurn } from './view.js'

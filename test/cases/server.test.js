@@ -1,5 +1,5 @@
 import { startServer } from '../../src/server.js'
-import { getChatDir, getServerFile, getProjectKey } from '../../src/utils/paths.js'
+import { getChatDir, getServerFile, getProjectKey } from '../../src/store/paths.js'
 import { check } from '../utils/checks.js'
 import { createRepo } from '../utils/fixtures.js'
 import { HOME } from '../utils/home.js'

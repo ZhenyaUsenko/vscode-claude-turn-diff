@@ -9,6 +9,8 @@ export const INSTALLED_HOOK = path.join(CLAUDE_DIR, 'hooks', 'turn-diff.sh')
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+const BEFORE_PREFIX = 'before-'
+
 const STATE_ROOT = path.join(CLAUDE_DIR, 'turn-diff')
 
 const TRANSCRIPTS_ROOT = path.join(CLAUDE_DIR, 'projects')
@@ -30,3 +32,21 @@ export const getServerDir = (project) => path.join(getProjectDir(project), 'serv
 export const getServerFile = (project, pid) => path.join(getServerDir(project), `${pid}.json`)
 
 export const getTranscriptFile = (project, sessionId) => path.join(TRANSCRIPTS_ROOT, project, `${sessionId}.jsonl`)
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const getReposFile = (chatDir) => path.join(chatDir, 'repos.tsv')
+
+export const getTouchesFile = (chatDir) => path.join(chatDir, 'touches.tsv')
+
+export const getBlobsDir = (chatDir) => path.join(chatDir, 'blobs')
+
+export const getArmedTurnEntries = (chatDir) => [getReposFile(chatDir), getTouchesFile(chatDir), getBlobsDir(chatDir)]
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const getBeforeDir = (chatDir, stamp) => path.join(chatDir, `${BEFORE_PREFIX}${stamp}`)
+
+export const isBeforeDirName = (dirName) => dirName.startsWith(BEFORE_PREFIX)
+
+export const getBeforeStamp = (dirName) => Number(dirName.slice(BEFORE_PREFIX.length))

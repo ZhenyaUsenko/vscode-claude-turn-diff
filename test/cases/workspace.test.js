@@ -1,5 +1,5 @@
+import { getManifestFile, getProjectKey } from '../../src/store/paths.js'
 import { handleTurn } from '../../src/turn/index.js'
-import { getManifestFile, getProjectKey } from '../../src/utils/paths.js'
 import { check } from '../utils/checks.js'
 import { commitAll, createRepo, write } from '../utils/fixtures.js'
 import { HOME } from '../utils/home.js'

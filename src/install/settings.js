@@ -1,4 +1,4 @@
-import { CLAUDE_DIR, SETTINGS_FILE } from '../utils/paths.js'
+import { CLAUDE_DIR, SETTINGS_FILE } from '../store/paths.js'
 import { HOOK_SPEC, HOOK_MARKER } from './spec.js'
 import fs from 'fs'
 

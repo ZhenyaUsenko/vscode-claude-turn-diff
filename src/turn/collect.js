@@ -1,9 +1,6 @@
-import { readLines, removeRecursive } from '../utils/files.js'
+import { getBlobsDir, getReposFile, getTouchesFile } from '../store/paths.js'
+import { readLines } from '../utils/files.js'
 import { git } from '../utils/git.js'
-import { getChatDir, getManifestFile } from '../utils/paths.js'
-import { disposeWatchers } from '../utils/watch.js'
-import { purgeSupersededTurns } from './purge.js'
-import { getArmedTurnEntries, getBeforeDir, getBlobsDir, getReposFile, getTouchesFile } from './state.js'
 import fs from 'fs'
 import path from 'path'
 
@@ -72,43 +69,12 @@ const collectOutsideChanges = (chatDir, collector) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const publish = (project, stamp, entries) => {
-  const manifestFile = getManifestFile(project)
-
-  const files = entries.map((entry) => [entry.beforePath, entry.beforeImage, entry.afterPath, entry.status])
-
-  const manifestBody = { ts: `${stamp}-${process.pid}`, files }
-
-  fs.writeFileSync(`${manifestFile}.tmp`, JSON.stringify(manifestBody))
-  fs.renameSync(`${manifestFile}.tmp`, manifestFile)
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export const endTurn = async ({ project, sessionId }) => {
-  const chatDir = getChatDir(project, sessionId)
-  const armed = fs.existsSync(getReposFile(chatDir))
-
-  disposeWatchers(sessionId)
-
-  if (!armed) return
-
-  const stamp = Math.floor(Date.now() / 1000)
-  const beforeDir = getBeforeDir(chatDir, stamp)
+export const collectChanges = async (chatDir, beforeDir) => {
   const collector = { beforeDir, entries: [] }
 
   await collectRepositoryChanges(chatDir, collector)
 
   collectOutsideChanges(chatDir, collector)
 
-  for (const entryPath of getArmedTurnEntries(chatDir)) removeRecursive(entryPath)
-
-  if (!collector.entries.length) {
-    removeRecursive(beforeDir)
-
-    return
-  }
-
-  publish(project, stamp, collector.entries)
-  purgeSupersededTurns({ project, sessionId, stamp, currentBeforeDir: beforeDir })
+  return collector.entries
 }
