@@ -23,9 +23,9 @@ export const readLines = (file) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const listDirectories = (parent) => {
+export const listDirectories = (parentDir) => {
   try {
-    const entries = fs.readdirSync(parent, { withFileTypes: true })
+    const entries = fs.readdirSync(parentDir, { withFileTypes: true })
 
     return entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name)
   } catch {

@@ -2,12 +2,12 @@ import { readLines, canonicalize, isUnder } from '../utils/files.js'
 import { git } from '../utils/git.js'
 import { getChatDir } from '../utils/paths.js'
 import { watchFilesOutsideWorkspace } from '../utils/watch.js'
+import { getBlobsDir, getReposFile, getTouchesFile } from './state.js'
 import fs from 'fs'
 import path from 'path'
 
-const targetedFile = (payload) => {
-  const input = payload.tool_input
-  const file = input?.file_path || input?.notebook_path
+const getTargetedFile = (payload) => {
+  const file = payload.tool_input?.file_path || payload.tool_input?.notebook_path
 
   return file && path.isAbsolute(file) ? file : null
 }
@@ -25,7 +25,7 @@ const snapshotWorkspace = async (chatDir, workspaceFolders) => {
 
   const tsvBody = snapshots.map((entry) => entry.join('\t')).join('\n')
 
-  fs.writeFileSync(path.join(chatDir, 'repos.tsv'), snapshots.length ? `${tsvBody}\n` : '')
+  fs.writeFileSync(getReposFile(chatDir), snapshots.length ? `${tsvBody}\n` : '')
 
   return snapshots
 }
@@ -33,22 +33,22 @@ const snapshotWorkspace = async (chatDir, workspaceFolders) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const captureBeforeImage = (chatDir, file) => {
-  const touchedFile = path.join(chatDir, 'touched.tsv')
-  const alreadySeen = readLines(touchedFile).map((line) => line.split('\t')[0])
+  const touchesFile = getTouchesFile(chatDir)
+  const alreadySeenFiles = readLines(touchesFile).map((line) => line.split('\t')[0])
 
-  if (alreadySeen.includes(file)) return
+  if (alreadySeenFiles.includes(file)) return
 
   if (!fs.existsSync(file)) {
-    fs.appendFileSync(touchedFile, `${file}\t0\n`)
+    fs.appendFileSync(touchesFile, `${file}\t0\n`)
 
     return
   }
 
-  const blobPath = path.join(chatDir, 'blobs', file)
+  const blobPath = path.join(getBlobsDir(chatDir), file)
 
   fs.mkdirSync(path.dirname(blobPath), { recursive: true })
   fs.copyFileSync(file, blobPath)
-  fs.appendFileSync(touchedFile, `${file}\t1\n`)
+  fs.appendFileSync(touchesFile, `${file}\t1\n`)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -56,9 +56,9 @@ const captureBeforeImage = (chatDir, file) => {
 export const armTurn = async ({ project, sessionId, payload, workspaceFolders }) => {
   let repositories
 
-  const file = targetedFile(payload)
+  const file = getTargetedFile(payload)
   const chatDir = getChatDir(project, sessionId)
-  const reposFile = path.join(chatDir, 'repos.tsv')
+  const reposFile = getReposFile(chatDir)
 
   if (file) watchFilesOutsideWorkspace([file], workspaceFolders, sessionId)
 

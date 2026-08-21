@@ -4,7 +4,7 @@ import { getWorkspaceFolders } from './utils/workspace.js'
 import fs from 'fs'
 import * as vscode from 'vscode'
 
-let lastRendered = null
+let lastRenderedStamp = null
 
 const SCHEME = 'claude-before'
 
@@ -12,7 +12,7 @@ const EDITOR_TITLE = 'Last turn changes'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const beforeUriFor = (absolutePath, stamp) => {
+const getBeforeUri = (absolutePath, stamp) => {
   return vscode.Uri.file(absolutePath).with({ scheme: SCHEME, query: stamp })
 }
 
@@ -31,18 +31,18 @@ const readManifest = () => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const stillRenderable = (beforePath, beforeImage, afterPath, status) => {
-  const existsNow = fs.existsSync(afterPath)
+  const afterFileExists = fs.existsSync(afterPath)
 
-  if (status === 'A') return existsNow
+  if (status === 'A') return afterFileExists
   if (!fs.existsSync(beforeImage)) return false
-  if (beforePath !== afterPath) return existsNow
+  if (beforePath !== afterPath) return afterFileExists
 
-  return !(existsNow && sameContents(beforeImage, afterPath))
+  return !(afterFileExists && sameContents(beforeImage, afterPath))
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const toResources = (manifest) => {
+const getResources = (manifest) => {
   const resources = []
 
   for (const [beforePath, beforeImage, afterPath, status] of manifest.files) {
@@ -50,7 +50,7 @@ const toResources = (manifest) => {
 
     const fileUri = vscode.Uri.file(afterPath)
 
-    const original = status === 'A' ? undefined : beforeUriFor(beforePath, manifest.ts)
+    const original = status === 'A' ? undefined : getBeforeUri(beforePath, manifest.ts)
     const modified = status === 'D' ? undefined : fileUri
 
     resources.push([fileUri, original, modified])
@@ -61,23 +61,23 @@ const toResources = (manifest) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const showLastTurn = async ({ force = false } = {}) => {
+export const showLastTurn = async (params) => {
   const manifest = readManifest()
 
   if (!manifest) {
-    if (force) await vscode.commands.executeCommand('vscode.changes', EDITOR_TITLE, [])
+    if (params?.force) await vscode.commands.executeCommand('vscode.changes', EDITOR_TITLE, [])
 
     return
   }
 
-  if (!force && manifest.ts === lastRendered) return
+  if (!params?.force && manifest.ts === lastRenderedStamp) return
 
-  lastRendered = manifest.ts
+  lastRenderedStamp = manifest.ts
 
-  const resources = toResources(manifest)
+  const resources = getResources(manifest)
 
   if (!resources.length) {
-    if (force) await vscode.commands.executeCommand('vscode.changes', EDITOR_TITLE, [])
+    if (params?.force) await vscode.commands.executeCommand('vscode.changes', EDITOR_TITLE, [])
 
     return
   }
@@ -87,14 +87,14 @@ export const showLastTurn = async ({ force = false } = {}) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const readBeforeImage = (uri, params = {}) => {
+const readBeforeImage = (uri, params) => {
   const manifest = readManifest()
 
   if (manifest && uri.query === manifest.ts) {
     for (const [beforePath, beforeImage] of manifest.files) {
       if (beforePath !== uri.fsPath) continue
 
-      try { return params.size ? fs.statSync(beforeImage).size : fs.readFileSync(beforeImage) } catch { break }
+      try { return params?.sizeOnly ? fs.statSync(beforeImage).size : fs.readFileSync(beforeImage) } catch { break }
     }
   }
 
@@ -106,7 +106,7 @@ const readBeforeImage = (uri, params = {}) => {
 const beforeImageProvider = {
   onDidChangeFile: () => new vscode.Disposable(() => {}),
   watch: () => new vscode.Disposable(() => {}),
-  stat: (uri) => ({ type: vscode.FileType.File, ctime: 0, mtime: 0, size: readBeforeImage(uri, { size: true }) }),
+  stat: (uri) => ({ type: vscode.FileType.File, ctime: 0, mtime: 0, size: readBeforeImage(uri, { sizeOnly: true }) }),
   readFile: (uri) => readBeforeImage(uri),
   readDirectory: () => { throw vscode.FileSystemError.FileNotADirectory() },
   createDirectory: () => { throw vscode.FileSystemError.NoPermissions() },
@@ -126,11 +126,11 @@ export const registerBeforeImageProvider = () => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const markCurrentTurnAsSeen = () => {
-  lastRendered = readManifest()?.ts ?? null
+  lastRenderedStamp = readManifest()?.ts ?? null
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const forgetLastRenderedTurn = () => {
-  lastRendered = null
+  lastRenderedStamp = null
 }

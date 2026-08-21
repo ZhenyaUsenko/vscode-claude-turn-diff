@@ -7,7 +7,7 @@ let repoCounter = 0
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const gitIn = (dir, ...args) => {
+const runGitIn = (dir, ...args) => {
   execFileSync('git', ['-C', dir, ...args], { stdio: 'ignore' })
 }
 
@@ -18,9 +18,9 @@ export const createRepo = () => {
 
   fs.mkdirSync(repoDir, { recursive: true })
 
-  gitIn(repoDir, 'init', '-q')
-  gitIn(repoDir, 'config', 'user.email', 'test@example.com')
-  gitIn(repoDir, 'config', 'user.name', 'test')
+  runGitIn(repoDir, 'init', '-q')
+  runGitIn(repoDir, 'config', 'user.email', 'test@example.com')
+  runGitIn(repoDir, 'config', 'user.name', 'test')
 
   return repoDir
 }
@@ -28,8 +28,8 @@ export const createRepo = () => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const commitAll = (dir) => {
-  gitIn(dir, 'add', '-A')
-  gitIn(dir, 'commit', '-qm', 'fixture')
+  runGitIn(dir, 'add', '-A')
+  runGitIn(dir, 'commit', '-qm', 'fixture')
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

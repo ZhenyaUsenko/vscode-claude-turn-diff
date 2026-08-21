@@ -12,7 +12,7 @@ export const check = (name, body) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const runChecks = async () => {
-  let failed = 0
+  let failedCount = 0
 
   for (const { name, body } of registeredChecks) {
     try {
@@ -20,13 +20,13 @@ export const runChecks = async () => {
 
       console.log(`  ok    ${name}`)
     } catch (error) {
-      failed++
+      failedCount++
 
       console.log(`  FAIL  ${name}\n        ${error.message}`)
     }
   }
 
   fs.rmSync(HOME, { recursive: true, force: true })
-  console.log(failed ? `\n  ${failed} failing` : `\n  all ${registeredChecks.length} passing`)
-  process.exit(failed ? 1 : 0)
+  console.log(failedCount ? `\n  ${failedCount} failing` : `\n  all ${registeredChecks.length} passing`)
+  process.exit(failedCount ? 1 : 0)
 }

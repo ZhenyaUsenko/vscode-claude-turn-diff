@@ -1,29 +1,28 @@
 import { removeRecursive, listDirectories } from '../utils/files.js'
 import { getChatsDir, getChatDir, getTranscriptFile } from '../utils/paths.js'
+import { getBeforeStamp, isBeforeDirName } from './state.js'
 import fs from 'fs'
 import path from 'path'
 
-const beforeStamp = (name) => {
-  return name.startsWith('before-') ? Number(name.slice('before-'.length)) : NaN
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 const dropOwnSupersededTurns = (ownChatDir, currentBeforeDir) => {
-  for (const name of listDirectories(ownChatDir)) {
-    const candidateDir = path.join(ownChatDir, name)
+  for (const dirName of listDirectories(ownChatDir)) {
+    if (!isBeforeDirName(dirName)) continue
 
-    if (name.startsWith('before-') && candidateDir !== currentBeforeDir) removeRecursive(candidateDir)
+    const candidateDir = path.join(ownChatDir, dirName)
+
+    if (candidateDir !== currentBeforeDir) removeRecursive(candidateDir)
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const dropSiblingSupersededTurns = (siblingDir, stamp) => {
-  for (const entry of listDirectories(siblingDir)) {
-    const stampOfEntry = beforeStamp(entry)
+  for (const dirName of listDirectories(siblingDir)) {
+    if (!isBeforeDirName(dirName)) continue
 
-    if (Number.isInteger(stampOfEntry) && stampOfEntry < stamp) removeRecursive(path.join(siblingDir, entry))
+    const dirStamp = getBeforeStamp(dirName)
+
+    if (dirStamp < stamp) removeRecursive(path.join(siblingDir, dirName))
   }
 }
 
@@ -36,12 +35,12 @@ export const purgeSupersededTurns = ({ project, sessionId, stamp, currentBeforeD
 
   dropOwnSupersededTurns(ownChatDir, currentBeforeDir)
 
-  for (const name of listDirectories(chatsDir)) {
-    const siblingDir = path.join(chatsDir, name)
+  for (const siblingSessionId of listDirectories(chatsDir)) {
+    const siblingDir = path.join(chatsDir, siblingSessionId)
 
     if (siblingDir === ownChatDir) continue
 
-    if (keyIsTrustworthy && !fs.existsSync(getTranscriptFile(project, name))) {
+    if (keyIsTrustworthy && !fs.existsSync(getTranscriptFile(project, siblingSessionId))) {
       removeRecursive(siblingDir)
 
       continue

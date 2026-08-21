@@ -6,7 +6,7 @@ const watchersBySession = new Map()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const watchersFor = (sessionId) => {
+const getWatchers = (sessionId) => {
   let watchers = watchersBySession.get(sessionId)
 
   if (!watchers) {
@@ -20,18 +20,18 @@ const watchersFor = (sessionId) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const watchFilesOutsideWorkspace = (targets, workspaceFolders, sessionId) => {
+export const watchFilesOutsideWorkspace = (targetFiles, workspaceFolders, sessionId) => {
   const workspaceRoots = workspaceFolders.map(canonicalize)
-  const watchers = watchersFor(sessionId)
+  const watchers = getWatchers(sessionId)
 
-  for (const target of targets) {
-    if (watchers.has(target)) continue
-    if (workspaceRoots.some((root) => isUnder(canonicalize(target), root))) continue
+  for (const targetFile of targetFiles) {
+    if (watchers.has(targetFile)) continue
+    if (workspaceRoots.some((root) => isUnder(canonicalize(targetFile), root))) continue
 
-    const dir = vscode.Uri.file(path.dirname(target))
-    const pattern = new vscode.RelativePattern(dir, path.basename(target))
+    const dir = vscode.Uri.file(path.dirname(targetFile))
+    const pattern = new vscode.RelativePattern(dir, path.basename(targetFile))
 
-    watchers.set(target, vscode.workspace.createFileSystemWatcher(pattern))
+    watchers.set(targetFile, vscode.workspace.createFileSystemWatcher(pattern))
   }
 }
 

@@ -49,7 +49,7 @@ export const runTurn = async (dir, sessionId, workspaceFolders, mutate, params) 
   await handleTurn('begin', project, { session_id: sessionId, prompt: 'p' }, workspaceFolders)
   await handleTurn('arm', project, { session_id: sessionId }, workspaceFolders)
 
-  for (const file of params?.touch ?? []) {
+  for (const file of params?.touchedFiles ?? []) {
     const payload = { session_id: sessionId, tool_input: { file_path: file } }
 
     await handleTurn('arm', project, payload, workspaceFolders)

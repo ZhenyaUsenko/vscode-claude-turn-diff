@@ -123,9 +123,11 @@ check('a move is one entry naming both paths, not an addition', async () => {
     return `${entry[3]} ${path.relative(root, entry[0])} -> ${path.relative(root, entry[2])}`
   })
 
-  const lost = 'git names only a rename destination, so a move used to arrive as an addition out of nowhere'
+  const reason = 'git names only a rename destination, so a move used to arrive as an addition out of nowhere'
 
-  assert.deepStrictEqual(moves.sort(), ['M old/edited.txt -> new/edited.txt', 'M old/moved.txt -> new/moved.txt'], lost)
+  const expectedMoves = ['M old/edited.txt -> new/edited.txt', 'M old/moved.txt -> new/moved.txt']
+
+  assert.deepStrictEqual(moves.sort(), expectedMoves, reason)
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

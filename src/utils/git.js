@@ -62,7 +62,7 @@ const copyPreservingMtime = (source, destination) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const smallUntrackedFiles = async (repository, env) => {
+const listSmallUntrackedFiles = async (repository, env) => {
   const listingArgs = ['-C', repository, 'ls-files', '-o', '--exclude-standard', '-z']
 
   const untrackedFiles = await listPaths(listingArgs, env)
@@ -87,7 +87,7 @@ const snapshotTree = async (repository, gitDir, scratchDir) => {
 
   await run(['-C', repository, 'add', '-u'], env)
 
-  const untrackedFiles = await smallUntrackedFiles(repository, env)
+  const untrackedFiles = await listSmallUntrackedFiles(repository, env)
 
   if (untrackedFiles.length) await run(['-C', repository, 'add', '-f', '--', ...untrackedFiles], env)
 

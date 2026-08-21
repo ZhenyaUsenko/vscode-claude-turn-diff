@@ -20,7 +20,7 @@ const seedRepo = () => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const watcherFor = (target) => {
+const getWatcher = (target) => {
   const dir = path.dirname(target)
 
   return vscode.state.watchers.find((watcher) => watcher.pattern.base.fsPath === dir)
@@ -53,7 +53,7 @@ check('a file outside every repository is captured', async () => {
     write(path.join(repo, 'f.txt'), 'two\n')
   }
 
-  await runTurn(repo, 'chat', [repo], mutate, { touch: [outsideFile] })
+  await runTurn(repo, 'chat', [repo], mutate, { touchedFiles: [outsideFile] })
 
   assert.deepStrictEqual(readStatuses(repo), ['M f.txt', 'M notes.md'])
 })
@@ -71,7 +71,7 @@ check('a binary file outside every repository is skipped, not counted', async ()
     write(path.join(repo, 'f.txt'), 'two\n')
   }
 
-  await runTurn(repo, 'chat', [repo], mutate, { touch: [outsideFile] })
+  await runTurn(repo, 'chat', [repo], mutate, { touchedFiles: [outsideFile] })
 
   const reason = 'a listed binary is counted in the title and then fails to render, so the count would lie'
 
@@ -94,7 +94,7 @@ check('arming a file outside the workspace watches it, once', async () => {
 
   const touchedFiles = [outsideFile, outsideFile, path.join(repo, 'f.txt')]
 
-  await runTurn(repo, 'chat', [repo], mutate, { touch: touchedFiles })
+  await runTurn(repo, 'chat', [repo], mutate, { touchedFiles })
 
   const [watcher] = vscode.state.watchers
 
@@ -118,10 +118,10 @@ check('a chat ending leaves a parallel chat mid-turn still watching', async () =
 
   await handleTurn('begin', project, { session_id: 'b', prompt: 'p' }, [repo])
   await handleTurn('arm', project, { session_id: 'b', tool_input: { file_path: fileForB } }, [repo])
-  await runTurn(repo, 'a', [repo], () => write(fileForA, 'after\n'), { touch: [fileForA] })
+  await runTurn(repo, 'a', [repo], () => write(fileForA, 'after\n'), { touchedFiles: [fileForA] })
 
-  assert.ok(watcherFor(fileForA).disposed, 'the chat that finished released its own')
-  assert.ok(!watcherFor(fileForB).disposed, 'the chat still mid-turn keeps watching')
+  assert.ok(getWatcher(fileForA).disposed, 'the chat that finished released its own')
+  assert.ok(!getWatcher(fileForB).disposed, 'the chat still mid-turn keeps watching')
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -135,9 +135,8 @@ check('two projects do not overwrite each other', async () => {
 
   const manifestFileA = getManifestFile(getProjectKey(repoA))
   const manifestFileB = getManifestFile(getProjectKey(repoB))
-  const survived = 'project A\'s before-image survived project B\'s turn'
 
   assert.notStrictEqual(manifestFileA, manifestFileB)
-  assert.ok(fs.existsSync(readManifest(repoA).files[0][1]), survived)
+  assert.ok(fs.existsSync(readManifest(repoA).files[0][1]), 'project A\'s before-image survived project B\'s turn')
   assert.ok(fs.existsSync(readManifest(repoB).files[0][1]))
 })

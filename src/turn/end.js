@@ -3,12 +3,11 @@ import { git } from '../utils/git.js'
 import { getChatDir, getManifestFile } from '../utils/paths.js'
 import { disposeWatchers } from '../utils/watch.js'
 import { purgeSupersededTurns } from './purge.js'
+import { getArmedTurnEntries, getBeforeDir, getBlobsDir, getReposFile, getTouchesFile } from './state.js'
 import fs from 'fs'
 import path from 'path'
 
 const BINARY_SNIFF_BYTES = 8000
-
-const CONSUMED_ENTRIES = ['repos.tsv', 'touched.tsv', 'blobs']
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -39,7 +38,7 @@ const addEntry = (collector, beforePath, afterPath, beforeContents) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const collectRepositoryChanges = async (chatDir, collector) => {
-  for (const line of readLines(path.join(chatDir, 'repos.tsv'))) {
+  for (const line of readLines(getReposFile(chatDir))) {
     const [repository, gitDir, treeBefore] = line.split('\t')
 
     const treeAfter = await git.snapshotTree(repository, gitDir, chatDir)
@@ -61,10 +60,10 @@ const collectRepositoryChanges = async (chatDir, collector) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const collectOutsideChanges = (chatDir, collector) => {
-  for (const line of readLines(path.join(chatDir, 'touched.tsv'))) {
+  for (const line of readLines(getTouchesFile(chatDir))) {
     const [absolutePath, existedBefore] = line.split('\t')
 
-    const blobFile = path.join(chatDir, 'blobs', absolutePath)
+    const blobFile = path.join(getBlobsDir(chatDir), absolutePath)
     const contents = existedBefore === '1' ? fs.readFileSync(blobFile) : null
 
     addEntry(collector, absolutePath, absolutePath, contents)
@@ -88,21 +87,21 @@ const publish = (project, stamp, entries) => {
 
 export const endTurn = async ({ project, sessionId }) => {
   const chatDir = getChatDir(project, sessionId)
-  const armed = fs.existsSync(path.join(chatDir, 'repos.tsv'))
+  const armed = fs.existsSync(getReposFile(chatDir))
 
   disposeWatchers(sessionId)
 
   if (!armed) return
 
   const stamp = Math.floor(Date.now() / 1000)
-  const beforeDir = path.join(chatDir, `before-${stamp}`)
+  const beforeDir = getBeforeDir(chatDir, stamp)
   const collector = { beforeDir, entries: [] }
 
   await collectRepositoryChanges(chatDir, collector)
 
   collectOutsideChanges(chatDir, collector)
 
-  for (const consumed of CONSUMED_ENTRIES) removeRecursive(path.join(chatDir, consumed))
+  for (const entryPath of getArmedTurnEntries(chatDir)) removeRecursive(entryPath)
 
   if (!collector.entries.length) {
     removeRecursive(beforeDir)

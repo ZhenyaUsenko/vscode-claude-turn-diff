@@ -10,7 +10,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 
-const HOOK = path.join(import.meta.dirname, '..', '..', 'hooks', 'turn-diff.sh')
+const HOOK_SCRIPT = path.join(import.meta.dirname, '..', '..', 'hooks', 'turn-diff.sh')
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -24,7 +24,7 @@ const runHook = (mode, payload, cwd) => {
   return new Promise((resolve, reject) => {
     const options = { cwd, env: { ...process.env, HOME } }
 
-    const child = execFile(HOOK, [mode], options, (error) => error ? reject(error) : resolve())
+    const child = execFile(HOOK_SCRIPT, [mode], options, (error) => error ? reject(error) : resolve())
 
     child.stdin.end(JSON.stringify(payload))
   })
@@ -32,7 +32,7 @@ const runHook = (mode, payload, cwd) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const advertOf = (dir) => {
+const getAdvert = (dir) => {
   const advertFile = getServerFile(getProjectKey(dir), process.pid)
 
   return fs.existsSync(advertFile) ? fs.readFileSync(advertFile, 'utf8') : null
@@ -49,13 +49,13 @@ check('re-advertising an unchanged workspace leaves the advert in place', async 
 
   await settle()
 
-  const firstAdvert = advertOf(repo)
+  const firstAdvert = getAdvert(repo)
 
   assert.ok(firstAdvert, 'the window advertises once it is listening')
 
   server.readvertise()
 
-  assert.strictEqual(advertOf(repo), firstAdvert, 'a no-op re-advertise must not disturb it')
+  assert.strictEqual(getAdvert(repo), firstAdvert, 'a no-op re-advertise must not disturb it')
 
   server.dispose()
 })
@@ -71,19 +71,19 @@ check('a window with no folders advertises nothing', async () => {
 
   await settle()
 
-  assert.strictEqual(advertOf(repo), null, 'nothing to serve, nothing advertised')
+  assert.strictEqual(getAdvert(repo), null, 'nothing to serve, nothing advertised')
 
   vscode.state.folders = [repo]
 
   server.readvertise()
 
-  assert.ok(advertOf(repo), 'it advertises once a folder arrives')
+  assert.ok(getAdvert(repo), 'it advertises once a folder arrives')
 
   vscode.state.folders = []
 
   server.readvertise()
 
-  assert.strictEqual(advertOf(repo), null, 'and withdraws when the last one goes')
+  assert.strictEqual(getAdvert(repo), null, 'and withdraws when the last one goes')
 
   server.dispose()
 })
@@ -120,11 +120,11 @@ check('disposing removes the advert', async () => {
 
   await settle()
 
-  assert.ok(advertOf(repo))
+  assert.ok(getAdvert(repo))
 
   server.dispose()
 
-  assert.strictEqual(advertOf(repo), null)
+  assert.strictEqual(getAdvert(repo), null)
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -139,13 +139,13 @@ check('the hook keys state by the session, not by a cwd Claude has moved', async
 
   await settle()
 
-  const elsewhere = fs.mkdtempSync(path.join(os.tmpdir(), 'wandered-'))
+  const elsewhereDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wandered-'))
   const transcriptFile = path.join(HOME, '.claude', 'projects', project, 'drifted.jsonl')
 
-  await runHook('begin', { session_id: 'drifted', transcript_path: transcriptFile }, elsewhere)
+  await runHook('begin', { session_id: 'drifted', transcript_path: transcriptFile }, elsewhereDir)
 
   const belongsToSession = fs.existsSync(getChatDir(project, 'drifted'))
-  const belongsToCwd = fs.existsSync(getChatDir(getProjectKey(elsewhere), 'drifted'))
+  const belongsToCwd = fs.existsSync(getChatDir(getProjectKey(elsewhereDir), 'drifted'))
 
   assert.ok(belongsToSession, 'the turn belongs to the project the session started in')
   assert.ok(!belongsToCwd, 'and never to the directory Claude happened to cd into')
