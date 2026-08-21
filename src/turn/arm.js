@@ -1,7 +1,7 @@
-import { readLines, canonicalize, isUnder } from '../util/files.js'
-import { git } from '../util/git.js'
-import { getChatDir } from '../util/paths.js'
-import { watchFilesOutsideWorkspace } from '../watch.js'
+import { readLines, canonicalize, isUnder } from '../utils/files.js'
+import { git } from '../utils/git.js'
+import { getChatDir } from '../utils/paths.js'
+import { watchFilesOutsideWorkspace } from '../utils/watch.js'
 import fs from 'fs'
 import path from 'path'
 

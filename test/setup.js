@@ -5,4 +5,4 @@ import path from 'path'
 
 process.env.HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'turn-diff-test-'))
 
-register('./vscode-hooks.js', import.meta.url)
+register('./utils/vscode-hooks.js', import.meta.url)

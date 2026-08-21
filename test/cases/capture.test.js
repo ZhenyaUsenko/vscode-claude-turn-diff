@@ -1,8 +1,8 @@
-import { handleTurn } from '../src/turn/index.js'
-import { getProjectKey } from '../src/util/paths.js'
-import {
-  check, createRepo, commitAll, write, runTurn, readManifest, readStatuses, registerChat, nextSecond,
-} from './support.js'
+import { handleTurn } from '../../src/turn/index.js'
+import { getProjectKey } from '../../src/utils/paths.js'
+import { check } from '../utils/checks.js'
+import { commitAll, createRepo, write } from '../utils/fixtures.js'
+import { nextSecond, readManifest, readStatuses, registerChat, runTurn } from '../utils/turn.js'
 import assert from 'assert'
 import fs from 'fs'
 import path from 'path'

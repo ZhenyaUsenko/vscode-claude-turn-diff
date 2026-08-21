@@ -1,6 +1,6 @@
-import { sameContents } from './util/files.js'
-import { getProjectKey, getManifestFile } from './util/paths.js'
-import { getWorkspaceFolders } from './util/workspace.js'
+import { sameContents } from './utils/files.js'
+import { getProjectKey, getManifestFile } from './utils/paths.js'
+import { getWorkspaceFolders } from './utils/workspace.js'
 import fs from 'fs'
 import * as vscode from 'vscode'
 

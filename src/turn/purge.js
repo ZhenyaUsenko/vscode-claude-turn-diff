@@ -1,5 +1,5 @@
-import { removeRecursive, listDirectories } from '../util/files.js'
-import { getChatsDir, getChatDir, getTranscriptFile } from '../util/paths.js'
+import { removeRecursive, listDirectories } from '../utils/files.js'
+import { getChatsDir, getChatDir, getTranscriptFile } from '../utils/paths.js'
 import fs from 'fs'
 import path from 'path'
 

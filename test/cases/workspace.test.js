@@ -1,9 +1,10 @@
-import { handleTurn } from '../src/turn/index.js'
-import { getManifestFile, getProjectKey } from '../src/util/paths.js'
-import {
-  HOME, check, createRepo, commitAll, write, runTurn, readManifest, readStatuses, registerChat,
-} from './support.js'
-import * as vscode from './vscode-stub.js'
+import { handleTurn } from '../../src/turn/index.js'
+import { getManifestFile, getProjectKey } from '../../src/utils/paths.js'
+import { check } from '../utils/checks.js'
+import { commitAll, createRepo, write } from '../utils/fixtures.js'
+import { HOME } from '../utils/home.js'
+import { readManifest, readStatuses, registerChat, runTurn } from '../utils/turn.js'
+import * as vscode from '../utils/vscode-stub.js'
 import assert from 'assert'
 import fs from 'fs'
 import path from 'path'

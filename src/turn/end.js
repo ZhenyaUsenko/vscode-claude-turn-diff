@@ -1,11 +1,12 @@
-import { BINARY_SNIFF_BYTES } from '../config.js'
-import { readLines, removeRecursive } from '../util/files.js'
-import { git } from '../util/git.js'
-import { getChatDir, getManifestFile } from '../util/paths.js'
-import { disposeWatchers } from '../watch.js'
+import { readLines, removeRecursive } from '../utils/files.js'
+import { git } from '../utils/git.js'
+import { getChatDir, getManifestFile } from '../utils/paths.js'
+import { disposeWatchers } from '../utils/watch.js'
 import { purgeSupersededTurns } from './purge.js'
 import fs from 'fs'
 import path from 'path'
+
+const BINARY_SNIFF_BYTES = 8000
 
 const SNAPSHOTS = ['repos.tsv', 'touched.tsv']
 

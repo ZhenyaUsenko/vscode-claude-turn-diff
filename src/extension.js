@@ -1,9 +1,9 @@
-import { clearDeclinedFlag, installHookScript, promptToRegisterHooks, registerHooks, removeHooks } from './install.js'
+import { installHookScript, promptToRegisterHooks, removeHooks, setUpHooks } from './install/hooks.js'
 import { startServer } from './server.js'
-import { getProjectKey, getProjectDir } from './util/paths.js'
-import { getWorkspaceFolders } from './util/workspace.js'
+import { getProjectKey, getProjectDir } from './utils/paths.js'
+import { disposeAllWatchers } from './utils/watch.js'
+import { getWorkspaceFolders } from './utils/workspace.js'
 import { forgetLastRenderedTurn, markCurrentTurnAsSeen, registerBeforeImageProvider, showLastTurn } from './view.js'
-import { disposeAllWatchers } from './watch.js'
 import fs from 'fs'
 import * as vscode from 'vscode'
 
@@ -61,21 +61,6 @@ const createManifestWatch = (logError) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const registerHooksCommand = async (context) => {
-  try {
-    installHookScript(context)
-  } catch (error) {
-    vscode.window.showErrorMessage(`Turn Diff: could not install the hook script — ${error.message}`)
-
-    return
-  }
-
-  await clearDeclinedFlag(context)
-  await registerHooks({ interactive: true })
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 export const activate = (context) => {
   const outputChannel = vscode.window.createOutputChannel('Turn Diff', { log: true })
 
@@ -100,7 +85,7 @@ export const activate = (context) => {
       server.readvertise()
     }),
     vscode.commands.registerCommand('claudeTurnDiff.showLast', () => showLastTurn({ force: true })),
-    vscode.commands.registerCommand('claudeTurnDiff.installHooks', () => registerHooksCommand(context)),
+    vscode.commands.registerCommand('claudeTurnDiff.installHooks', () => setUpHooks(context)),
     vscode.commands.registerCommand('claudeTurnDiff.uninstallHooks', removeHooks),
   )
 

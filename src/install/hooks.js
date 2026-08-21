@@ -1,6 +1,6 @@
-import { HOOK_SPEC, DECLINED_KEY } from './config.js'
+import { INSTALLED_HOOK } from '../utils/paths.js'
 import { applyHookSpec, hooksMatchSpec, readSettings, stripOurHooks, writeSettings } from './settings.js'
-import { INSTALLED_HOOK } from './util/paths.js'
+import { HOOK_SPEC, DECLINED_KEY } from './spec.js'
 import fs from 'fs'
 import path from 'path'
 import * as vscode from 'vscode'
@@ -30,6 +30,8 @@ const invitation = () => (
 )
 
 const writeFailed = (error) => `Turn Diff: could not write ~/.claude/settings.json — ${error.message}`
+
+const scriptFailed = (error) => `Turn Diff: could not install the hook script — ${error.message}`
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -132,4 +134,19 @@ export const promptToRegisterHooks = async (context) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const clearDeclinedFlag = (context) => context.globalState.update(DECLINED_KEY, false)
+const clearDeclinedFlag = (context) => context.globalState.update(DECLINED_KEY, false)
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const setUpHooks = async (context) => {
+  try {
+    installHookScript(context)
+  } catch (error) {
+    vscode.window.showErrorMessage(scriptFailed(error))
+
+    return
+  }
+
+  await clearDeclinedFlag(context)
+  await registerHooks({ interactive: true })
+}

@@ -1,6 +1,6 @@
 import { handleTurn } from './turn/index.js'
-import { getProjectKey, getServerDir, getServerFile } from './util/paths.js'
-import { getWorkspaceFolders } from './util/workspace.js'
+import { getProjectKey, getServerDir, getServerFile } from './utils/paths.js'
+import { getWorkspaceFolders } from './utils/workspace.js'
 import crypto from 'crypto'
 import fs from 'fs'
 import net from 'net'

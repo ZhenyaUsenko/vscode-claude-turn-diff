@@ -1,7 +1,3 @@
-export const MAX_UNTRACKED_BYTES = 1024 * 1024
-
-export const BINARY_SNIFF_BYTES = 8000
-
 export const HOOK_MARKER = 'turn-diff.sh'
 
 export const DECLINED_KEY = 'claudeTurnDiff.declinedHookInstall'

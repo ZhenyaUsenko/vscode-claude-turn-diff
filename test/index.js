@@ -1,9 +1,9 @@
-import { runChecks } from './support.js'
-import './capture.test.js'
-import './workspace.test.js'
-import './retention.test.js'
-import './view.test.js'
-import './server.test.js'
-import './install.test.js'
+import { runChecks } from './utils/checks.js'
+import './cases/capture.test.js'
+import './cases/workspace.test.js'
+import './cases/retention.test.js'
+import './cases/view.test.js'
+import './cases/server.test.js'
+import './cases/install.test.js'
 
 runChecks()

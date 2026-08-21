@@ -1,6 +1,6 @@
-import { HOOK_SPEC } from '../src/config.js'
-import { hooksMatchSpec } from '../src/settings.js'
-import { check } from './support.js'
+import { hooksMatchSpec } from '../../src/install/settings.js'
+import { HOOK_SPEC } from '../../src/install/spec.js'
+import { check } from '../utils/checks.js'
 import assert from 'assert'
 
 const registeredSettings = () => JSON.parse(JSON.stringify({ hooks: HOOK_SPEC }))

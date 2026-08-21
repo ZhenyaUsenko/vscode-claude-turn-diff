@@ -1,4 +1,4 @@
-import { isUnder, canonicalize } from './util/files.js'
+import { isUnder, canonicalize } from './files.js'
 import path from 'path'
 import * as vscode from 'vscode'
 
