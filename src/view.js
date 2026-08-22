@@ -5,6 +5,8 @@ import { getWorkspaceFolders } from './utils/workspace.js'
 import fs from 'fs'
 import * as vscode from 'vscode'
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 let lastRenderedStamp = null
 
 const SCHEME = 'claude-before'
@@ -44,7 +46,7 @@ const stillRenderable = (beforePath, beforeImage, afterPath, status) => {
 const getResources = (manifest) => {
   const resources = []
 
-  for (const { beforePath, beforeImage, afterPath, status } of manifest.files) {
+  for (const { beforePath, beforeImage, afterPath, status } of manifest?.files ?? []) {
     if (!stillRenderable(beforePath, beforeImage, afterPath, status)) continue
 
     const fileUri = vscode.Uri.file(afterPath)
@@ -63,15 +65,9 @@ const getResources = (manifest) => {
 export const showLastTurn = async (params) => {
   const manifest = readCurrentManifest()
 
-  if (!manifest) {
-    if (params?.force) await vscode.commands.executeCommand('vscode.changes', EDITOR_TITLE, [])
+  if (manifest?.ts === lastRenderedStamp && !params?.force) return
 
-    return
-  }
-
-  if (!params?.force && manifest.ts === lastRenderedStamp) return
-
-  lastRenderedStamp = manifest.ts
+  if (manifest) lastRenderedStamp = manifest.ts
 
   const resources = getResources(manifest)
 

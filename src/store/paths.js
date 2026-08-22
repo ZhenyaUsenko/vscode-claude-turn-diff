@@ -1,6 +1,8 @@
 import os from 'os'
 import path from 'path'
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 export const CLAUDE_DIR = path.join(os.homedir(), '.claude')
 
 export const SETTINGS_FILE = path.join(CLAUDE_DIR, 'settings.json')

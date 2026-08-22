@@ -7,6 +7,8 @@ import assert from 'assert'
 import fs from 'fs'
 import path from 'path'
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 check('reports A, M and D with correct before-images', async () => {
   const repo = createRepo()
 

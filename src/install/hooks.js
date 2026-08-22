@@ -5,6 +5,8 @@ import fs from 'fs'
 import path from 'path'
 import * as vscode from 'vscode'
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 const MALFORMED_ON_REGISTER_ERROR = (
   'Turn Diff: ~/.claude/settings.json is not valid JSON, so it was left untouched. ' +
   'Add the hooks manually — see the extension README.'
@@ -45,120 +47,82 @@ const getScriptError = (error) => (
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const installHookScript = (context) => {
-  const bundledScript = fs.readFileSync(path.join(context.extensionPath, 'hooks', 'turn-diff.sh'))
+const showVscodeInfo = (...args) => vscode.window.showInformationMessage(...args)
 
-  let installedScript = null
+const showVscodeError = (...args) => vscode.window.showErrorMessage(...args)
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const installHookScript = (context) => {
+  let installedScript
+
+  const bundledScript = fs.readFileSync(path.join(context.extensionPath, 'hooks', 'turn-diff.sh'))
 
   try { installedScript = fs.readFileSync(INSTALLED_HOOK) } catch {}
 
-  if (installedScript && installedScript.equals(bundledScript)) return false
+  if (installedScript?.equals(bundledScript)) return
 
   fs.mkdirSync(path.dirname(INSTALLED_HOOK), { recursive: true })
-  fs.writeFileSync(INSTALLED_HOOK, bundledScript, { mode: 0o755 })
 
-  return true
+  fs.writeFileSync(INSTALLED_HOOK, bundledScript, { mode: 0o755 })
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const registerHooks = async (params) => {
+export const registerHooks = async () => {
   let currentSettings
 
-  try {
-    currentSettings = readSettings()
-  } catch {
-    vscode.window.showErrorMessage(MALFORMED_ON_REGISTER_ERROR)
+  try { currentSettings = readSettings() } catch { return void showVscodeError(MALFORMED_ON_REGISTER_ERROR) }
 
-    return false
-  }
-
-  if (hooksMatchSpec(currentSettings)) {
-    if (params.interactive) vscode.window.showInformationMessage(ALREADY_REGISTERED_MESSAGE)
-
-    return false
-  }
+  if (hooksMatchSpec(currentSettings)) return void showVscodeInfo(ALREADY_REGISTERED_MESSAGE)
 
   applyHookSpec(currentSettings)
 
-  try {
-    writeSettings(currentSettings)
-  } catch (error) {
-    vscode.window.showErrorMessage(getWriteError(error))
+  try { writeSettings(currentSettings) } catch (error) { return void showVscodeError(getWriteError(error)) }
 
-    return false
-  }
+  const choice = await showVscodeInfo(REGISTERED_MESSAGE, 'Reload Window')
 
-  vscode.window.showInformationMessage(REGISTERED_MESSAGE, 'Reload Window').then((choice) => {
-    if (choice === 'Reload Window') vscode.commands.executeCommand('workbench.action.reloadWindow')
-  })
-
-  return true
+  if (choice === 'Reload Window') vscode.commands.executeCommand('workbench.action.reloadWindow')
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const removeHooks = async () => {
+export const removeHooks = () => {
   let currentSettings
 
-  try {
-    currentSettings = readSettings()
-  } catch {
-    vscode.window.showErrorMessage(MALFORMED_ON_REMOVE_ERROR)
-
-    return
-  }
+  try { currentSettings = readSettings() } catch { return void showVscodeError(MALFORMED_ON_REMOVE_ERROR) }
 
   stripOurHooks(currentSettings)
 
-  try {
-    writeSettings(currentSettings)
-  } catch (error) {
-    vscode.window.showErrorMessage(getWriteError(error))
+  try { writeSettings(currentSettings) } catch (error) { return void showVscodeError(getWriteError(error)) }
 
-    return
-  }
-
-  vscode.window.showInformationMessage(REMOVED_MESSAGE)
+  showVscodeInfo(REMOVED_MESSAGE)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const promptToRegisterHooks = async (context) => {
-  if (context.globalState.get(DECLINED_KEY)) return
-
   let currentSettings
+
+  if (context.globalState.get(DECLINED_KEY)) return
 
   try { currentSettings = readSettings() } catch { return }
 
   if (hooksMatchSpec(currentSettings)) return
 
-  const choice = await vscode.window.showInformationMessage(getInvitationMessage(), 'Register', 'Not now', 'Never')
+  const choice = await showVscodeInfo(getInvitationMessage(), 'Register', 'Not now', 'Never')
 
-  if (choice === 'Register') {
-    await registerHooks({ interactive: false })
-  } else if (choice === 'Never') {
-    await context.globalState.update(DECLINED_KEY, true)
-  }
-}
+  if (choice === 'Register') return void registerHooks()
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-const clearDeclinedFlag = (context) => {
-  return context.globalState.update(DECLINED_KEY, false)
+  if (choice === 'Never') return void context.globalState.update(DECLINED_KEY, true)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const setUpHooks = async (context) => {
-  try {
-    installHookScript(context)
-  } catch (error) {
-    vscode.window.showErrorMessage(getScriptError(error))
+  try { installHookScript(context) } catch (error) { return void showVscodeError(getScriptError(error)) }
 
-    return
-  }
+  await context.globalState.update(DECLINED_KEY, false)
 
-  await clearDeclinedFlag(context)
-  await registerHooks({ interactive: true })
+  registerHooks()
 }

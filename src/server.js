@@ -6,6 +6,8 @@ import fs from 'fs'
 import net from 'net'
 import path from 'path'
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 const parseRequest = (buffer) => {
   const endOfHeader = buffer.indexOf('\n')
 
@@ -59,11 +61,7 @@ const serve = (socket, token, log) => {
 
     buffer = ''
 
-    if (request.token !== token) {
-      socket.end('err\n')
-
-      return
-    }
+    if (request.token !== token) return void socket.end('err\n')
 
     try {
       await handleTurn(request.mode, request.project, JSON.parse(request.body), getWorkspaceFolders())
@@ -95,11 +93,7 @@ const advertise = (advertState) => {
   const workspaceFolders = getWorkspaceFolders()
   const port = server.address()?.port
 
-  if (!workspaceFolders.length || !port) {
-    withdrawAdvert(advertState)
-
-    return
-  }
+  if (!workspaceFolders.length || !port) return void withdrawAdvert(advertState)
 
   const project = getProjectKey(workspaceFolders[0])
   const targetAdvert = getServerFile(project, process.pid)

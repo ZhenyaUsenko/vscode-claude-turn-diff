@@ -4,6 +4,8 @@ import { git } from '../utils/git.js'
 import fs from 'fs'
 import path from 'path'
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 export const snapshotWorkspace = async (chatDir, workspaceFolders) => {
   const snapshots = []
 

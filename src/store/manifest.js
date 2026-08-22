@@ -1,6 +1,8 @@
 import { getManifestFile } from './paths.js'
 import fs from 'fs'
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 export const publishManifest = (project, stamp, entries) => {
   const manifestFile = getManifestFile(project)
   const manifestBody = { ts: `${stamp}-${process.pid}`, files: entries }

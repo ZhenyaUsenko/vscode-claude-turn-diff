@@ -4,6 +4,8 @@ import { HOME } from './home.js'
 import fs from 'fs'
 import path from 'path'
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 export const registerChat = (dir, sessionId) => {
   const projectDir = path.join(HOME, '.claude', 'projects', getProjectKey(dir))
 

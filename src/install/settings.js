@@ -2,6 +2,8 @@ import { CLAUDE_DIR, SETTINGS_FILE } from '../store/paths.js'
 import { HOOK_SPEC, HOOK_MARKER } from './spec.js'
 import fs from 'fs'
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 const isOurEntry = (entry) => {
   return typeof entry?.command === 'string' && entry.command.includes(HOOK_MARKER)
 }
