@@ -1,6 +1,6 @@
 import { CLAUDE_DIR, SETTINGS_FILE } from '../store/paths.js'
 import { HOOK_SPEC, HOOK_MARKER } from './spec.js'
-import fs from 'fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -13,7 +13,7 @@ const isOurEntry = (entry) => {
 export const readSettings = () => {
   let rawSettings
 
-  try { rawSettings = fs.readFileSync(SETTINGS_FILE, 'utf8') } catch { return {} }
+  try { rawSettings = readFileSync(SETTINGS_FILE, 'utf8') } catch { return {} }
 
   return rawSettings.trim() ? JSON.parse(rawSettings) : {}
 }
@@ -21,11 +21,11 @@ export const readSettings = () => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const writeSettings = (settings) => {
-  fs.mkdirSync(CLAUDE_DIR, { recursive: true })
+  mkdirSync(CLAUDE_DIR, { recursive: true })
 
-  if (fs.existsSync(SETTINGS_FILE)) fs.copyFileSync(SETTINGS_FILE, `${SETTINGS_FILE}.turn-diff-backup`)
+  if (existsSync(SETTINGS_FILE)) copyFileSync(SETTINGS_FILE, `${SETTINGS_FILE}.turn-diff-backup`)
 
-  fs.writeFileSync(SETTINGS_FILE, `${JSON.stringify(settings, null, 2)}\n`)
+  writeFileSync(SETTINGS_FILE, `${JSON.stringify(settings, null, 2)}\n`)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

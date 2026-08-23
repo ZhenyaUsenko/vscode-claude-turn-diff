@@ -4,7 +4,7 @@ import { getProjectKey, getProjectDir } from './store/paths.js'
 import { disposeAllWatchers } from './utils/watch.js'
 import { getWorkspaceFolders } from './utils/workspace.js'
 import { forgetLastRenderedTurn, markCurrentTurnAsSeen, registerBeforeImageProvider, showLastTurn } from './view.js'
-import fs from 'fs'
+import { mkdirSync, watch } from 'fs'
 import * as vscode from 'vscode'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -21,9 +21,9 @@ const watchProject = (watchState) => {
   try {
     const projectDir = getProjectDir(getProjectKey(workspaceFolders[0]))
 
-    fs.mkdirSync(projectDir, { recursive: true })
+    mkdirSync(projectDir, { recursive: true })
 
-    return fs.watch(projectDir, (_event, filename) => {
+    return watch(projectDir, (_event, filename) => {
       if (filename !== 'open.json') return
 
       clearTimeout(watchState.debounceTimer)

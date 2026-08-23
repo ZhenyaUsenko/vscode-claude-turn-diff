@@ -1,6 +1,6 @@
 import { HOME } from './home.js'
 import { execFileSync } from 'child_process'
-import fs from 'fs'
+import { mkdirSync, writeFileSync } from 'fs'
 import path from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -9,20 +9,14 @@ let repoCounter = 0
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const runGitIn = (dir, ...args) => {
-  execFileSync('git', ['-C', dir, ...args], { stdio: 'ignore' })
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 export const createRepo = () => {
   const repoDir = path.join(HOME, 'work', `repo${repoCounter++}`)
 
-  fs.mkdirSync(repoDir, { recursive: true })
+  mkdirSync(repoDir, { recursive: true })
 
-  runGitIn(repoDir, 'init', '-q')
-  runGitIn(repoDir, 'config', 'user.email', 'test@example.com')
-  runGitIn(repoDir, 'config', 'user.name', 'test')
+  execFileSync('git', ['-C', repoDir, 'init', '-q'], { stdio: 'ignore' })
+  execFileSync('git', ['-C', repoDir, 'config', 'user.email', 'test@example.com'], { stdio: 'ignore' })
+  execFileSync('git', ['-C', repoDir, 'config', 'user.name', 'test'], { stdio: 'ignore' })
 
   return repoDir
 }
@@ -30,13 +24,13 @@ export const createRepo = () => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const commitAll = (dir) => {
-  runGitIn(dir, 'add', '-A')
-  runGitIn(dir, 'commit', '-qm', 'fixture')
+  execFileSync('git', ['-C', dir, 'add', '-A'], { stdio: 'ignore' })
+  execFileSync('git', ['-C', dir, 'commit', '-qm', 'fixture'], { stdio: 'ignore' })
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const write = (file, contents) => {
-  fs.mkdirSync(path.dirname(file), { recursive: true })
-  fs.writeFileSync(file, contents)
+export const outputFile = (file, contents) => {
+  mkdirSync(path.dirname(file), { recursive: true })
+  writeFileSync(file, contents)
 }

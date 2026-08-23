@@ -1,6 +1,6 @@
 import { getBeforeStamp, getChatDir, getChatsDir, getTranscriptFile, isBeforeDirName } from '../store/paths.js'
 import { removeRecursive, listDirectories } from '../utils/files.js'
-import fs from 'fs'
+import { existsSync } from 'fs'
 import path from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -32,7 +32,7 @@ const dropSiblingSupersededTurns = (siblingDir, stamp) => {
 export const purgeSupersededTurns = ({ project, sessionId, stamp, currentBeforeDir }) => {
   const chatsDir = getChatsDir(project)
   const ownChatDir = getChatDir(project, sessionId)
-  const keyIsTrustworthy = fs.existsSync(getTranscriptFile(project, sessionId))
+  const keyIsTrustworthy = existsSync(getTranscriptFile(project, sessionId))
 
   dropOwnSupersededTurns(ownChatDir, currentBeforeDir)
 
@@ -41,7 +41,7 @@ export const purgeSupersededTurns = ({ project, sessionId, stamp, currentBeforeD
 
     if (siblingDir === ownChatDir) continue
 
-    if (keyIsTrustworthy && !fs.existsSync(getTranscriptFile(project, siblingSessionId))) {
+    if (keyIsTrustworthy && !existsSync(getTranscriptFile(project, siblingSessionId))) {
       removeRecursive(siblingDir)
     } else {
       dropSiblingSupersededTurns(siblingDir, stamp)

@@ -1,10 +1,10 @@
 import { registerBeforeImageProvider, showLastTurn } from '../../src/view.js'
 import { check } from '../utils/checks.js'
-import { commitAll, createRepo, write } from '../utils/fixtures.js'
+import { commitAll, createRepo, outputFile } from '../utils/fixtures.js'
 import { nextSecond, readManifest, runTurn } from '../utils/turn.js'
 import * as vscode from '../utils/vscode-stub.js'
 import assert from 'assert'
-import fs from 'fs'
+import { mkdirSync, realpathSync, renameSync, unlinkSync } from 'fs'
 import path from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -40,14 +40,14 @@ const render = async (workspaceFolders) => {
 check('A, M and D become the right pair of sides, with no rename inferred', async () => {
   const repo = createRepo()
 
-  write(path.join(repo, 'keep.txt'), 'one\n')
-  write(path.join(repo, 'gone.txt'), 'bye\n')
+  outputFile(path.join(repo, 'keep.txt'), 'one\n')
+  outputFile(path.join(repo, 'gone.txt'), 'bye\n')
   commitAll(repo)
 
   await runTurn(repo, 'chat', [repo], () => {
-    write(path.join(repo, 'keep.txt'), 'two\n')
-    write(path.join(repo, 'added.txt'), 'new\n')
-    fs.unlinkSync(path.join(repo, 'gone.txt'))
+    outputFile(path.join(repo, 'keep.txt'), 'two\n')
+    outputFile(path.join(repo, 'added.txt'), 'new\n')
+    unlinkSync(path.join(repo, 'gone.txt'))
   })
 
   const changesCall = await render([repo])
@@ -67,15 +67,15 @@ check('A, M and D become the right pair of sides, with no rename inferred', asyn
 check('each turn addresses its before-image by a distinct uri', async () => {
   const repo = createRepo()
 
-  write(path.join(repo, 'f.txt'), 'one\n')
+  outputFile(path.join(repo, 'f.txt'), 'one\n')
   commitAll(repo)
 
-  await runTurn(repo, 'chat', [repo], () => write(path.join(repo, 'f.txt'), 'two\n'))
+  await runTurn(repo, 'chat', [repo], () => outputFile(path.join(repo, 'f.txt'), 'two\n'))
 
   const firstUri = getEntry(await render([repo]), 'f.txt')[1]
 
   await nextSecond()
-  await runTurn(repo, 'chat', [repo], () => write(path.join(repo, 'f.txt'), 'three\n'))
+  await runTurn(repo, 'chat', [repo], () => outputFile(path.join(repo, 'f.txt'), 'three\n'))
 
   const secondUri = getEntry(await render([repo]), 'f.txt')[1]
   const reason = 'a reused uri lets VS Code serve the previous turn from its model cache'
@@ -88,10 +88,10 @@ check('each turn addresses its before-image by a distinct uri', async () => {
 check('the before-image provider serves that turn, and nothing it does not know', async () => {
   const repo = createRepo()
 
-  write(path.join(repo, 'f.txt'), 'before\n')
+  outputFile(path.join(repo, 'f.txt'), 'before\n')
   commitAll(repo)
 
-  await runTurn(repo, 'chat', [repo], () => write(path.join(repo, 'f.txt'), 'after\n'))
+  await runTurn(repo, 'chat', [repo], () => outputFile(path.join(repo, 'f.txt'), 'after\n'))
 
   registerBeforeImageProvider()
 
@@ -108,10 +108,10 @@ check('the before-image provider serves that turn, and nothing it does not know'
 check('a before-image resolves with no render to prime it, as after a restart', async () => {
   const repo = createRepo()
 
-  write(path.join(repo, 'f.txt'), 'before\n')
+  outputFile(path.join(repo, 'f.txt'), 'before\n')
   commitAll(repo)
 
-  await runTurn(repo, 'chat', [repo], () => write(path.join(repo, 'f.txt'), 'after\n'))
+  await runTurn(repo, 'chat', [repo], () => outputFile(path.join(repo, 'f.txt'), 'after\n'))
 
   vscode.reset([repo])
   registerBeforeImageProvider()
@@ -130,16 +130,16 @@ check('a before-image resolves with no render to prime it, as after a restart', 
 check('a file reverted by hand drops out of the diff', async () => {
   const repo = createRepo()
 
-  write(path.join(repo, 'f.txt'), 'one\n')
-  write(path.join(repo, 'g.txt'), 'one\n')
+  outputFile(path.join(repo, 'f.txt'), 'one\n')
+  outputFile(path.join(repo, 'g.txt'), 'one\n')
   commitAll(repo)
 
   await runTurn(repo, 'chat', [repo], () => {
-    write(path.join(repo, 'f.txt'), 'two\n')
-    write(path.join(repo, 'g.txt'), 'two\n')
+    outputFile(path.join(repo, 'f.txt'), 'two\n')
+    outputFile(path.join(repo, 'g.txt'), 'two\n')
   })
 
-  write(path.join(repo, 'f.txt'), 'one\n')
+  outputFile(path.join(repo, 'f.txt'), 'one\n')
 
   const changesCall = await render([repo])
   const renderedNames = changesCall.resources.map(([fileUri]) => path.basename(fileUri.fsPath))
@@ -152,15 +152,15 @@ check('a file reverted by hand drops out of the diff', async () => {
 check('a move renders with its sides on different paths, so a rename is inferred', async () => {
   const repo = createRepo()
 
-  write(path.join(repo, 'old', 'f.txt'), 'one\n')
+  outputFile(path.join(repo, 'old', 'f.txt'), 'one\n')
   commitAll(repo)
 
   await runTurn(repo, 'chat', [repo], () => {
-    fs.mkdirSync(path.join(repo, 'new'), { recursive: true })
-    fs.renameSync(path.join(repo, 'old', 'f.txt'), path.join(repo, 'new', 'f.txt'))
+    mkdirSync(path.join(repo, 'new'), { recursive: true })
+    renameSync(path.join(repo, 'old', 'f.txt'), path.join(repo, 'new', 'f.txt'))
   })
 
-  const root = fs.realpathSync(repo)
+  const root = realpathSync(repo)
   const changesCall = await render([repo])
   const [fileUri, original, modified] = getEntry(changesCall, 'f.txt')
   const renameRule = 'the editor infers the rename from the two sides naming different paths'

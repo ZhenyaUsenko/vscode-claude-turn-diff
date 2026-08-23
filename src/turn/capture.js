@@ -1,7 +1,7 @@
 import { getBlobsDir, getReposFile, getTouchesFile } from '../store/paths.js'
 import { readLines } from '../utils/files.js'
 import { git } from '../utils/git.js'
-import fs from 'fs'
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, writeFileSync } from 'fs'
 import path from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -17,7 +17,7 @@ export const snapshotWorkspace = async (chatDir, workspaceFolders) => {
 
   const tsvBody = snapshots.map((entry) => entry.join('\t')).join('\n')
 
-  fs.writeFileSync(getReposFile(chatDir), snapshots.length ? `${tsvBody}\n` : '')
+  writeFileSync(getReposFile(chatDir), snapshots.length ? `${tsvBody}\n` : '')
 
   return snapshots
 }
@@ -30,13 +30,13 @@ export const captureBeforeImage = (chatDir, file) => {
 
   if (alreadySeenFiles.includes(file)) return
 
-  if (fs.existsSync(file)) {
+  if (existsSync(file)) {
     const blobPath = path.join(getBlobsDir(chatDir), file)
 
-    fs.mkdirSync(path.dirname(blobPath), { recursive: true })
-    fs.copyFileSync(file, blobPath)
-    fs.appendFileSync(touchesFile, `${file}\t1\n`)
+    mkdirSync(path.dirname(blobPath), { recursive: true })
+    copyFileSync(file, blobPath)
+    appendFileSync(touchesFile, `${file}\t1\n`)
   } else {
-    fs.appendFileSync(touchesFile, `${file}\t0\n`)
+    appendFileSync(touchesFile, `${file}\t0\n`)
   }
 }

@@ -1,7 +1,7 @@
 import { getBlobsDir, getReposFile, getTouchesFile } from '../store/paths.js'
 import { readLines } from '../utils/files.js'
 import { git } from '../utils/git.js'
-import fs from 'fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import path from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -18,7 +18,7 @@ const isBinary = (contents) => {
 
 const addEntry = (collector, beforePath, afterPath, beforeContents) => {
   const previousContents = beforeContents ?? Buffer.alloc(0)
-  const currentContents = fs.existsSync(afterPath) ? fs.readFileSync(afterPath) : null
+  const currentContents = existsSync(afterPath) ? readFileSync(afterPath) : null
 
   const unchanged = currentContents && previousContents.equals(currentContents)
 
@@ -28,8 +28,8 @@ const addEntry = (collector, beforePath, afterPath, beforeContents) => {
   const beforeImage = path.join(collector.beforeDir, beforePath)
   const status = beforeContents == null ? 'A' : currentContents ? 'M' : 'D'
 
-  fs.mkdirSync(path.dirname(beforeImage), { recursive: true })
-  fs.writeFileSync(beforeImage, previousContents)
+  mkdirSync(path.dirname(beforeImage), { recursive: true })
+  writeFileSync(beforeImage, previousContents)
 
   collector.entries.push({ beforeImage, beforePath, afterPath, status })
 }
@@ -63,7 +63,7 @@ const collectOutsideChanges = (chatDir, collector) => {
     const [absolutePath, existedBefore] = line.split('\t')
 
     const blobFile = path.join(getBlobsDir(chatDir), absolutePath)
-    const contents = existedBefore === '1' ? fs.readFileSync(blobFile) : null
+    const contents = existedBefore === '1' ? readFileSync(blobFile) : null
 
     addEntry(collector, absolutePath, absolutePath, contents)
   }

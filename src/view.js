@@ -2,7 +2,7 @@ import { readManifest } from './store/manifest.js'
 import { getProjectKey } from './store/paths.js'
 import { sameContents } from './utils/files.js'
 import { getWorkspaceFolders } from './utils/workspace.js'
-import fs from 'fs'
+import { existsSync, readFileSync, statSync } from 'fs'
 import * as vscode from 'vscode'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -32,10 +32,10 @@ const readCurrentManifest = () => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const stillRenderable = (beforePath, beforeImage, afterPath, status) => {
-  const afterFileExists = fs.existsSync(afterPath)
+  const afterFileExists = existsSync(afterPath)
 
   if (status === 'A') return afterFileExists
-  if (!fs.existsSync(beforeImage)) return false
+  if (!existsSync(beforeImage)) return false
   if (beforePath !== afterPath) return afterFileExists
 
   return !(afterFileExists && sameContents(beforeImage, afterPath))
@@ -85,7 +85,7 @@ const readBeforeImage = (uri, params) => {
     for (const { beforePath, beforeImage } of manifest.files) {
       if (beforePath !== uri.fsPath) continue
 
-      try { return params?.sizeOnly ? fs.statSync(beforeImage).size : fs.readFileSync(beforeImage) } catch { break }
+      try { return params?.sizeOnly ? statSync(beforeImage).size : readFileSync(beforeImage) } catch { break }
     }
   }
 

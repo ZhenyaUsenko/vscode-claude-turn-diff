@@ -1,5 +1,5 @@
 import { HOME } from './home.js'
-import fs from 'fs'
+import { rmSync } from 'fs'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -28,7 +28,7 @@ export const runChecks = async () => {
     }
   }
 
-  fs.rmSync(HOME, { recursive: true, force: true })
+  rmSync(HOME, { recursive: true, force: true })
   console.log(failedCount ? `\n  ${failedCount} failing` : `\n  all ${registeredChecks.length} passing`)
   process.exit(failedCount ? 1 : 0)
 }

@@ -1,10 +1,10 @@
-import fs from 'fs'
+import { readdirSync, readFileSync, realpathSync, rmSync, statSync } from 'fs'
 import path from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const removeRecursive = (target) => {
-  fs.rmSync(target, { recursive: true, force: true })
+  rmSync(target, { recursive: true, force: true })
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -17,7 +17,7 @@ export const isUnder = (child, parent) => {
 
 export const readLines = (file) => {
   try {
-    return fs.readFileSync(file, 'utf8').split('\n').filter(Boolean)
+    return readFileSync(file, 'utf8').split('\n').filter(Boolean)
   } catch {
     return []
   }
@@ -27,7 +27,7 @@ export const readLines = (file) => {
 
 export const listDirectories = (parentDir) => {
   try {
-    const entries = fs.readdirSync(parentDir, { withFileTypes: true })
+    const entries = readdirSync(parentDir, { withFileTypes: true })
 
     return entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name)
   } catch {
@@ -39,9 +39,9 @@ export const listDirectories = (parentDir) => {
 
 export const sameContents = (left, right) => {
   try {
-    if (fs.statSync(left).size !== fs.statSync(right).size) return false
+    if (statSync(left).size !== statSync(right).size) return false
 
-    return fs.readFileSync(left).equals(fs.readFileSync(right))
+    return readFileSync(left).equals(readFileSync(right))
   } catch {
     return false
   }
@@ -51,10 +51,10 @@ export const sameContents = (left, right) => {
 
 export const canonicalize = (target) => {
   try {
-    return fs.realpathSync(target)
+    return realpathSync(target)
   } catch {
     try {
-      return path.join(fs.realpathSync(path.dirname(target)), path.basename(target))
+      return path.join(realpathSync(path.dirname(target)), path.basename(target))
     } catch {
       return target
     }

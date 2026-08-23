@@ -1,5 +1,5 @@
 import { execFile } from 'child_process'
-import fs from 'fs'
+import { copyFileSync, statSync, unlinkSync, utimesSync } from 'fs'
 import path from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -55,11 +55,11 @@ const listRepositories = async (folders) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const copyPreservingMtime = (source, destination) => {
-  fs.copyFileSync(source, destination)
+  copyFileSync(source, destination)
 
-  const { atime, mtime } = fs.statSync(source)
+  const { atime, mtime } = statSync(source)
 
-  fs.utimesSync(destination, atime, mtime)
+  utimesSync(destination, atime, mtime)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -71,7 +71,7 @@ const listSmallUntrackedFiles = async (repository, env) => {
 
   return untrackedFiles.filter((relativePath) => {
     try {
-      return fs.statSync(path.join(repository, relativePath)).size <= MAX_UNTRACKED_BYTES
+      return statSync(path.join(repository, relativePath)).size <= MAX_UNTRACKED_BYTES
     } catch {
       return false
     }
@@ -95,7 +95,7 @@ const snapshotTree = async (repository, gitDir, scratchDir) => {
 
   const tree = await runText(['-C', repository, 'write-tree'], env)
 
-  fs.unlinkSync(indexCopy)
+  unlinkSync(indexCopy)
 
   return tree
 }

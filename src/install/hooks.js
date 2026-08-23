@@ -1,20 +1,11 @@
 import { INSTALLED_HOOK } from '../store/paths.js'
 import { applyHookSpec, hooksMatchSpec, readSettings, stripOurHooks, writeSettings } from './settings.js'
 import { HOOK_SPEC, DECLINED_KEY } from './spec.js'
-import fs from 'fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'fs'
 import path from 'path'
 import * as vscode from 'vscode'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-const MALFORMED_ON_REGISTER_ERROR = (
-  'Turn Diff: ~/.claude/settings.json is not valid JSON, so it was left untouched. ' +
-  'Add the hooks manually — see the extension README.'
-)
-
-const MALFORMED_ON_REMOVE_ERROR = (
-  'Turn Diff: ~/.claude/settings.json is not valid JSON — nothing changed.'
-)
 
 const ALREADY_REGISTERED_MESSAGE = (
   'Turn Diff: hooks are already registered.'
@@ -56,23 +47,21 @@ const showVscodeError = (...args) => vscode.window.showErrorMessage(...args)
 export const installHookScript = (context) => {
   let installedScript
 
-  const bundledScript = fs.readFileSync(path.join(context.extensionPath, 'hooks', 'turn-diff.sh'))
+  try { installedScript = readFileSync(INSTALLED_HOOK) } catch {}
 
-  try { installedScript = fs.readFileSync(INSTALLED_HOOK) } catch {}
+  const bundledScript = readFileSync(path.join(context.extensionPath, 'hooks', 'turn-diff.sh'))
 
   if (installedScript?.equals(bundledScript)) return
 
-  fs.mkdirSync(path.dirname(INSTALLED_HOOK), { recursive: true })
+  mkdirSync(path.dirname(INSTALLED_HOOK), { recursive: true })
 
-  fs.writeFileSync(INSTALLED_HOOK, bundledScript, { mode: 0o755 })
+  writeFileSync(INSTALLED_HOOK, bundledScript, { mode: 0o755 })
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const registerHooks = async () => {
-  let currentSettings
-
-  try { currentSettings = readSettings() } catch { return void showVscodeError(MALFORMED_ON_REGISTER_ERROR) }
+  const currentSettings = readSettings()
 
   if (hooksMatchSpec(currentSettings)) return void showVscodeInfo(ALREADY_REGISTERED_MESSAGE)
 
@@ -88,9 +77,7 @@ export const registerHooks = async () => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const removeHooks = () => {
-  let currentSettings
-
-  try { currentSettings = readSettings() } catch { return void showVscodeError(MALFORMED_ON_REMOVE_ERROR) }
+  const currentSettings = readSettings()
 
   stripOurHooks(currentSettings)
 
@@ -102,13 +89,9 @@ export const removeHooks = () => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const promptToRegisterHooks = async (context) => {
-  let currentSettings
-
   if (context.globalState.get(DECLINED_KEY)) return
 
-  try { currentSettings = readSettings() } catch { return }
-
-  if (hooksMatchSpec(currentSettings)) return
+  if (hooksMatchSpec(readSettings())) return
 
   const choice = await showVscodeInfo(getInvitationMessage(), 'Register', 'Not now', 'Never')
 

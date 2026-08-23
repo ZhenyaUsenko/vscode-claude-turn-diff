@@ -5,7 +5,7 @@ import { disposeWatchers, watchFilesOutsideWorkspace } from '../utils/watch.js'
 import { captureBeforeImage, snapshotWorkspace } from './capture.js'
 import { collectChanges } from './collect.js'
 import { purgeSupersededTurns } from './purge.js'
-import fs from 'fs'
+import { existsSync, mkdirSync } from 'fs'
 import path from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -13,7 +13,7 @@ import path from 'path'
 const beginTurn = ({ project, sessionId }) => {
   const chatDir = getChatDir(project, sessionId)
 
-  fs.mkdirSync(chatDir, { recursive: true })
+  mkdirSync(chatDir, { recursive: true })
 
   for (const entryPath of getArmedTurnEntries(chatDir)) removeRecursive(entryPath)
 }
@@ -31,9 +31,9 @@ const armTurn = async ({ project, sessionId, payload, workspaceFolders }) => {
 
   if (file) watchFilesOutsideWorkspace([file], workspaceFolders, sessionId)
 
-  fs.mkdirSync(chatDir, { recursive: true })
+  mkdirSync(chatDir, { recursive: true })
 
-  if (fs.existsSync(reposFile)) {
+  if (existsSync(reposFile)) {
     repositories = readLines(reposFile).map((line) => line.split('\t'))
   } else {
     repositories = await snapshotWorkspace(chatDir, workspaceFolders)
@@ -49,7 +49,7 @@ const armTurn = async ({ project, sessionId, payload, workspaceFolders }) => {
 
 const endTurn = async ({ project, sessionId }) => {
   const chatDir = getChatDir(project, sessionId)
-  const armed = fs.existsSync(getReposFile(chatDir))
+  const armed = existsSync(getReposFile(chatDir))
 
   disposeWatchers(sessionId)
 

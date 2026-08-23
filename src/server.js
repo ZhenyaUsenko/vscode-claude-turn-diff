@@ -2,7 +2,7 @@ import { getProjectKey, getServerDir, getServerFile } from './store/paths.js'
 import { handleTurn } from './turn/index.js'
 import { getWorkspaceFolders } from './utils/workspace.js'
 import crypto from 'crypto'
-import fs from 'fs'
+import { existsSync, mkdirSync, readdirSync, unlinkSync, writeFileSync } from 'fs'
 import net from 'net'
 import path from 'path'
 
@@ -28,7 +28,7 @@ const parseRequest = (buffer) => {
 const dropDeadAdvertisements = (serverDir) => {
   let advertNames
 
-  try { advertNames = fs.readdirSync(serverDir) } catch { return }
+  try { advertNames = readdirSync(serverDir) } catch { return }
 
   for (const name of advertNames) {
     const pid = +name.replace(/\.json$/, '')
@@ -40,7 +40,7 @@ const dropDeadAdvertisements = (serverDir) => {
     } catch (error) {
       if (error.code !== 'ESRCH') continue
 
-      try { fs.unlinkSync(path.join(serverDir, name)) } catch {}
+      try { unlinkSync(path.join(serverDir, name)) } catch {}
     }
   }
 }
@@ -81,7 +81,7 @@ const serve = (socket, token, log) => {
 const withdrawAdvert = (advertState) => {
   if (!advertState.writtenAdvert) return
 
-  try { fs.unlinkSync(advertState.writtenAdvert) } catch {}
+  try { unlinkSync(advertState.writtenAdvert) } catch {}
 
   advertState.writtenAdvert = null
 }
@@ -98,16 +98,16 @@ const advertise = (advertState) => {
   const project = getProjectKey(workspaceFolders[0])
   const targetAdvert = getServerFile(project, process.pid)
 
-  if (targetAdvert === advertState.writtenAdvert && fs.existsSync(targetAdvert)) return
+  if (targetAdvert === advertState.writtenAdvert && existsSync(targetAdvert)) return
 
   withdrawAdvert(advertState)
 
   try {
     const serverDir = getServerDir(project)
 
-    fs.mkdirSync(serverDir, { recursive: true })
+    mkdirSync(serverDir, { recursive: true })
     dropDeadAdvertisements(serverDir)
-    fs.writeFileSync(targetAdvert, JSON.stringify({ port, token, pid: process.pid }), { mode: 0o600 })
+    writeFileSync(targetAdvert, JSON.stringify({ port, token, pid: process.pid }), { mode: 0o600 })
 
     advertState.writtenAdvert = targetAdvert
   } catch (error) {

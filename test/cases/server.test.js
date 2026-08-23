@@ -6,7 +6,7 @@ import { HOME } from '../utils/home.js'
 import * as vscode from '../utils/vscode-stub.js'
 import assert from 'assert'
 import { execFile } from 'child_process'
-import fs from 'fs'
+import { existsSync, mkdtempSync, readFileSync, unlinkSync } from 'fs'
 import os from 'os'
 import path from 'path'
 
@@ -37,7 +37,7 @@ const runHook = (mode, payload, cwd) => {
 const getAdvert = (dir) => {
   const advertFile = getServerFile(getProjectKey(dir), process.pid)
 
-  return fs.existsSync(advertFile) ? fs.readFileSync(advertFile, 'utf8') : null
+  return existsSync(advertFile) ? readFileSync(advertFile, 'utf8') : null
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -103,10 +103,10 @@ check('an advert deleted underneath the window is written again', async () => {
 
   const advertFile = getServerFile(getProjectKey(repo), process.pid)
 
-  fs.unlinkSync(advertFile)
+  unlinkSync(advertFile)
   server.readvertise()
 
-  assert.ok(fs.existsSync(advertFile), 'the window notices its advert is gone')
+  assert.ok(existsSync(advertFile), 'the window notices its advert is gone')
 
   server.dispose()
 })
@@ -141,13 +141,13 @@ check('the hook keys state by the session, not by a cwd Claude has moved', async
 
   await settle()
 
-  const elsewhereDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wandered-'))
+  const elsewhereDir = mkdtempSync(path.join(os.tmpdir(), 'wandered-'))
   const transcriptFile = path.join(HOME, '.claude', 'projects', project, 'drifted.jsonl')
 
   await runHook('begin', { session_id: 'drifted', transcript_path: transcriptFile }, elsewhereDir)
 
-  const belongsToSession = fs.existsSync(getChatDir(project, 'drifted'))
-  const belongsToCwd = fs.existsSync(getChatDir(getProjectKey(elsewhereDir), 'drifted'))
+  const belongsToSession = existsSync(getChatDir(project, 'drifted'))
+  const belongsToCwd = existsSync(getChatDir(getProjectKey(elsewhereDir), 'drifted'))
 
   assert.ok(belongsToSession, 'the turn belongs to the project the session started in')
   assert.ok(!belongsToCwd, 'and never to the directory Claude happened to cd into')

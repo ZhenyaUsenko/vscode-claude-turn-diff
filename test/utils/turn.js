@@ -1,7 +1,7 @@
 import { getManifestFile, getProjectKey } from '../../src/store/paths.js'
 import { handleTurn } from '../../src/turn/index.js'
 import { HOME } from './home.js'
-import fs from 'fs'
+import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'fs'
 import path from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -9,8 +9,8 @@ import path from 'path'
 export const registerChat = (dir, sessionId) => {
   const projectDir = path.join(HOME, '.claude', 'projects', getProjectKey(dir))
 
-  fs.mkdirSync(projectDir, { recursive: true })
-  fs.writeFileSync(path.join(projectDir, `${sessionId}.jsonl`), '')
+  mkdirSync(projectDir, { recursive: true })
+  writeFileSync(path.join(projectDir, `${sessionId}.jsonl`), '')
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -18,13 +18,13 @@ export const registerChat = (dir, sessionId) => {
 export const forgetChat = (dir, sessionId) => {
   const projectDir = path.join(HOME, '.claude', 'projects', getProjectKey(dir))
 
-  fs.unlinkSync(path.join(projectDir, `${sessionId}.jsonl`))
+  unlinkSync(path.join(projectDir, `${sessionId}.jsonl`))
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const readManifest = (dir) => {
-  return JSON.parse(fs.readFileSync(getManifestFile(getProjectKey(dir)), 'utf8'))
+  return JSON.parse(readFileSync(getManifestFile(getProjectKey(dir)), 'utf8'))
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
