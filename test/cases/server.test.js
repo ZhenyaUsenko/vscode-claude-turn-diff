@@ -9,11 +9,11 @@ import assert from 'assert'
 import { execFile } from 'child_process'
 import { existsSync, mkdtempSync } from 'fs'
 import os from 'os'
-import path from 'path'
+import { join } from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const HOOK_SCRIPT = path.join(import.meta.dirname, '..', '..', 'hooks', 'turn-diff.sh')
+const HOOK_SCRIPT = join(import.meta.dirname, '..', '..', 'hooks', 'turn-diff.sh')
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -142,8 +142,8 @@ check('the hook keys state by the session, not by a cwd Claude has moved', async
 
   await settle()
 
-  const elsewhereDir = mkdtempSync(path.join(os.tmpdir(), 'wandered-'))
-  const transcriptFile = path.join(HOME, '.claude', 'projects', project, 'drifted.jsonl')
+  const elsewhereDir = mkdtempSync(join(os.tmpdir(), 'wandered-'))
+  const transcriptFile = join(HOME, '.claude', 'projects', project, 'drifted.jsonl')
 
   await runHook('begin', { session_id: 'drifted', transcript_path: transcriptFile }, elsewhereDir)
 

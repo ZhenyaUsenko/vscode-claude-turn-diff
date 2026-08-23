@@ -1,7 +1,7 @@
 import { getFileSize, removeFile } from './files.js'
 import { execFile } from 'child_process'
 import { copyFileSync, statSync, utimesSync } from 'fs'
-import path from 'path'
+import { join } from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -71,16 +71,16 @@ const listSmallUntrackedFiles = async (repository, env) => {
   const untrackedFiles = await listPaths(listingArgs, env)
 
   return untrackedFiles.filter((relativePath) => {
-    return getFileSize(path.join(repository, relativePath)) <= MAX_UNTRACKED_BYTES
+    return getFileSize(join(repository, relativePath)) <= MAX_UNTRACKED_BYTES
   })
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const snapshotTree = async (repository, gitDir, scratchDir) => {
-  const indexCopy = path.join(scratchDir, 'index.tmp')
+  const indexCopy = join(scratchDir, 'index.tmp')
 
-  try { copyPreservingMtime(path.join(gitDir, 'index'), indexCopy) } catch { return null }
+  try { copyPreservingMtime(join(gitDir, 'index'), indexCopy) } catch { return null }
 
   const env = { GIT_INDEX_FILE: indexCopy }
 

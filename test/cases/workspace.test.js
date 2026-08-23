@@ -9,14 +9,14 @@ import { readStatuses, registerChat, runTurn } from '../utils/turn.js'
 import * as vscode from '../utils/vscode-stub.js'
 import assert from 'assert'
 import { existsSync } from 'fs'
-import path from 'path'
+import { dirname, join } from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const seedRepo = () => {
   const repo = createRepo()
 
-  outputFile(path.join(repo, 'f.txt'), 'one\n')
+  outputFile(join(repo, 'f.txt'), 'one\n')
   commitAll(repo)
 
   return repo
@@ -25,7 +25,7 @@ const seedRepo = () => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const getWatcher = (target) => {
-  const dir = path.dirname(target)
+  const dir = dirname(target)
 
   return vscode.state.watchers.find((watcher) => watcher.pattern.base.fsPath === dir)
 }
@@ -37,8 +37,8 @@ check('a turn spanning two repositories produces one manifest', async () => {
   const repoB = seedRepo()
 
   await runTurn(repoA, 'chat', [repoA, repoB], () => {
-    outputFile(path.join(repoA, 'f.txt'), 'two\n')
-    outputFile(path.join(repoB, 'f.txt'), 'three\n')
+    outputFile(join(repoA, 'f.txt'), 'two\n')
+    outputFile(join(repoB, 'f.txt'), 'three\n')
   })
 
   assert.strictEqual(readManifest(getProjectKey(repoA)).files.length, 2, 'both repositories in one manifest')
@@ -48,13 +48,13 @@ check('a turn spanning two repositories produces one manifest', async () => {
 
 check('a file outside every repository is captured', async () => {
   const repo = seedRepo()
-  const outsideFile = path.join(HOME, 'outside', 'notes.md')
+  const outsideFile = join(HOME, 'outside', 'notes.md')
 
   outputFile(outsideFile, 'before\n')
 
   const mutate = () => {
     outputFile(outsideFile, 'after\n')
-    outputFile(path.join(repo, 'f.txt'), 'two\n')
+    outputFile(join(repo, 'f.txt'), 'two\n')
   }
 
   await runTurn(repo, 'chat', [repo], mutate, { touchedFiles: [outsideFile] })
@@ -66,11 +66,11 @@ check('a file outside every repository is captured', async () => {
 
 check('a file created outside every repository is reported as an addition', async () => {
   const repo = seedRepo()
-  const outsideFile = path.join(HOME, 'created', 'notes.md')
+  const outsideFile = join(HOME, 'created', 'notes.md')
 
   const mutate = () => {
     outputFile(outsideFile, 'new\n')
-    outputFile(path.join(repo, 'f.txt'), 'two\n')
+    outputFile(join(repo, 'f.txt'), 'two\n')
   }
 
   await runTurn(repo, 'chat', [repo], mutate, { touchedFiles: [outsideFile] })
@@ -84,13 +84,13 @@ check('a file created outside every repository is reported as an addition', asyn
 
 check('a binary file outside every repository is skipped, not counted', async () => {
   const repo = seedRepo()
-  const outsideFile = path.join(HOME, 'outside', 'pic.png')
+  const outsideFile = join(HOME, 'outside', 'pic.png')
 
   outputFile(outsideFile, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 1, 2, 3]))
 
   const mutate = () => {
     outputFile(outsideFile, Buffer.from([0x89, 0x50, 0x4e, 0x47, 9, 9, 9, 9]))
-    outputFile(path.join(repo, 'f.txt'), 'two\n')
+    outputFile(join(repo, 'f.txt'), 'two\n')
   }
 
   await runTurn(repo, 'chat', [repo], mutate, { touchedFiles: [outsideFile] })
@@ -104,24 +104,24 @@ check('a binary file outside every repository is skipped, not counted', async ()
 
 check('arming a file outside the workspace watches it, once', async () => {
   const repo = seedRepo()
-  const outsideFile = path.join(HOME, 'watched', 'notes.md')
+  const outsideFile = join(HOME, 'watched', 'notes.md')
 
   outputFile(outsideFile, 'before\n')
   vscode.reset([repo])
 
   const mutate = () => {
-    outputFile(path.join(repo, 'f.txt'), 'two\n')
+    outputFile(join(repo, 'f.txt'), 'two\n')
     outputFile(outsideFile, 'after\n')
   }
 
-  const touchedFiles = [outsideFile, outsideFile, path.join(repo, 'f.txt')]
+  const touchedFiles = [outsideFile, outsideFile, join(repo, 'f.txt')]
 
   await runTurn(repo, 'chat', [repo], mutate, { touchedFiles })
 
   const [watcher] = vscode.state.watchers
 
   assert.strictEqual(vscode.state.watchers.length, 1, 'the in-workspace file needs no watcher')
-  assert.strictEqual(watcher.pattern.base.fsPath, path.dirname(outsideFile))
+  assert.strictEqual(watcher.pattern.base.fsPath, dirname(outsideFile))
   assert.ok(watcher.disposed, 'the turn releases its watchers when it ends')
 })
 
@@ -130,8 +130,8 @@ check('arming a file outside the workspace watches it, once', async () => {
 check('a chat ending leaves a parallel chat mid-turn still watching', async () => {
   const repo = seedRepo()
   const project = getProjectKey(repo)
-  const fileForA = path.join(HOME, 'chat-a', 'notes.md')
-  const fileForB = path.join(HOME, 'chat-b', 'notes.md')
+  const fileForA = join(HOME, 'chat-a', 'notes.md')
+  const fileForB = join(HOME, 'chat-b', 'notes.md')
 
   outputFile(fileForA, 'before\n')
   outputFile(fileForB, 'before\n')
@@ -152,8 +152,8 @@ check('two projects do not overwrite each other', async () => {
   const repoA = seedRepo()
   const repoB = seedRepo()
 
-  await runTurn(repoA, 'chat-a', [repoA], () => outputFile(path.join(repoA, 'f.txt'), 'A\n'))
-  await runTurn(repoB, 'chat-b', [repoB], () => outputFile(path.join(repoB, 'f.txt'), 'B\n'))
+  await runTurn(repoA, 'chat-a', [repoA], () => outputFile(join(repoA, 'f.txt'), 'A\n'))
+  await runTurn(repoB, 'chat-b', [repoB], () => outputFile(join(repoB, 'f.txt'), 'B\n'))
 
   const manifestFileA = getManifestFile(getProjectKey(repoA))
   const manifestFileB = getManifestFile(getProjectKey(repoB))

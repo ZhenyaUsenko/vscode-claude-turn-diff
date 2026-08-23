@@ -2,7 +2,7 @@ import { INSTALLED_HOOK } from '../store/paths.js'
 import { outputFile, readFile } from '../utils/files.js'
 import { applyHookSpec, hooksMatchSpec, readSettings, stripOurHooks, writeSettings } from './settings.js'
 import { HOOK_SPEC, DECLINED_KEY } from './spec.js'
-import path from 'path'
+import { join } from 'path'
 import * as vscode from 'vscode'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -45,7 +45,7 @@ const showVscodeError = (...args) => vscode.window.showErrorMessage(...args)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const installHookScript = (context) => {
-  const bundledScript = readFile(path.join(context.extensionPath, 'hooks', 'turn-diff.sh'))
+  const bundledScript = readFile(join(context.extensionPath, 'hooks', 'turn-diff.sh'))
 
   if (readFile(INSTALLED_HOOK)?.equals(bundledScript)) return
 

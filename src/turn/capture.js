@@ -2,7 +2,7 @@ import { getBlobsDir, getReposFile, getTouchListFile } from '../store/paths.js'
 import { readLines } from '../utils/files.js'
 import { listRepositories, snapshotTree } from '../utils/git.js'
 import { appendFileSync, copyFileSync, existsSync, mkdirSync, writeFileSync } from 'fs'
-import path from 'path'
+import { dirname, join } from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -31,9 +31,9 @@ export const captureBeforeImage = (chatDir, file) => {
   if (alreadySeenFiles.includes(file)) return
 
   if (existsSync(file)) {
-    const blobPath = path.join(getBlobsDir(chatDir), file)
+    const blobPath = join(getBlobsDir(chatDir), file)
 
-    mkdirSync(path.dirname(blobPath), { recursive: true })
+    mkdirSync(dirname(blobPath), { recursive: true })
     copyFileSync(file, blobPath)
   }
 

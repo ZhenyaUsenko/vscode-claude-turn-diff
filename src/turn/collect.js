@@ -1,7 +1,7 @@
 import { getBlobsDir, getReposFile, getTouchListFile } from '../store/paths.js'
 import { outputFile, readFile, readLines } from '../utils/files.js'
 import { listChanges, readBlobs, snapshotTree } from '../utils/git.js'
-import path from 'path'
+import { join } from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -24,7 +24,7 @@ const addEntry = (collector, beforePath, afterPath, beforeContents) => {
   if (unchanged && beforePath === afterPath) return
   if (isBinary(previousContents) || isBinary(currentContents)) return
 
-  const beforeImage = path.join(collector.beforeDir, beforePath)
+  const beforeImage = join(collector.beforeDir, beforePath)
   const status = beforeContents == null ? 'A' : currentContents ? 'M' : 'D'
 
   outputFile(beforeImage, previousContents)
@@ -49,7 +49,7 @@ const collectRepositoryChanges = async (chatDir, collector) => {
     if (!blobs) continue
 
     changes.forEach(({ beforePath, afterPath }, index) => {
-      addEntry(collector, path.join(repository, beforePath), path.join(repository, afterPath), blobs[index])
+      addEntry(collector, join(repository, beforePath), join(repository, afterPath), blobs[index])
     })
   }
 }
@@ -58,7 +58,7 @@ const collectRepositoryChanges = async (chatDir, collector) => {
 
 const collectOutsideChanges = (chatDir, collector) => {
   for (const absolutePath of readLines(getTouchListFile(chatDir))) {
-    const contents = readFile(path.join(getBlobsDir(chatDir), absolutePath))
+    const contents = readFile(join(getBlobsDir(chatDir), absolutePath))
 
     addEntry(collector, absolutePath, absolutePath, contents)
   }

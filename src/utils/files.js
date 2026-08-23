@@ -1,5 +1,5 @@
 import { mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'fs'
-import path from 'path'
+import { basename, dirname, join, sep as PATH_SEPARATOR } from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -28,7 +28,7 @@ export const listEntries = (dir) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const outputFile = (file, contents, options) => {
-  mkdirSync(path.dirname(file), { recursive: true })
+  mkdirSync(dirname(file), { recursive: true })
   writeFileSync(file, contents, options)
 }
 
@@ -47,7 +47,7 @@ export const removeRecursive = (target) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const isUnder = (child, parent) => {
-  return child === parent || child.startsWith(parent + path.sep)
+  return child === parent || child.startsWith(parent + PATH_SEPARATOR)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -77,7 +77,7 @@ export const canonicalize = (target) => {
 
   if (realPath) return realPath
 
-  const realParent = getRealPath(path.dirname(target))
+  const realParent = getRealPath(dirname(target))
 
-  return realParent ? path.join(realParent, path.basename(target)) : target
+  return realParent ? join(realParent, basename(target)) : target
 }

@@ -8,12 +8,12 @@ import { nextSecond, runTurn } from '../utils/turn.js'
 import * as vscode from '../utils/vscode-stub.js'
 import assert from 'assert'
 import { mkdirSync, renameSync } from 'fs'
-import path from 'path'
+import { basename, join } from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const getEntry = (diffData, name) => {
-  return diffData.resources.find(([fileUri]) => path.basename(fileUri.fsPath) === name)
+  return diffData.resources.find(([fileUri]) => basename(fileUri.fsPath) === name)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -43,14 +43,14 @@ const render = async (workspaceFolders) => {
 check('A, M and D become the right pair of sides, with no rename inferred', async () => {
   const repo = createRepo()
 
-  outputFile(path.join(repo, 'keep.txt'), 'one\n')
-  outputFile(path.join(repo, 'gone.txt'), 'bye\n')
+  outputFile(join(repo, 'keep.txt'), 'one\n')
+  outputFile(join(repo, 'gone.txt'), 'bye\n')
   commitAll(repo)
 
   await runTurn(repo, 'chat', [repo], () => {
-    outputFile(path.join(repo, 'keep.txt'), 'two\n')
-    outputFile(path.join(repo, 'added.txt'), 'new\n')
-    removeFile(path.join(repo, 'gone.txt'))
+    outputFile(join(repo, 'keep.txt'), 'two\n')
+    outputFile(join(repo, 'added.txt'), 'new\n')
+    removeFile(join(repo, 'gone.txt'))
   })
 
   const diffData = await render([repo])
@@ -70,15 +70,15 @@ check('A, M and D become the right pair of sides, with no rename inferred', asyn
 check('each turn addresses its before-image by a distinct uri', async () => {
   const repo = createRepo()
 
-  outputFile(path.join(repo, 'f.txt'), 'one\n')
+  outputFile(join(repo, 'f.txt'), 'one\n')
   commitAll(repo)
 
-  await runTurn(repo, 'chat', [repo], () => outputFile(path.join(repo, 'f.txt'), 'two\n'))
+  await runTurn(repo, 'chat', [repo], () => outputFile(join(repo, 'f.txt'), 'two\n'))
 
   const firstUri = getEntry(await render([repo]), 'f.txt')[1]
 
   await nextSecond()
-  await runTurn(repo, 'chat', [repo], () => outputFile(path.join(repo, 'f.txt'), 'three\n'))
+  await runTurn(repo, 'chat', [repo], () => outputFile(join(repo, 'f.txt'), 'three\n'))
 
   const secondUri = getEntry(await render([repo]), 'f.txt')[1]
   const reason = 'a reused uri lets VS Code serve the previous turn from its model cache'
@@ -91,10 +91,10 @@ check('each turn addresses its before-image by a distinct uri', async () => {
 check('the before-image provider serves that turn, and nothing it does not know', async () => {
   const repo = createRepo()
 
-  outputFile(path.join(repo, 'f.txt'), 'before\n')
+  outputFile(join(repo, 'f.txt'), 'before\n')
   commitAll(repo)
 
-  await runTurn(repo, 'chat', [repo], () => outputFile(path.join(repo, 'f.txt'), 'after\n'))
+  await runTurn(repo, 'chat', [repo], () => outputFile(join(repo, 'f.txt'), 'after\n'))
 
   registerBeforeImageProvider()
 
@@ -111,10 +111,10 @@ check('the before-image provider serves that turn, and nothing it does not know'
 check('a before-image resolves with no render to prime it, as after a restart', async () => {
   const repo = createRepo()
 
-  outputFile(path.join(repo, 'f.txt'), 'before\n')
+  outputFile(join(repo, 'f.txt'), 'before\n')
   commitAll(repo)
 
-  await runTurn(repo, 'chat', [repo], () => outputFile(path.join(repo, 'f.txt'), 'after\n'))
+  await runTurn(repo, 'chat', [repo], () => outputFile(join(repo, 'f.txt'), 'after\n'))
 
   vscode.reset([repo])
   registerBeforeImageProvider()
@@ -133,19 +133,19 @@ check('a before-image resolves with no render to prime it, as after a restart', 
 check('a file reverted by hand drops out of the diff', async () => {
   const repo = createRepo()
 
-  outputFile(path.join(repo, 'f.txt'), 'one\n')
-  outputFile(path.join(repo, 'g.txt'), 'one\n')
+  outputFile(join(repo, 'f.txt'), 'one\n')
+  outputFile(join(repo, 'g.txt'), 'one\n')
   commitAll(repo)
 
   await runTurn(repo, 'chat', [repo], () => {
-    outputFile(path.join(repo, 'f.txt'), 'two\n')
-    outputFile(path.join(repo, 'g.txt'), 'two\n')
+    outputFile(join(repo, 'f.txt'), 'two\n')
+    outputFile(join(repo, 'g.txt'), 'two\n')
   })
 
-  outputFile(path.join(repo, 'f.txt'), 'one\n')
+  outputFile(join(repo, 'f.txt'), 'one\n')
 
   const diffData = await render([repo])
-  const renderedNames = diffData.resources.map(([fileUri]) => path.basename(fileUri.fsPath))
+  const renderedNames = diffData.resources.map(([fileUri]) => basename(fileUri.fsPath))
 
   assert.deepStrictEqual(renderedNames, ['g.txt'])
 })
@@ -155,12 +155,12 @@ check('a file reverted by hand drops out of the diff', async () => {
 check('a move renders with its sides on different paths, so a rename is inferred', async () => {
   const repo = createRepo()
 
-  outputFile(path.join(repo, 'old', 'f.txt'), 'one\n')
+  outputFile(join(repo, 'old', 'f.txt'), 'one\n')
   commitAll(repo)
 
   await runTurn(repo, 'chat', [repo], () => {
-    mkdirSync(path.join(repo, 'new'), { recursive: true })
-    renameSync(path.join(repo, 'old', 'f.txt'), path.join(repo, 'new', 'f.txt'))
+    mkdirSync(join(repo, 'new'), { recursive: true })
+    renameSync(join(repo, 'old', 'f.txt'), join(repo, 'new', 'f.txt'))
   })
 
   const root = getRealPath(repo)
@@ -169,7 +169,7 @@ check('a move renders with its sides on different paths, so a rename is inferred
   const renameRule = 'the editor infers the rename from the two sides naming different paths'
 
   assert.strictEqual(diffData.resources.length, 1, 'a move is one entry, not a delete beside an add')
-  assert.strictEqual(fileUri.fsPath, path.join(root, 'new', 'f.txt'), 'the entry is named by where it landed')
-  assert.strictEqual(original.path, path.join(root, 'old', 'f.txt'), renameRule)
-  assert.strictEqual(modified.path, path.join(root, 'new', 'f.txt'), renameRule)
+  assert.strictEqual(fileUri.fsPath, join(root, 'new', 'f.txt'), 'the entry is named by where it landed')
+  assert.strictEqual(original.path, join(root, 'old', 'f.txt'), renameRule)
+  assert.strictEqual(modified.path, join(root, 'new', 'f.txt'), renameRule)
 })

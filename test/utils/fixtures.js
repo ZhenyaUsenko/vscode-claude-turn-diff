@@ -1,7 +1,7 @@
 import { HOME } from './home.js'
 import { execFileSync } from 'child_process'
 import { mkdirSync } from 'fs'
-import path from 'path'
+import { join } from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -10,7 +10,7 @@ let repoCounter = 0
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const createRepo = () => {
-  const repoDir = path.join(HOME, 'work', `repo${repoCounter++}`)
+  const repoDir = join(HOME, 'work', `repo${repoCounter++}`)
 
   mkdirSync(repoDir, { recursive: true })
 

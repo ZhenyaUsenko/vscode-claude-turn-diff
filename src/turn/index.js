@@ -6,7 +6,7 @@ import { captureBeforeImage, snapshotWorkspace } from './capture.js'
 import { collectChanges } from './collect.js'
 import { purgeSupersededTurns } from './purge.js'
 import { existsSync, mkdirSync } from 'fs'
-import path from 'path'
+import { isAbsolute } from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -24,7 +24,7 @@ const armTurn = async ({ project, sessionId, payload, workspaceFolders }) => {
   let repositories
 
   const toolFile = payload.tool_input?.file_path || payload.tool_input?.notebook_path
-  const file = toolFile && path.isAbsolute(toolFile) ? toolFile : null
+  const file = toolFile && isAbsolute(toolFile) ? toolFile : null
 
   const chatDir = getChatDir(project, sessionId)
   const reposFile = getReposFile(chatDir)

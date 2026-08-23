@@ -3,22 +3,22 @@ import { getProjectKey } from '../../src/store/paths.js'
 import { handleTurn } from '../../src/turn/index.js'
 import { outputFile, removeFile } from '../../src/utils/files.js'
 import { HOME } from './home.js'
-import path from 'path'
+import { basename, join } from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const registerChat = (dir, sessionId) => {
-  const projectDir = path.join(HOME, '.claude', 'projects', getProjectKey(dir))
+  const projectDir = join(HOME, '.claude', 'projects', getProjectKey(dir))
 
-  outputFile(path.join(projectDir, `${sessionId}.jsonl`), '')
+  outputFile(join(projectDir, `${sessionId}.jsonl`), '')
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const forgetChat = (dir, sessionId) => {
-  const projectDir = path.join(HOME, '.claude', 'projects', getProjectKey(dir))
+  const projectDir = join(HOME, '.claude', 'projects', getProjectKey(dir))
 
-  removeFile(path.join(projectDir, `${sessionId}.jsonl`))
+  removeFile(join(projectDir, `${sessionId}.jsonl`))
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -26,7 +26,7 @@ export const forgetChat = (dir, sessionId) => {
 export const readStatuses = (dir) => {
   const { files } = readManifest(getProjectKey(dir))
 
-  const labels = files.map((entry) => `${entry.status} ${path.basename(entry.beforePath)}`)
+  const labels = files.map((entry) => `${entry.status} ${basename(entry.beforePath)}`)
 
   return labels.sort()
 }

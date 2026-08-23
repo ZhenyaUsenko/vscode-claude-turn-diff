@@ -5,7 +5,7 @@ import { getWorkspaceFolders } from './utils/workspace.js'
 import crypto from 'crypto'
 import { existsSync } from 'fs'
 import net from 'net'
-import path from 'path'
+import { join } from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -37,7 +37,7 @@ const dropDeadAdvertisements = (serverDir) => {
     } catch (error) {
       if (error.code !== 'ESRCH') continue
 
-      removeFile(path.join(serverDir, entry.name))
+      removeFile(join(serverDir, entry.name))
     }
   }
 }
