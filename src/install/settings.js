@@ -1,6 +1,7 @@
-import { CLAUDE_DIR, SETTINGS_FILE } from '../store/paths.js'
+import { SETTINGS_FILE } from '../store/paths.js'
+import { outputFile, readFile } from '../utils/files.js'
 import { HOOK_SPEC, HOOK_MARKER } from './spec.js'
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
+import { copyFileSync, existsSync } from 'fs'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -11,21 +12,17 @@ const isOurEntry = (entry) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const readSettings = () => {
-  let rawSettings
+  const rawSettings = readFile(SETTINGS_FILE, 'utf8')
 
-  try { rawSettings = readFileSync(SETTINGS_FILE, 'utf8') } catch { return {} }
-
-  return rawSettings.trim() ? JSON.parse(rawSettings) : {}
+  return rawSettings?.trim() ? JSON.parse(rawSettings) : {}
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const writeSettings = (settings) => {
-  mkdirSync(CLAUDE_DIR, { recursive: true })
-
   if (existsSync(SETTINGS_FILE)) copyFileSync(SETTINGS_FILE, `${SETTINGS_FILE}.turn-diff-backup`)
 
-  writeFileSync(SETTINGS_FILE, `${JSON.stringify(settings, null, 2)}\n`)
+  outputFile(SETTINGS_FILE, `${JSON.stringify(settings, null, 2)}\n`)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

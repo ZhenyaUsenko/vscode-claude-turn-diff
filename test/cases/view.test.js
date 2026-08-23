@@ -1,10 +1,13 @@
+import { readManifest } from '../../src/store/manifest.js'
+import { getProjectKey } from '../../src/store/paths.js'
+import { getRealPath, outputFile, removeFile } from '../../src/utils/files.js'
 import { registerBeforeImageProvider, showLastTurn } from '../../src/view.js'
 import { check } from '../utils/checks.js'
-import { commitAll, createRepo, outputFile } from '../utils/fixtures.js'
-import { nextSecond, readManifest, runTurn } from '../utils/turn.js'
+import { commitAll, createRepo } from '../utils/fixtures.js'
+import { nextSecond, runTurn } from '../utils/turn.js'
 import * as vscode from '../utils/vscode-stub.js'
 import assert from 'assert'
-import { mkdirSync, realpathSync, renameSync, unlinkSync } from 'fs'
+import { mkdirSync, renameSync } from 'fs'
 import path from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -47,7 +50,7 @@ check('A, M and D become the right pair of sides, with no rename inferred', asyn
   await runTurn(repo, 'chat', [repo], () => {
     outputFile(path.join(repo, 'keep.txt'), 'two\n')
     outputFile(path.join(repo, 'added.txt'), 'new\n')
-    unlinkSync(path.join(repo, 'gone.txt'))
+    removeFile(path.join(repo, 'gone.txt'))
   })
 
   const changesCall = await render([repo])
@@ -116,7 +119,7 @@ check('a before-image resolves with no render to prime it, as after a restart', 
   vscode.reset([repo])
   registerBeforeImageProvider()
 
-  const { ts, files } = readManifest(repo)
+  const { ts, files } = readManifest(getProjectKey(repo))
   const { beforePath } = files[0]
 
   const beforeUri = getBeforeUri(beforePath, ts)
@@ -160,7 +163,7 @@ check('a move renders with its sides on different paths, so a rename is inferred
     renameSync(path.join(repo, 'old', 'f.txt'), path.join(repo, 'new', 'f.txt'))
   })
 
-  const root = realpathSync(repo)
+  const root = getRealPath(repo)
   const changesCall = await render([repo])
   const [fileUri, original, modified] = getEntry(changesCall, 'f.txt')
   const renameRule = 'the editor infers the rename from the two sides naming different paths'

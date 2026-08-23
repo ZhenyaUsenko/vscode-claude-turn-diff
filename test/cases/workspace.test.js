@@ -1,12 +1,14 @@
+import { readManifest } from '../../src/store/manifest.js'
 import { getManifestFile, getProjectKey } from '../../src/store/paths.js'
 import { handleTurn } from '../../src/turn/index.js'
+import { outputFile } from '../../src/utils/files.js'
 import { check } from '../utils/checks.js'
-import { commitAll, createRepo, outputFile } from '../utils/fixtures.js'
+import { commitAll, createRepo } from '../utils/fixtures.js'
 import { HOME } from '../utils/home.js'
-import { readManifest, readStatuses, registerChat, runTurn } from '../utils/turn.js'
+import { readStatuses, registerChat, runTurn } from '../utils/turn.js'
 import * as vscode from '../utils/vscode-stub.js'
 import assert from 'assert'
-import { existsSync, writeFileSync } from 'fs'
+import { existsSync } from 'fs'
 import path from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -39,7 +41,7 @@ check('a turn spanning two repositories produces one manifest', async () => {
     outputFile(path.join(repoB, 'f.txt'), 'three\n')
   })
 
-  assert.strictEqual(readManifest(repoA).files.length, 2, 'both repositories in one manifest')
+  assert.strictEqual(readManifest(getProjectKey(repoA)).files.length, 2, 'both repositories in one manifest')
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -66,10 +68,10 @@ check('a binary file outside every repository is skipped, not counted', async ()
   const repo = seedRepo()
   const outsideFile = path.join(HOME, 'outside', 'pic.png')
 
-  writeFileSync(outsideFile, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 1, 2, 3]))
+  outputFile(outsideFile, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 1, 2, 3]))
 
   const mutate = () => {
-    writeFileSync(outsideFile, Buffer.from([0x89, 0x50, 0x4e, 0x47, 9, 9, 9, 9]))
+    outputFile(outsideFile, Buffer.from([0x89, 0x50, 0x4e, 0x47, 9, 9, 9, 9]))
     outputFile(path.join(repo, 'f.txt'), 'two\n')
   }
 
@@ -141,6 +143,6 @@ check('two projects do not overwrite each other', async () => {
   const reason = 'project A\'s before-image survived project B\'s turn'
 
   assert.notStrictEqual(manifestFileA, manifestFileB)
-  assert.ok(existsSync(readManifest(repoA).files[0].beforeImage), reason)
-  assert.ok(existsSync(readManifest(repoB).files[0].beforeImage))
+  assert.ok(existsSync(readManifest(getProjectKey(repoA)).files[0].beforeImage), reason)
+  assert.ok(existsSync(readManifest(getProjectKey(repoB)).files[0].beforeImage))
 })

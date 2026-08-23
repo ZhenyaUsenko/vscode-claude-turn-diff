@@ -1,9 +1,11 @@
+import { readManifest } from '../../src/store/manifest.js'
 import { getChatDir, getManifestFile, getServerFile, getProjectKey } from '../../src/store/paths.js'
+import { listDirNames, outputFile, readFile } from '../../src/utils/files.js'
 import { check } from '../utils/checks.js'
-import { commitAll, createRepo, outputFile } from '../utils/fixtures.js'
-import { forgetChat, nextSecond, readManifest, runTurn } from '../utils/turn.js'
+import { commitAll, createRepo } from '../utils/fixtures.js'
+import { forgetChat, nextSecond, runTurn } from '../utils/turn.js'
 import assert from 'assert'
-import { existsSync, readdirSync, readFileSync } from 'fs'
+import { existsSync } from 'fs'
 import path from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -16,13 +18,13 @@ check('a later chat supersedes an earlier one in the same project', async () => 
 
   await runTurn(repo, 'first', [repo], () => outputFile(path.join(repo, 'f.txt'), 'two\n'))
 
-  const supersededImage = readManifest(repo).files[0].beforeImage
+  const supersededImage = readManifest(getProjectKey(repo)).files[0].beforeImage
 
   await nextSecond()
   await runTurn(repo, 'second', [repo], () => outputFile(path.join(repo, 'f.txt'), 'three\n'))
 
   assert.ok(!existsSync(supersededImage), 'the first chat\'s before-image was reclaimed')
-  assert.ok(existsSync(readManifest(repo).files[0].beforeImage), 'the winning manifest still resolves')
+  assert.ok(existsSync(readManifest(getProjectKey(repo)).files[0].beforeImage), 'the winning manifest still resolves')
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -36,7 +38,7 @@ check('a chat deleted in Claude Code has its whole directory reclaimed', async (
   await runTurn(repo, 'ghost', [repo], () => outputFile(path.join(repo, 'f.txt'), 'two\n'))
 
   const ghostDir = getChatDir(getProjectKey(repo), 'ghost')
-  const beforeImageDirs = readdirSync(ghostDir).filter((name) => name.startsWith('before-'))
+  const beforeImageDirs = listDirNames(ghostDir).filter((name) => name.startsWith('before-'))
 
   assert.strictEqual(beforeImageDirs.length, 1, 'the finished turn left its before-images behind')
 
@@ -74,10 +76,10 @@ check('a turn that changes nothing leaves the previous manifest alone', async ()
 
   await runTurn(repo, 'chat', [repo], () => outputFile(path.join(repo, 'f.txt'), 'two\n'))
 
-  const publishedManifest = readFileSync(manifestFile, 'utf8')
+  const publishedManifest = readFile(manifestFile, 'utf8')
 
   await nextSecond()
   await runTurn(repo, 'chat', [repo], () => {})
 
-  assert.strictEqual(readFileSync(manifestFile, 'utf8'), publishedManifest)
+  assert.strictEqual(readFile(manifestFile, 'utf8'), publishedManifest)
 })

@@ -1,10 +1,12 @@
+import { readManifest } from '../../src/store/manifest.js'
 import { getProjectKey } from '../../src/store/paths.js'
 import { handleTurn } from '../../src/turn/index.js'
+import { getRealPath, outputFile, readFile, removeFile } from '../../src/utils/files.js'
 import { check } from '../utils/checks.js'
-import { commitAll, createRepo, outputFile } from '../utils/fixtures.js'
-import { nextSecond, readManifest, readStatuses, registerChat, runTurn } from '../utils/turn.js'
+import { commitAll, createRepo } from '../utils/fixtures.js'
+import { nextSecond, readStatuses, registerChat, runTurn } from '../utils/turn.js'
 import assert from 'assert'
-import { mkdirSync, readFileSync, realpathSync, renameSync, unlinkSync, writeFileSync } from 'fs'
+import { mkdirSync, renameSync } from 'fs'
 import path from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -19,11 +21,11 @@ check('reports A, M and D with correct before-images', async () => {
   await runTurn(repo, 'chat', [repo], () => {
     outputFile(path.join(repo, 'keep.txt'), 'two\n')
     outputFile(path.join(repo, 'added.txt'), 'new\n')
-    unlinkSync(path.join(repo, 'gone.txt'))
+    removeFile(path.join(repo, 'gone.txt'))
   })
 
-  const modifiedEntry = readManifest(repo).files.find((entry) => entry.beforePath.endsWith('keep.txt'))
-  const beforeContents = readFileSync(modifiedEntry.beforeImage, 'utf8')
+  const modifiedEntry = readManifest(getProjectKey(repo)).files.find((entry) => entry.beforePath.endsWith('keep.txt'))
+  const beforeContents = readFile(modifiedEntry.beforeImage, 'utf8')
 
   assert.deepStrictEqual(readStatuses(repo), ['A added.txt', 'D gone.txt', 'M keep.txt'])
   assert.strictEqual(beforeContents, 'one\n', 'the before-image holds the pre-turn content')
@@ -51,12 +53,12 @@ check('a file changed and changed back is not reported', async () => {
 check('binary files are skipped', async () => {
   const repo = createRepo()
 
-  writeFileSync(path.join(repo, 'pic.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 1, 2, 3]))
+  outputFile(path.join(repo, 'pic.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 1, 2, 3]))
   outputFile(path.join(repo, 'notes.txt'), 'x\n')
   commitAll(repo)
 
   await runTurn(repo, 'chat', [repo], () => {
-    writeFileSync(path.join(repo, 'pic.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47, 9, 9, 9, 9]))
+    outputFile(path.join(repo, 'pic.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47, 9, 9, 9, 9]))
     outputFile(path.join(repo, 'notes.txt'), 'y\n')
   })
 
@@ -72,10 +74,10 @@ check('untracked files over the size cap are excluded from both snapshots', asyn
 
   outputFile(path.join(repo, 'seed.txt'), 'x\n')
   commitAll(repo)
-  writeFileSync(path.join(repo, 'big.bin'), Buffer.alloc(2 * 1024 * 1024, 7))
+  outputFile(path.join(repo, 'big.bin'), Buffer.alloc(2 * 1024 * 1024, 7))
 
   await runTurn(repo, 'chat', [repo], () => {
-    writeFileSync(path.join(repo, 'big.bin'), Buffer.alloc(2 * 1024 * 1024, 8))
+    outputFile(path.join(repo, 'big.bin'), Buffer.alloc(2 * 1024 * 1024, 8))
     outputFile(path.join(repo, 'seed.txt'), 'y\n')
   })
 
@@ -119,9 +121,9 @@ check('a move is one entry naming both paths, not an addition', async () => {
     outputFile(path.join(repo, 'new', 'edited.txt'), 'one\ntwo CHANGED\nthree\nfour\n')
   })
 
-  const root = realpathSync(repo)
+  const root = getRealPath(repo)
 
-  const moves = readManifest(repo).files.map((entry) => {
+  const moves = readManifest(getProjectKey(repo)).files.map((entry) => {
     return `${entry.status} ${path.relative(root, entry.beforePath)} -> ${path.relative(root, entry.afterPath)}`
   })
 
@@ -146,8 +148,8 @@ check('a move keeps what the file held at its old path as the before-image', asy
     outputFile(path.join(repo, 'new', 'f.txt'), 'one\ntwo CHANGED\nthree\nfour\n')
   })
 
-  const { beforeImage } = readManifest(repo).files[0]
+  const { beforeImage } = readManifest(getProjectKey(repo)).files[0]
   const reason = 'a moved file diffs against its old contents, which is what makes the edit visible'
 
-  assert.strictEqual(readFileSync(beforeImage, 'utf8'), 'one\ntwo\nthree\nfour\n', reason)
+  assert.strictEqual(readFile(beforeImage, 'utf8'), 'one\ntwo\nthree\nfour\n', reason)
 })

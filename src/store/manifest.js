@@ -1,5 +1,6 @@
+import { readFile } from '../utils/files.js'
 import { getManifestFile } from './paths.js'
-import { readFileSync, renameSync, writeFileSync } from 'fs'
+import { renameSync, writeFileSync } from 'fs'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -14,5 +15,7 @@ export const publishManifest = (project, stamp, entries) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const readManifest = (project) => {
-  try { return JSON.parse(readFileSync(getManifestFile(project), 'utf8')) } catch { return null }
+  const manifestBody = readFile(getManifestFile(project), 'utf8')
+
+  return manifestBody ? JSON.parse(manifestBody) : undefined
 }

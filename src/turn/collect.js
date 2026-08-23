@@ -1,7 +1,6 @@
 import { getBlobsDir, getReposFile, getTouchesFile } from '../store/paths.js'
-import { readLines } from '../utils/files.js'
-import { git } from '../utils/git.js'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
+import { outputFile, readFile, readLines } from '../utils/files.js'
+import { listChanges, readBlobs, snapshotTree } from '../utils/git.js'
 import path from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -18,7 +17,7 @@ const isBinary = (contents) => {
 
 const addEntry = (collector, beforePath, afterPath, beforeContents) => {
   const previousContents = beforeContents ?? Buffer.alloc(0)
-  const currentContents = existsSync(afterPath) ? readFileSync(afterPath) : null
+  const currentContents = readFile(afterPath)
 
   const unchanged = currentContents && previousContents.equals(currentContents)
 
@@ -28,8 +27,7 @@ const addEntry = (collector, beforePath, afterPath, beforeContents) => {
   const beforeImage = path.join(collector.beforeDir, beforePath)
   const status = beforeContents == null ? 'A' : currentContents ? 'M' : 'D'
 
-  mkdirSync(path.dirname(beforeImage), { recursive: true })
-  writeFileSync(beforeImage, previousContents)
+  outputFile(beforeImage, previousContents)
 
   collector.entries.push({ beforeImage, beforePath, afterPath, status })
 }
@@ -40,13 +38,13 @@ const collectRepositoryChanges = async (chatDir, collector) => {
   for (const line of readLines(getReposFile(chatDir))) {
     const [repository, gitDir, treeBefore] = line.split('\t')
 
-    const treeAfter = await git.snapshotTree(repository, gitDir, chatDir)
+    const treeAfter = await snapshotTree(repository, gitDir, chatDir)
 
     if (!treeAfter || treeAfter === treeBefore) continue
 
-    const changes = await git.listChanges(repository, treeBefore, treeAfter)
+    const changes = await listChanges(repository, treeBefore, treeAfter)
 
-    const blobs = await git.readBlobs(repository, treeBefore, changes.map((change) => change.beforePath))
+    const blobs = await readBlobs(repository, treeBefore, changes.map((change) => change.beforePath))
 
     if (!blobs) continue
 
@@ -63,7 +61,7 @@ const collectOutsideChanges = (chatDir, collector) => {
     const [absolutePath, existedBefore] = line.split('\t')
 
     const blobFile = path.join(getBlobsDir(chatDir), absolutePath)
-    const contents = existedBefore === '1' ? readFileSync(blobFile) : null
+    const contents = existedBefore === '1' ? readFile(blobFile) : undefined
 
     addEntry(collector, absolutePath, absolutePath, contents)
   }

@@ -1,7 +1,7 @@
 import { INSTALLED_HOOK } from '../store/paths.js'
+import { outputFile, readFile } from '../utils/files.js'
 import { applyHookSpec, hooksMatchSpec, readSettings, stripOurHooks, writeSettings } from './settings.js'
 import { HOOK_SPEC, DECLINED_KEY } from './spec.js'
-import { mkdirSync, readFileSync, writeFileSync } from 'fs'
 import path from 'path'
 import * as vscode from 'vscode'
 
@@ -45,17 +45,11 @@ const showVscodeError = (...args) => vscode.window.showErrorMessage(...args)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const installHookScript = (context) => {
-  let installedScript
+  const bundledScript = readFile(path.join(context.extensionPath, 'hooks', 'turn-diff.sh'))
 
-  try { installedScript = readFileSync(INSTALLED_HOOK) } catch {}
+  if (readFile(INSTALLED_HOOK)?.equals(bundledScript)) return
 
-  const bundledScript = readFileSync(path.join(context.extensionPath, 'hooks', 'turn-diff.sh'))
-
-  if (installedScript?.equals(bundledScript)) return
-
-  mkdirSync(path.dirname(INSTALLED_HOOK), { recursive: true })
-
-  writeFileSync(INSTALLED_HOOK, bundledScript, { mode: 0o755 })
+  outputFile(INSTALLED_HOOK, bundledScript, { mode: 0o755 })
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

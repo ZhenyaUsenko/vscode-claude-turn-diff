@@ -1,6 +1,6 @@
 import { HOME } from './home.js'
 import { execFileSync } from 'child_process'
-import { mkdirSync, writeFileSync } from 'fs'
+import { mkdirSync } from 'fs'
 import path from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -26,11 +26,4 @@ export const createRepo = () => {
 export const commitAll = (dir) => {
   execFileSync('git', ['-C', dir, 'add', '-A'], { stdio: 'ignore' })
   execFileSync('git', ['-C', dir, 'commit', '-qm', 'fixture'], { stdio: 'ignore' })
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export const outputFile = (file, contents) => {
-  mkdirSync(path.dirname(file), { recursive: true })
-  writeFileSync(file, contents)
 }

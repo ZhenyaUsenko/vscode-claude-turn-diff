@@ -1,12 +1,12 @@
 import { getBeforeStamp, getChatDir, getChatsDir, getTranscriptFile, isBeforeDirName } from '../store/paths.js'
-import { removeRecursive, listDirectories } from '../utils/files.js'
+import { removeRecursive, listDirNames } from '../utils/files.js'
 import { existsSync } from 'fs'
 import path from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const dropOwnSupersededTurns = (ownChatDir, currentBeforeDir) => {
-  for (const dirName of listDirectories(ownChatDir)) {
+  for (const dirName of listDirNames(ownChatDir)) {
     if (!isBeforeDirName(dirName)) continue
 
     const candidateDir = path.join(ownChatDir, dirName)
@@ -18,7 +18,7 @@ const dropOwnSupersededTurns = (ownChatDir, currentBeforeDir) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const dropSiblingSupersededTurns = (siblingDir, stamp) => {
-  for (const dirName of listDirectories(siblingDir)) {
+  for (const dirName of listDirNames(siblingDir)) {
     if (!isBeforeDirName(dirName)) continue
 
     const dirStamp = getBeforeStamp(dirName)
@@ -36,7 +36,7 @@ export const purgeSupersededTurns = ({ project, sessionId, stamp, currentBeforeD
 
   dropOwnSupersededTurns(ownChatDir, currentBeforeDir)
 
-  for (const siblingSessionId of listDirectories(chatsDir)) {
+  for (const siblingSessionId of listDirNames(chatsDir)) {
     const siblingDir = path.join(chatsDir, siblingSessionId)
 
     if (siblingDir === ownChatDir) continue

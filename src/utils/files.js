@@ -1,5 +1,42 @@
-import { readdirSync, readFileSync, realpathSync, rmSync, statSync } from 'fs'
+import { mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'fs'
 import path from 'path'
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const readFile = (file, encoding) => {
+  try { return readFileSync(file, encoding) } catch { return undefined }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const getFileSize = (file) => {
+  try { return statSync(file).size } catch { return undefined }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const getRealPath = (target) => {
+  try { return realpathSync(target) } catch { return undefined }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const listEntries = (dir) => {
+  try { return readdirSync(dir, { withFileTypes: true }) } catch { return [] }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const outputFile = (file, contents, options) => {
+  mkdirSync(path.dirname(file), { recursive: true })
+  writeFileSync(file, contents, options)
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const removeFile = (file) => {
+  rmSync(file, { force: true })
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -16,47 +53,31 @@ export const isUnder = (child, parent) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const readLines = (file) => {
-  try {
-    return readFileSync(file, 'utf8').split('\n').filter(Boolean)
-  } catch {
-    return []
-  }
+  return readFile(file, 'utf8')?.split('\n').filter(Boolean) ?? []
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const listDirectories = (parentDir) => {
-  try {
-    const entries = readdirSync(parentDir, { withFileTypes: true })
-
-    return entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name)
-  } catch {
-    return []
-  }
+export const listDirNames = (dir) => {
+  return listEntries(dir).filter((entry) => entry.isDirectory()).map((entry) => entry.name)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const sameContents = (left, right) => {
-  try {
-    if (statSync(left).size !== statSync(right).size) return false
+  if (+getFileSize(left) !== +getFileSize(right)) return false
 
-    return readFileSync(left).equals(readFileSync(right))
-  } catch {
-    return false
-  }
+  return readFile(left).equals(readFile(right))
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const canonicalize = (target) => {
-  try {
-    return realpathSync(target)
-  } catch {
-    try {
-      return path.join(realpathSync(path.dirname(target)), path.basename(target))
-    } catch {
-      return target
-    }
-  }
+  const realPath = getRealPath(target)
+
+  if (realPath) return realPath
+
+  const realParent = getRealPath(path.dirname(target))
+
+  return realParent ? path.join(realParent, path.basename(target)) : target
 }

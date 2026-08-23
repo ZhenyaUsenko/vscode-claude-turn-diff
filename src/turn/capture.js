@@ -1,6 +1,6 @@
 import { getBlobsDir, getReposFile, getTouchesFile } from '../store/paths.js'
 import { readLines } from '../utils/files.js'
-import { git } from '../utils/git.js'
+import { listRepositories, snapshotTree } from '../utils/git.js'
 import { appendFileSync, copyFileSync, existsSync, mkdirSync, writeFileSync } from 'fs'
 import path from 'path'
 
@@ -9,8 +9,8 @@ import path from 'path'
 export const snapshotWorkspace = async (chatDir, workspaceFolders) => {
   const snapshots = []
 
-  for (const [repository, gitDir] of await git.listRepositories(workspaceFolders)) {
-    const tree = await git.snapshotTree(repository, gitDir, chatDir)
+  for (const [repository, gitDir] of await listRepositories(workspaceFolders)) {
+    const tree = await snapshotTree(repository, gitDir, chatDir)
 
     if (tree) snapshots.push([repository, gitDir, tree])
   }

@@ -1,8 +1,8 @@
 import { readManifest } from './store/manifest.js'
 import { getProjectKey } from './store/paths.js'
-import { sameContents } from './utils/files.js'
+import { getFileSize, readFile, sameContents } from './utils/files.js'
 import { getWorkspaceFolders } from './utils/workspace.js'
-import { existsSync, readFileSync, statSync } from 'fs'
+import { existsSync } from 'fs'
 import * as vscode from 'vscode'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -24,7 +24,7 @@ const getBeforeUri = (absolutePath, stamp) => {
 const readCurrentManifest = () => {
   const workspaceFolders = getWorkspaceFolders()
 
-  if (!workspaceFolders.length) return null
+  if (!workspaceFolders.length) return
 
   return readManifest(getProjectKey(workspaceFolders[0]))
 }
@@ -85,7 +85,11 @@ const readBeforeImage = (uri, params) => {
     for (const { beforePath, beforeImage } of manifest.files) {
       if (beforePath !== uri.fsPath) continue
 
-      try { return params?.sizeOnly ? statSync(beforeImage).size : readFileSync(beforeImage) } catch { break }
+      const image = params?.sizeOnly ? getFileSize(beforeImage) : readFile(beforeImage)
+
+      if (image == null) break
+
+      return image
     }
   }
 

@@ -1,8 +1,9 @@
 import { getProjectKey, getServerDir, getServerFile } from './store/paths.js'
 import { handleTurn } from './turn/index.js'
+import { outputFile, listEntries, removeFile } from './utils/files.js'
 import { getWorkspaceFolders } from './utils/workspace.js'
 import crypto from 'crypto'
-import { existsSync, mkdirSync, readdirSync, unlinkSync, writeFileSync } from 'fs'
+import { existsSync } from 'fs'
 import net from 'net'
 import path from 'path'
 
@@ -26,12 +27,8 @@ const parseRequest = (buffer) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const dropDeadAdvertisements = (serverDir) => {
-  let advertNames
-
-  try { advertNames = readdirSync(serverDir) } catch { return }
-
-  for (const name of advertNames) {
-    const pid = +name.replace(/\.json$/, '')
+  for (const entry of listEntries(serverDir)) {
+    const pid = +entry.name.replace(/\.json$/, '')
 
     if (!Number.isInteger(pid) || pid === process.pid) continue
 
@@ -40,7 +37,7 @@ const dropDeadAdvertisements = (serverDir) => {
     } catch (error) {
       if (error.code !== 'ESRCH') continue
 
-      try { unlinkSync(path.join(serverDir, name)) } catch {}
+      removeFile(path.join(serverDir, entry.name))
     }
   }
 }
@@ -81,7 +78,7 @@ const serve = (socket, token, log) => {
 const withdrawAdvert = (advertState) => {
   if (!advertState.writtenAdvert) return
 
-  try { unlinkSync(advertState.writtenAdvert) } catch {}
+  removeFile(advertState.writtenAdvert)
 
   advertState.writtenAdvert = null
 }
@@ -103,11 +100,8 @@ const advertise = (advertState) => {
   withdrawAdvert(advertState)
 
   try {
-    const serverDir = getServerDir(project)
-
-    mkdirSync(serverDir, { recursive: true })
-    dropDeadAdvertisements(serverDir)
-    writeFileSync(targetAdvert, JSON.stringify({ port, token, pid: process.pid }), { mode: 0o600 })
+    dropDeadAdvertisements(getServerDir(project))
+    outputFile(targetAdvert, JSON.stringify({ port, token, pid: process.pid }), { mode: 0o600 })
 
     advertState.writtenAdvert = targetAdvert
   } catch (error) {

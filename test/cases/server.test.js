@@ -1,12 +1,13 @@
 import { startServer } from '../../src/server.js'
 import { getChatDir, getServerFile, getProjectKey } from '../../src/store/paths.js'
+import { readFile, removeFile } from '../../src/utils/files.js'
 import { check } from '../utils/checks.js'
 import { createRepo } from '../utils/fixtures.js'
 import { HOME } from '../utils/home.js'
 import * as vscode from '../utils/vscode-stub.js'
 import assert from 'assert'
 import { execFile } from 'child_process'
-import { existsSync, mkdtempSync, readFileSync, unlinkSync } from 'fs'
+import { existsSync, mkdtempSync } from 'fs'
 import os from 'os'
 import path from 'path'
 
@@ -37,7 +38,7 @@ const runHook = (mode, payload, cwd) => {
 const getAdvert = (dir) => {
   const advertFile = getServerFile(getProjectKey(dir), process.pid)
 
-  return existsSync(advertFile) ? readFileSync(advertFile, 'utf8') : null
+  return readFile(advertFile, 'utf8')
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -73,7 +74,7 @@ check('a window with no folders advertises nothing', async () => {
 
   await settle()
 
-  assert.strictEqual(getAdvert(repo), null, 'nothing to serve, nothing advertised')
+  assert.strictEqual(getAdvert(repo), undefined, 'nothing to serve, nothing advertised')
 
   vscode.state.folders = [repo]
 
@@ -85,7 +86,7 @@ check('a window with no folders advertises nothing', async () => {
 
   server.readvertise()
 
-  assert.strictEqual(getAdvert(repo), null, 'and withdraws when the last one goes')
+  assert.strictEqual(getAdvert(repo), undefined, 'and withdraws when the last one goes')
 
   server.dispose()
 })
@@ -103,7 +104,7 @@ check('an advert deleted underneath the window is written again', async () => {
 
   const advertFile = getServerFile(getProjectKey(repo), process.pid)
 
-  unlinkSync(advertFile)
+  removeFile(advertFile)
   server.readvertise()
 
   assert.ok(existsSync(advertFile), 'the window notices its advert is gone')
@@ -126,7 +127,7 @@ check('disposing removes the advert', async () => {
 
   server.dispose()
 
-  assert.strictEqual(getAdvert(repo), null)
+  assert.strictEqual(getAdvert(repo), undefined)
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

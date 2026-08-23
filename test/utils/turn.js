@@ -1,7 +1,8 @@
-import { getManifestFile, getProjectKey } from '../../src/store/paths.js'
+import { readManifest } from '../../src/store/manifest.js'
+import { getProjectKey } from '../../src/store/paths.js'
 import { handleTurn } from '../../src/turn/index.js'
+import { outputFile, removeFile } from '../../src/utils/files.js'
 import { HOME } from './home.js'
-import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'fs'
 import path from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -9,8 +10,7 @@ import path from 'path'
 export const registerChat = (dir, sessionId) => {
   const projectDir = path.join(HOME, '.claude', 'projects', getProjectKey(dir))
 
-  mkdirSync(projectDir, { recursive: true })
-  writeFileSync(path.join(projectDir, `${sessionId}.jsonl`), '')
+  outputFile(path.join(projectDir, `${sessionId}.jsonl`), '')
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -18,19 +18,15 @@ export const registerChat = (dir, sessionId) => {
 export const forgetChat = (dir, sessionId) => {
   const projectDir = path.join(HOME, '.claude', 'projects', getProjectKey(dir))
 
-  unlinkSync(path.join(projectDir, `${sessionId}.jsonl`))
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export const readManifest = (dir) => {
-  return JSON.parse(readFileSync(getManifestFile(getProjectKey(dir)), 'utf8'))
+  removeFile(path.join(projectDir, `${sessionId}.jsonl`))
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const readStatuses = (dir) => {
-  const labels = readManifest(dir).files.map((entry) => `${entry.status} ${path.basename(entry.beforePath)}`)
+  const { files } = readManifest(getProjectKey(dir))
+
+  const labels = files.map((entry) => `${entry.status} ${path.basename(entry.beforePath)}`)
 
   return labels.sort()
 }

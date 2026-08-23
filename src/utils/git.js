@@ -1,5 +1,6 @@
+import { getFileSize, removeFile } from './files.js'
 import { execFile } from 'child_process'
-import { copyFileSync, statSync, unlinkSync, utimesSync } from 'fs'
+import { copyFileSync, statSync, utimesSync } from 'fs'
 import path from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -36,7 +37,7 @@ const listPaths = async (args, env) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const listRepositories = async (folders) => {
+export const listRepositories = async (folders) => {
   const gitDirByRoot = new Map()
 
   for (const folder of folders) {
@@ -70,17 +71,13 @@ const listSmallUntrackedFiles = async (repository, env) => {
   const untrackedFiles = await listPaths(listingArgs, env)
 
   return untrackedFiles.filter((relativePath) => {
-    try {
-      return statSync(path.join(repository, relativePath)).size <= MAX_UNTRACKED_BYTES
-    } catch {
-      return false
-    }
+    return getFileSize(path.join(repository, relativePath)) <= MAX_UNTRACKED_BYTES
   })
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const snapshotTree = async (repository, gitDir, scratchDir) => {
+export const snapshotTree = async (repository, gitDir, scratchDir) => {
   const indexCopy = path.join(scratchDir, 'index.tmp')
 
   try { copyPreservingMtime(path.join(gitDir, 'index'), indexCopy) } catch { return null }
@@ -95,7 +92,7 @@ const snapshotTree = async (repository, gitDir, scratchDir) => {
 
   const tree = await runText(['-C', repository, 'write-tree'], env)
 
-  unlinkSync(indexCopy)
+  removeFile(indexCopy)
 
   return tree
 }
@@ -151,7 +148,7 @@ const splitChanges = (records) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const listChanges = async (repository, treeBefore, treeAfter) => {
+export const listChanges = async (repository, treeBefore, treeAfter) => {
   const diffArgs = ['-C', repository, 'diff', '--name-status', '-z', '-M', treeBefore, treeAfter]
 
   return splitChanges(await listPaths(diffArgs))
@@ -159,7 +156,7 @@ const listChanges = async (repository, treeBefore, treeAfter) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const readBlobs = (repository, tree, relativePaths) => {
+export const readBlobs = (repository, tree, relativePaths) => {
   return new Promise((resolve) => {
     const options = { maxBuffer: MAX_OUTPUT_BYTES, encoding: 'buffer' }
 
@@ -170,7 +167,3 @@ const readBlobs = (repository, tree, relativePaths) => {
     child.stdin.end(relativePaths.map((relativePath) => `${tree}:${relativePath}\0`).join(''))
   })
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export const git = { listChanges, listRepositories, readBlobs, snapshotTree }
