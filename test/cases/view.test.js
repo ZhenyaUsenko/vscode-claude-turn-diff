@@ -12,8 +12,8 @@ import path from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const getEntry = (changesCall, name) => {
-  return changesCall.resources.find(([fileUri]) => path.basename(fileUri.fsPath) === name)
+const getEntry = (diffData, name) => {
+  return diffData.resources.find(([fileUri]) => path.basename(fileUri.fsPath) === name)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -53,16 +53,16 @@ check('A, M and D become the right pair of sides, with no rename inferred', asyn
     removeFile(path.join(repo, 'gone.txt'))
   })
 
-  const changesCall = await render([repo])
-  const [file, original, modified] = getEntry(changesCall, 'keep.txt')
+  const diffData = await render([repo])
+  const [file, original, modified] = getEntry(diffData, 'keep.txt')
   const renameRule = 'the editor infers a rename from differing paths, so only the scheme may differ'
 
-  assert.strictEqual(changesCall.command, 'vscode.changes')
+  assert.strictEqual(diffData.command, 'vscode.changes')
   assert.strictEqual(original.scheme, 'claude-before', 'M reads from the before-image')
   assert.strictEqual(modified.fsPath, file.fsPath, 'M writes to the real file')
   assert.strictEqual(original.path, modified.path, renameRule)
-  assert.strictEqual(getEntry(changesCall, 'added.txt')[1], undefined, 'A has no left side')
-  assert.strictEqual(getEntry(changesCall, 'gone.txt')[2], undefined, 'D has no right side')
+  assert.strictEqual(getEntry(diffData, 'added.txt')[1], undefined, 'A has no left side')
+  assert.strictEqual(getEntry(diffData, 'gone.txt')[2], undefined, 'D has no right side')
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -144,8 +144,8 @@ check('a file reverted by hand drops out of the diff', async () => {
 
   outputFile(path.join(repo, 'f.txt'), 'one\n')
 
-  const changesCall = await render([repo])
-  const renderedNames = changesCall.resources.map(([fileUri]) => path.basename(fileUri.fsPath))
+  const diffData = await render([repo])
+  const renderedNames = diffData.resources.map(([fileUri]) => path.basename(fileUri.fsPath))
 
   assert.deepStrictEqual(renderedNames, ['g.txt'])
 })
@@ -164,11 +164,11 @@ check('a move renders with its sides on different paths, so a rename is inferred
   })
 
   const root = getRealPath(repo)
-  const changesCall = await render([repo])
-  const [fileUri, original, modified] = getEntry(changesCall, 'f.txt')
+  const diffData = await render([repo])
+  const [fileUri, original, modified] = getEntry(diffData, 'f.txt')
   const renameRule = 'the editor infers the rename from the two sides naming different paths'
 
-  assert.strictEqual(changesCall.resources.length, 1, 'a move is one entry, not a delete beside an add')
+  assert.strictEqual(diffData.resources.length, 1, 'a move is one entry, not a delete beside an add')
   assert.strictEqual(fileUri.fsPath, path.join(root, 'new', 'f.txt'), 'the entry is named by where it landed')
   assert.strictEqual(original.path, path.join(root, 'old', 'f.txt'), renameRule)
   assert.strictEqual(modified.path, path.join(root, 'new', 'f.txt'), renameRule)

@@ -1,4 +1,4 @@
-import { getBlobsDir, getReposFile, getTouchesFile } from '../store/paths.js'
+import { getBlobsDir, getReposFile, getTouchListFile } from '../store/paths.js'
 import { readLines } from '../utils/files.js'
 import { listRepositories, snapshotTree } from '../utils/git.js'
 import { appendFileSync, copyFileSync, existsSync, mkdirSync, writeFileSync } from 'fs'
@@ -25,8 +25,8 @@ export const snapshotWorkspace = async (chatDir, workspaceFolders) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const captureBeforeImage = (chatDir, file) => {
-  const touchesFile = getTouchesFile(chatDir)
-  const alreadySeenFiles = readLines(touchesFile).map((line) => line.split('\t')[0])
+  const touchListFile = getTouchListFile(chatDir)
+  const alreadySeenFiles = readLines(touchListFile)
 
   if (alreadySeenFiles.includes(file)) return
 
@@ -35,8 +35,7 @@ export const captureBeforeImage = (chatDir, file) => {
 
     mkdirSync(path.dirname(blobPath), { recursive: true })
     copyFileSync(file, blobPath)
-    appendFileSync(touchesFile, `${file}\t1\n`)
-  } else {
-    appendFileSync(touchesFile, `${file}\t0\n`)
   }
+
+  appendFileSync(touchListFile, `${file}\n`)
 }

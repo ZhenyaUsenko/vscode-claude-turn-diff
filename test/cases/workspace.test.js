@@ -64,6 +64,24 @@ check('a file outside every repository is captured', async () => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+check('a file created outside every repository is reported as an addition', async () => {
+  const repo = seedRepo()
+  const outsideFile = path.join(HOME, 'created', 'notes.md')
+
+  const mutate = () => {
+    outputFile(outsideFile, 'new\n')
+    outputFile(path.join(repo, 'f.txt'), 'two\n')
+  }
+
+  await runTurn(repo, 'chat', [repo], mutate, { touchedFiles: [outsideFile] })
+
+  const reason = 'the file did not exist when the turn armed, so it has no before-image'
+
+  assert.deepStrictEqual(readStatuses(repo), ['A notes.md', 'M f.txt'], reason)
+})
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 check('a binary file outside every repository is skipped, not counted', async () => {
   const repo = seedRepo()
   const outsideFile = path.join(HOME, 'outside', 'pic.png')

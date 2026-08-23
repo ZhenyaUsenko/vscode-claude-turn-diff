@@ -1,4 +1,4 @@
-import { getBlobsDir, getReposFile, getTouchesFile } from '../store/paths.js'
+import { getBlobsDir, getReposFile, getTouchListFile } from '../store/paths.js'
 import { outputFile, readFile, readLines } from '../utils/files.js'
 import { listChanges, readBlobs, snapshotTree } from '../utils/git.js'
 import path from 'path'
@@ -57,11 +57,8 @@ const collectRepositoryChanges = async (chatDir, collector) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const collectOutsideChanges = (chatDir, collector) => {
-  for (const line of readLines(getTouchesFile(chatDir))) {
-    const [absolutePath, existedBefore] = line.split('\t')
-
-    const blobFile = path.join(getBlobsDir(chatDir), absolutePath)
-    const contents = existedBefore === '1' ? readFile(blobFile) : undefined
+  for (const absolutePath of readLines(getTouchListFile(chatDir))) {
+    const contents = readFile(path.join(getBlobsDir(chatDir), absolutePath))
 
     addEntry(collector, absolutePath, absolutePath, contents)
   }

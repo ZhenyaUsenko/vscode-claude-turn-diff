@@ -39,11 +39,11 @@ export const getTranscriptFile = (project, sessionId) => path.join(TRANSCRIPTS_R
 
 export const getReposFile = (chatDir) => path.join(chatDir, 'repos.tsv')
 
-export const getTouchesFile = (chatDir) => path.join(chatDir, 'touches.tsv')
+export const getTouchListFile = (chatDir) => path.join(chatDir, 'touchList.txt')
 
 export const getBlobsDir = (chatDir) => path.join(chatDir, 'blobs')
 
-export const getArmedTurnEntries = (chatDir) => [getReposFile(chatDir), getTouchesFile(chatDir), getBlobsDir(chatDir)]
+export const getArmedTurnEntries = (chatDir) => [getReposFile(chatDir), getTouchListFile(chatDir), getBlobsDir(chatDir)]
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
