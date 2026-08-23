@@ -7,9 +7,9 @@ import { commitAll, createRepo } from '../utils/fixtures.js'
 import { HOME } from '../utils/home.js'
 import { readStatuses, registerChat, runTurn } from '../utils/turn.js'
 import { resetStub, stubState } from '../utils/vscode-stub.js'
-import assert from 'assert'
-import { existsSync } from 'fs'
-import { dirname, join } from 'path'
+import assert from 'node:assert'
+import { existsSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -5,11 +5,11 @@ import { check } from '../utils/checks.js'
 import { createRepo } from '../utils/fixtures.js'
 import { HOME } from '../utils/home.js'
 import { resetStub, stubState } from '../utils/vscode-stub.js'
-import assert from 'assert'
-import { execFile } from 'child_process'
-import { existsSync, mkdtempSync } from 'fs'
-import { tmpdir } from 'os'
-import { join } from 'path'
+import assert from 'node:assert'
+import { execFile } from 'node:child_process'
+import { existsSync, mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

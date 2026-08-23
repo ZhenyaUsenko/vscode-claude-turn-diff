@@ -4,7 +4,7 @@ import { getProjectKey, getProjectDir } from './store/paths.js'
 import { disposeAllWatchers } from './utils/watch.js'
 import { getWorkspaceFolders } from './utils/workspace.js'
 import { forgetLastRenderedTurn, markCurrentTurnAsSeen, registerBeforeImageProvider, showLastTurn } from './view.js'
-import { mkdirSync, watch } from 'fs'
+import { mkdirSync, watch } from 'node:fs'
 import { commands, window, workspace } from 'vscode'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

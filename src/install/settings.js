@@ -1,7 +1,7 @@
 import { SETTINGS_FILE } from '../store/paths.js'
 import { outputFile, readFile } from '../utils/files.js'
 import { HOOK_SPEC, HOOK_MARKER } from './spec.js'
-import { copyFileSync, existsSync } from 'fs'
+import { copyFileSync, existsSync } from 'node:fs'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

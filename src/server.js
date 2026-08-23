@@ -2,10 +2,10 @@ import { getProjectKey, getServerDir, getServerFile } from './store/paths.js'
 import { handleTurn } from './turn/index.js'
 import { outputFile, listEntries, removeFile } from './utils/files.js'
 import { getWorkspaceFolders } from './utils/workspace.js'
-import { randomBytes } from 'crypto'
-import { existsSync } from 'fs'
-import { createServer } from 'net'
-import { join } from 'path'
+import { randomBytes } from 'node:crypto'
+import { existsSync } from 'node:fs'
+import { createServer } from 'node:net'
+import { join } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -1,7 +1,7 @@
-import { mkdtempSync } from 'fs'
-import { register } from 'module'
-import { tmpdir } from 'os'
-import { join } from 'path'
+import { mkdtempSync } from 'node:fs'
+import { register } from 'node:module'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 process.env.HOME = mkdtempSync(join(tmpdir(), 'turn-diff-test-'))
 

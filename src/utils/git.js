@@ -1,7 +1,7 @@
 import { getFileSize, removeFile } from './files.js'
-import { execFile } from 'child_process'
-import { copyFileSync, statSync, utimesSync } from 'fs'
-import { join } from 'path'
+import { execFile } from 'node:child_process'
+import { copyFileSync, statSync, utimesSync } from 'node:fs'
+import { join } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

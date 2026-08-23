@@ -3,7 +3,7 @@ import { getProjectKey } from '../../src/store/paths.js'
 import { handleTurn } from '../../src/turn/index.js'
 import { outputFile, removeFile } from '../../src/utils/files.js'
 import { HOME } from './home.js'
-import { basename, join } from 'path'
+import { basename, join } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

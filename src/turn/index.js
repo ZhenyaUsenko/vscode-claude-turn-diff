@@ -5,8 +5,8 @@ import { disposeWatchers, watchFilesOutsideWorkspace } from '../utils/watch.js'
 import { captureBeforeImage, snapshotWorkspace } from './capture.js'
 import { collectChanges } from './collect.js'
 import { purgeSupersededTurns } from './purge.js'
-import { existsSync, mkdirSync } from 'fs'
-import { isAbsolute } from 'path'
+import { existsSync, mkdirSync } from 'node:fs'
+import { isAbsolute } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

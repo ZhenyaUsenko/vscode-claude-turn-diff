@@ -1,5 +1,5 @@
-import { mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'fs'
-import { basename, dirname, join, sep as PATH_SEPARATOR } from 'path'
+import { mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { basename, dirname, join, sep as PATH_SEPARATOR } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

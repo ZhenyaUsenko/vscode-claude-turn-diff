@@ -1,8 +1,8 @@
 import { getBlobsDir, getReposFile, getTouchListFile } from '../store/paths.js'
 import { readLines } from '../utils/files.js'
 import { listRepositories, snapshotTree } from '../utils/git.js'
-import { appendFileSync, copyFileSync, existsSync, mkdirSync, writeFileSync } from 'fs'
-import { dirname, join } from 'path'
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

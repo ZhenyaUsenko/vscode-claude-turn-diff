@@ -1,4 +1,4 @@
-import { tmpdir } from 'os'
+import { tmpdir } from 'node:os'
 
 export const HOME = process.env.HOME
 

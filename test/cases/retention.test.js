@@ -4,9 +4,9 @@ import { listDirNames, outputFile, readFile } from '../../src/utils/files.js'
 import { check } from '../utils/checks.js'
 import { commitAll, createRepo } from '../utils/fixtures.js'
 import { forgetChat, nextSecond, runTurn } from '../utils/turn.js'
-import assert from 'assert'
-import { existsSync } from 'fs'
-import { join } from 'path'
+import assert from 'node:assert'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

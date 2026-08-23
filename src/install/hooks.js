@@ -2,7 +2,7 @@ import { INSTALLED_HOOK } from '../store/paths.js'
 import { outputFile, readFile } from '../utils/files.js'
 import { applyHookSpec, hooksMatchSpec, readSettings, stripOurHooks, writeSettings } from './settings.js'
 import { HOOK_SPEC, DECLINED_KEY } from './spec.js'
-import { join } from 'path'
+import { join } from 'node:path'
 import { commands, window } from 'vscode'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

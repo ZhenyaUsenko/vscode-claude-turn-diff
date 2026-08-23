@@ -2,7 +2,7 @@ import { readManifest } from './store/manifest.js'
 import { getProjectKey } from './store/paths.js'
 import { getFileSize, readFile, sameContents } from './utils/files.js'
 import { getWorkspaceFolders } from './utils/workspace.js'
-import { existsSync } from 'fs'
+import { existsSync } from 'node:fs'
 import { commands, Disposable, FileSystemError, FileType, Uri, workspace } from 'vscode'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

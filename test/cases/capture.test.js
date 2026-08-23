@@ -5,9 +5,9 @@ import { getRealPath, outputFile, readFile, removeFile } from '../../src/utils/f
 import { check } from '../utils/checks.js'
 import { commitAll, createRepo } from '../utils/fixtures.js'
 import { nextSecond, readStatuses, registerChat, runTurn } from '../utils/turn.js'
-import assert from 'assert'
-import { mkdirSync, renameSync } from 'fs'
-import { join, relative as getRelativePath } from 'path'
+import assert from 'node:assert'
+import { mkdirSync, renameSync } from 'node:fs'
+import { join, relative as getRelativePath } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -1,7 +1,7 @@
 import { getBeforeStamp, getChatDir, getChatsDir, getTranscriptFile, isBeforeDirName } from '../store/paths.js'
 import { removeRecursive, listDirNames } from '../utils/files.js'
-import { existsSync } from 'fs'
-import { join } from 'path'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

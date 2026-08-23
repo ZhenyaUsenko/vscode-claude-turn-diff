@@ -1,7 +1,7 @@
 import { getBlobsDir, getReposFile, getTouchListFile } from '../store/paths.js'
 import { outputFile, readFile, readLines } from '../utils/files.js'
 import { listChanges, readBlobs, snapshotTree } from '../utils/git.js'
-import { join } from 'path'
+import { join } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

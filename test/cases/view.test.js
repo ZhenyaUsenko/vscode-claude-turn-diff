@@ -6,9 +6,9 @@ import { check } from '../utils/checks.js'
 import { commitAll, createRepo } from '../utils/fixtures.js'
 import { nextSecond, runTurn } from '../utils/turn.js'
 import { resetStub, stubState, Uri } from '../utils/vscode-stub.js'
-import assert from 'assert'
-import { mkdirSync, renameSync } from 'fs'
-import { basename, join } from 'path'
+import assert from 'node:assert'
+import { mkdirSync, renameSync } from 'node:fs'
+import { basename, join } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

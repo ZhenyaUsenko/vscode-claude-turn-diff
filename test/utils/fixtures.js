@@ -1,7 +1,7 @@
 import { HOME } from './home.js'
-import { execFileSync } from 'child_process'
-import { mkdirSync } from 'fs'
-import { join } from 'path'
+import { execFileSync } from 'node:child_process'
+import { mkdirSync } from 'node:fs'
+import { join } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

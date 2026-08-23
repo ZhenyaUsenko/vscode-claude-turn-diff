@@ -1,6 +1,6 @@
 import { readFile } from '../utils/files.js'
 import { getManifestFile } from './paths.js'
-import { renameSync, writeFileSync } from 'fs'
+import { renameSync, writeFileSync } from 'node:fs'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

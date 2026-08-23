@@ -1,5 +1,5 @@
 import { isUnder, canonicalize } from './files.js'
-import { basename, dirname } from 'path'
+import { basename, dirname } from 'node:path'
 import { RelativePattern, Uri, workspace } from 'vscode'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
