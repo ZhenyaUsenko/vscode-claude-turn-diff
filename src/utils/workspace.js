@@ -1,3 +1,3 @@
-import * as vscode from 'vscode'
+import { workspace } from 'vscode'
 
-export const getWorkspaceFolders = () => vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath) ?? []
+export const getWorkspaceFolders = () => workspace.workspaceFolders?.map((folder) => folder.uri.fsPath) ?? []

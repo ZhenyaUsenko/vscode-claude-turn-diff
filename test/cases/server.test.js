@@ -4,11 +4,11 @@ import { readFile, removeFile } from '../../src/utils/files.js'
 import { check } from '../utils/checks.js'
 import { createRepo } from '../utils/fixtures.js'
 import { HOME } from '../utils/home.js'
-import * as vscode from '../utils/vscode-stub.js'
+import { resetStub, stubState } from '../utils/vscode-stub.js'
 import assert from 'assert'
 import { execFile } from 'child_process'
 import { existsSync, mkdtempSync } from 'fs'
-import os from 'os'
+import { tmpdir } from 'os'
 import { join } from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -46,7 +46,7 @@ const getAdvert = (dir) => {
 check('re-advertising an unchanged workspace leaves the advert in place', async () => {
   const repo = createRepo()
 
-  vscode.reset([repo])
+  resetStub([repo])
 
   const server = startServer()
 
@@ -68,7 +68,7 @@ check('re-advertising an unchanged workspace leaves the advert in place', async 
 check('a window with no folders advertises nothing', async () => {
   const repo = createRepo()
 
-  vscode.reset([])
+  resetStub([])
 
   const server = startServer()
 
@@ -76,13 +76,13 @@ check('a window with no folders advertises nothing', async () => {
 
   assert.strictEqual(getAdvert(repo), undefined, 'nothing to serve, nothing advertised')
 
-  vscode.state.folders = [repo]
+  stubState.folders = [repo]
 
   server.readvertise()
 
   assert.ok(getAdvert(repo), 'it advertises once a folder arrives')
 
-  vscode.state.folders = []
+  stubState.folders = []
 
   server.readvertise()
 
@@ -96,7 +96,7 @@ check('a window with no folders advertises nothing', async () => {
 check('an advert deleted underneath the window is written again', async () => {
   const repo = createRepo()
 
-  vscode.reset([repo])
+  resetStub([repo])
 
   const server = startServer()
 
@@ -117,7 +117,7 @@ check('an advert deleted underneath the window is written again', async () => {
 check('disposing removes the advert', async () => {
   const repo = createRepo()
 
-  vscode.reset([repo])
+  resetStub([repo])
 
   const server = startServer()
 
@@ -136,13 +136,13 @@ check('the hook keys state by the session, not by a cwd Claude has moved', async
   const repo = createRepo()
   const project = getProjectKey(repo)
 
-  vscode.reset([repo])
+  resetStub([repo])
 
   const server = startServer()
 
   await settle()
 
-  const elsewhereDir = mkdtempSync(join(os.tmpdir(), 'wandered-'))
+  const elsewhereDir = mkdtempSync(join(tmpdir(), 'wandered-'))
   const transcriptFile = join(HOME, '.claude', 'projects', project, 'drifted.jsonl')
 
   await runHook('begin', { session_id: 'drifted', transcript_path: transcriptFile }, elsewhereDir)

@@ -3,7 +3,7 @@ import { getProjectKey } from './store/paths.js'
 import { getFileSize, readFile, sameContents } from './utils/files.js'
 import { getWorkspaceFolders } from './utils/workspace.js'
 import { existsSync } from 'fs'
-import * as vscode from 'vscode'
+import { commands, Disposable, FileSystemError, FileType, Uri, workspace } from 'vscode'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -16,7 +16,7 @@ const EDITOR_TITLE = 'Last turn changes'
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const getBeforeUri = (absolutePath, stamp) => {
-  return vscode.Uri.file(absolutePath).with({ scheme: SCHEME, query: stamp })
+  return Uri.file(absolutePath).with({ scheme: SCHEME, query: stamp })
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -49,7 +49,7 @@ const getResources = (manifest) => {
   for (const { beforePath, beforeImage, afterPath, status } of manifest?.files ?? []) {
     if (!stillRenderable(beforePath, beforeImage, afterPath, status)) continue
 
-    const fileUri = vscode.Uri.file(afterPath)
+    const fileUri = Uri.file(afterPath)
 
     const original = status === 'A' ? undefined : getBeforeUri(beforePath, manifest.ts)
     const modified = status === 'D' ? undefined : fileUri
@@ -72,7 +72,7 @@ export const showLastTurn = async (params) => {
   const resources = getResources(manifest)
 
   if (resources.length || params?.force) {
-    await vscode.commands.executeCommand('vscode.changes', EDITOR_TITLE, resources)
+    await commands.executeCommand('vscode.changes', EDITOR_TITLE, resources)
   }
 }
 
@@ -93,21 +93,21 @@ const readBeforeImage = (uri, params) => {
     }
   }
 
-  throw vscode.FileSystemError.FileNotFound(uri)
+  throw FileSystemError.FileNotFound(uri)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const beforeImageProvider = {
-  onDidChangeFile: () => new vscode.Disposable(() => {}),
-  watch: () => new vscode.Disposable(() => {}),
-  stat: (uri) => ({ type: vscode.FileType.File, ctime: 0, mtime: 0, size: readBeforeImage(uri, { sizeOnly: true }) }),
+  onDidChangeFile: () => new Disposable(() => {}),
+  watch: () => new Disposable(() => {}),
+  stat: (uri) => ({ type: FileType.File, ctime: 0, mtime: 0, size: readBeforeImage(uri, { sizeOnly: true }) }),
   readFile: (uri) => readBeforeImage(uri),
-  readDirectory: () => { throw vscode.FileSystemError.FileNotADirectory() },
-  createDirectory: () => { throw vscode.FileSystemError.NoPermissions() },
-  writeFile: () => { throw vscode.FileSystemError.NoPermissions() },
-  delete: () => { throw vscode.FileSystemError.NoPermissions() },
-  rename: () => { throw vscode.FileSystemError.NoPermissions() },
+  readDirectory: () => { throw FileSystemError.FileNotADirectory() },
+  createDirectory: () => { throw FileSystemError.NoPermissions() },
+  writeFile: () => { throw FileSystemError.NoPermissions() },
+  delete: () => { throw FileSystemError.NoPermissions() },
+  rename: () => { throw FileSystemError.NoPermissions() },
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -115,7 +115,7 @@ const beforeImageProvider = {
 export const registerBeforeImageProvider = () => {
   const options = { isReadonly: true, isCaseSensitive: true }
 
-  return vscode.workspace.registerFileSystemProvider(SCHEME, beforeImageProvider, options)
+  return workspace.registerFileSystemProvider(SCHEME, beforeImageProvider, options)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -1,9 +1,17 @@
-export const state = {
+export const stubState = {
   folders: [],
   executed: [],
   watchers: [],
   provider: null,
   providerOptions: null,
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const resetStub = (folders) => {
+  stubState.folders = folders
+  stubState.executed = []
+  stubState.watchers = []
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -65,28 +73,20 @@ export class Disposable {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const reset = (folders) => {
-  state.folders = folders
-  state.executed = []
-  state.watchers = []
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 export const workspace = {
   get workspaceFolders() {
-    return state.folders.map((folder) => ({ uri: Uri.file(folder) }))
+    return stubState.folders.map((folder) => ({ uri: Uri.file(folder) }))
   },
   createFileSystemWatcher: (pattern) => {
     const watcher = { pattern, disposed: false, dispose: () => { watcher.disposed = true } }
 
-    state.watchers.push(watcher)
+    stubState.watchers.push(watcher)
 
     return watcher
   },
   registerFileSystemProvider: (scheme, provider, options) => {
-    state.provider = provider
-    state.providerOptions = options
+    stubState.provider = provider
+    stubState.providerOptions = options
 
     return { dispose: () => {} }
   },
@@ -96,6 +96,6 @@ export const workspace = {
 
 export const commands = {
   executeCommand: async (command, title, resources) => {
-    state.executed.push({ command, title, resources })
+    stubState.executed.push({ command, title, resources })
   },
 }

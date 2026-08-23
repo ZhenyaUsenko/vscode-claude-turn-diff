@@ -6,7 +6,7 @@ import { check } from '../utils/checks.js'
 import { commitAll, createRepo } from '../utils/fixtures.js'
 import { HOME } from '../utils/home.js'
 import { readStatuses, registerChat, runTurn } from '../utils/turn.js'
-import * as vscode from '../utils/vscode-stub.js'
+import { resetStub, stubState } from '../utils/vscode-stub.js'
 import assert from 'assert'
 import { existsSync } from 'fs'
 import { dirname, join } from 'path'
@@ -27,7 +27,7 @@ const seedRepo = () => {
 const getWatcher = (target) => {
   const dir = dirname(target)
 
-  return vscode.state.watchers.find((watcher) => watcher.pattern.base.fsPath === dir)
+  return stubState.watchers.find((watcher) => watcher.pattern.base.fsPath === dir)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -107,7 +107,7 @@ check('arming a file outside the workspace watches it, once', async () => {
   const outsideFile = join(HOME, 'watched', 'notes.md')
 
   outputFile(outsideFile, 'before\n')
-  vscode.reset([repo])
+  resetStub([repo])
 
   const mutate = () => {
     outputFile(join(repo, 'f.txt'), 'two\n')
@@ -118,9 +118,9 @@ check('arming a file outside the workspace watches it, once', async () => {
 
   await runTurn(repo, 'chat', [repo], mutate, { touchedFiles })
 
-  const [watcher] = vscode.state.watchers
+  const [watcher] = stubState.watchers
 
-  assert.strictEqual(vscode.state.watchers.length, 1, 'the in-workspace file needs no watcher')
+  assert.strictEqual(stubState.watchers.length, 1, 'the in-workspace file needs no watcher')
   assert.strictEqual(watcher.pattern.base.fsPath, dirname(outsideFile))
   assert.ok(watcher.disposed, 'the turn releases its watchers when it ends')
 })
@@ -135,7 +135,7 @@ check('a chat ending leaves a parallel chat mid-turn still watching', async () =
 
   outputFile(fileForA, 'before\n')
   outputFile(fileForB, 'before\n')
-  vscode.reset([repo])
+  resetStub([repo])
   registerChat(repo, 'b')
 
   await handleTurn('begin', project, { session_id: 'b', prompt: 'p' }, [repo])

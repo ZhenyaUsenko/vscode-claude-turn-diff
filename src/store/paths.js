@@ -1,11 +1,11 @@
-import os from 'os'
+import { homedir } from 'os'
 import { join } from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const BEFORE_PREFIX = 'before-'
 
-const CLAUDE_DIR = join(os.homedir(), '.claude')
+const CLAUDE_DIR = join(homedir(), '.claude')
 
 const STATE_ROOT = join(CLAUDE_DIR, 'turn-diff')
 

@@ -2,9 +2,9 @@ import { getProjectKey, getServerDir, getServerFile } from './store/paths.js'
 import { handleTurn } from './turn/index.js'
 import { outputFile, listEntries, removeFile } from './utils/files.js'
 import { getWorkspaceFolders } from './utils/workspace.js'
-import crypto from 'crypto'
+import { randomBytes } from 'crypto'
 import { existsSync } from 'fs'
-import net from 'net'
+import { createServer } from 'net'
 import { join } from 'path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -120,8 +120,8 @@ const disposeServer = (advertState) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const startServer = (log) => {
-  const token = crypto.randomBytes(24).toString('hex')
-  const server = net.createServer((socket) => serve(socket, token, log))
+  const token = randomBytes(24).toString('hex')
+  const server = createServer((socket) => serve(socket, token, log))
   const advertState = { server, token, log, writtenAdvert: null }
 
   server.on('error', (error) => log?.(`server error: ${error.message}`))

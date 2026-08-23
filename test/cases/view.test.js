@@ -5,7 +5,7 @@ import { registerBeforeImageProvider, showLastTurn } from '../../src/view.js'
 import { check } from '../utils/checks.js'
 import { commitAll, createRepo } from '../utils/fixtures.js'
 import { nextSecond, runTurn } from '../utils/turn.js'
-import * as vscode from '../utils/vscode-stub.js'
+import { resetStub, stubState, Uri } from '../utils/vscode-stub.js'
 import assert from 'assert'
 import { mkdirSync, renameSync } from 'fs'
 import { basename, join } from 'path'
@@ -19,23 +19,23 @@ const getEntry = (diffData, name) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const getBeforeUri = (absolutePath, stamp) => {
-  return vscode.Uri.file(absolutePath).with({ scheme: 'claude-before', query: stamp })
+  return Uri.file(absolutePath).with({ scheme: 'claude-before', query: stamp })
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const getBeforeText = (uri) => {
-  return vscode.state.provider.readFile(uri).toString()
+  return stubState.provider.readFile(uri).toString()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const render = async (workspaceFolders) => {
-  vscode.reset(workspaceFolders)
+  resetStub(workspaceFolders)
 
   await showLastTurn({ force: true })
 
-  return vscode.state.executed[vscode.state.executed.length - 1]
+  return stubState.executed[stubState.executed.length - 1]
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -102,8 +102,8 @@ check('the before-image provider serves that turn, and nothing it does not know'
   const unknownUriReason = 'a uri it cannot serve must throw, so the editor keeps what it has instead of blanking'
 
   assert.strictEqual(getBeforeText(original), 'before\n')
-  assert.strictEqual(vscode.state.provider.stat(original).size, 'before\n'.length, 'stat agrees with readFile')
-  assert.throws(() => getBeforeText(vscode.Uri.file('/nope')), unknownUriReason)
+  assert.strictEqual(stubState.provider.stat(original).size, 'before\n'.length, 'stat agrees with readFile')
+  assert.throws(() => getBeforeText(Uri.file('/nope')), unknownUriReason)
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -116,7 +116,7 @@ check('a before-image resolves with no render to prime it, as after a restart', 
 
   await runTurn(repo, 'chat', [repo], () => outputFile(join(repo, 'f.txt'), 'after\n'))
 
-  vscode.reset([repo])
+  resetStub([repo])
   registerBeforeImageProvider()
 
   const { ts, files } = readManifest(getProjectKey(repo))

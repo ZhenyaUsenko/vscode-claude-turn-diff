@@ -3,7 +3,7 @@ import { outputFile, readFile } from '../utils/files.js'
 import { applyHookSpec, hooksMatchSpec, readSettings, stripOurHooks, writeSettings } from './settings.js'
 import { HOOK_SPEC, DECLINED_KEY } from './spec.js'
 import { join } from 'path'
-import * as vscode from 'vscode'
+import { commands, window } from 'vscode'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -38,9 +38,9 @@ const getScriptError = (error) => (
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const showVscodeInfo = (...args) => vscode.window.showInformationMessage(...args)
+const showVscodeInfo = (...args) => window.showInformationMessage(...args)
 
-const showVscodeError = (...args) => vscode.window.showErrorMessage(...args)
+const showVscodeError = (...args) => window.showErrorMessage(...args)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -65,7 +65,7 @@ export const registerHooks = async () => {
 
   const choice = await showVscodeInfo(REGISTERED_MESSAGE, 'Reload Window')
 
-  if (choice === 'Reload Window') vscode.commands.executeCommand('workbench.action.reloadWindow')
+  if (choice === 'Reload Window') commands.executeCommand('workbench.action.reloadWindow')
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

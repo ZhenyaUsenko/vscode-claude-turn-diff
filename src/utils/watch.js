@@ -1,6 +1,6 @@
 import { isUnder, canonicalize } from './files.js'
 import { basename, dirname } from 'path'
-import * as vscode from 'vscode'
+import { RelativePattern, Uri, workspace } from 'vscode'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -30,10 +30,10 @@ export const watchFilesOutsideWorkspace = (targetFiles, workspaceFolders, sessio
     if (watchers.has(targetFile)) continue
     if (workspaceRoots.some((root) => isUnder(canonicalize(targetFile), root))) continue
 
-    const dir = vscode.Uri.file(dirname(targetFile))
-    const pattern = new vscode.RelativePattern(dir, basename(targetFile))
+    const dir = Uri.file(dirname(targetFile))
+    const pattern = new RelativePattern(dir, basename(targetFile))
 
-    watchers.set(targetFile, vscode.workspace.createFileSystemWatcher(pattern))
+    watchers.set(targetFile, workspace.createFileSystemWatcher(pattern))
   }
 }
 

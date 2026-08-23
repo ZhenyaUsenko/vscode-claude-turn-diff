@@ -5,7 +5,7 @@ import { disposeAllWatchers } from './utils/watch.js'
 import { getWorkspaceFolders } from './utils/workspace.js'
 import { forgetLastRenderedTurn, markCurrentTurnAsSeen, registerBeforeImageProvider, showLastTurn } from './view.js'
 import { mkdirSync, watch } from 'fs'
-import * as vscode from 'vscode'
+import { commands, window, workspace } from 'vscode'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -64,7 +64,7 @@ const createManifestWatch = (logError) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const activate = (context) => {
-  const outputChannel = vscode.window.createOutputChannel('Turn Diff', { log: true })
+  const outputChannel = window.createOutputChannel('Turn Diff', { log: true })
 
   const logError = (message) => outputChannel.error(message)
 
@@ -81,14 +81,14 @@ export const activate = (context) => {
     manifestWatch,
     registerBeforeImageProvider(),
     { dispose: disposeAllWatchers },
-    vscode.workspace.onDidChangeWorkspaceFolders(() => {
+    workspace.onDidChangeWorkspaceFolders(() => {
       forgetLastRenderedTurn()
       manifestWatch.rewatch()
       server.readvertise()
     }),
-    vscode.commands.registerCommand('claudeTurnDiff.showLast', () => showLastTurn({ force: true })),
-    vscode.commands.registerCommand('claudeTurnDiff.installHooks', () => setUpHooks(context)),
-    vscode.commands.registerCommand('claudeTurnDiff.uninstallHooks', removeHooks),
+    commands.registerCommand('claudeTurnDiff.showLast', () => showLastTurn({ force: true })),
+    commands.registerCommand('claudeTurnDiff.installHooks', () => setUpHooks(context)),
+    commands.registerCommand('claudeTurnDiff.uninstallHooks', removeHooks),
   )
 
   try {
