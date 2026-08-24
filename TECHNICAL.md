@@ -89,8 +89,14 @@ matching the `-z` already used to list them.
 
 ## Publishing and reclaiming
 
-`end` writes the manifest to `open.json.tmp` and renames it into place. The
+`end` writes the manifest to `manifest.json.tmp` and renames it into place. The
 rename is atomic, so the watcher can never read a half-written file.
+
+Replacing the manifest fires two `rename` events for one write — the unlink of
+the old inode and the link of the new one — so the watcher asks for a render
+twice per turn. It needs no debounce: `showLastTurn` records the manifest's
+stamp before its first `await`, so the second call finds the turn already
+rendered and returns.
 
 It publishes *before* purging. With parallel chats the manifest being replaced
 may still belong to another chat, and it must never point at before-images that
@@ -196,6 +202,14 @@ A manifest's statuses were frozen when it was written and the tree may have
 moved on, so changes that no longer represent something renderable are dropped
 at render time — a file reverted by hand, or a before-image already reclaimed.
 
+The status is stored rather than derived because it cannot be recovered from
+disk. An addition writes an *empty* before-image, so an empty image cannot be
+told apart from a file that was already empty; and purge reclaims whole
+`before-*` directories, so a missing image cannot be told apart from a
+reclaimed one. Deriving it would mean writing no image for an addition and
+recording the turn's before-directory in the manifest — and it would report
+what the tree looks like now rather than what the turn did.
+
 ## Watching files outside the workspace
 
 VS Code only watches what is inside the workspace, so its in-memory copy of a
@@ -239,3 +253,56 @@ next prompt discarded it.
 
 `arm` matches every tool that can write, including `Bash`, because a shell
 command is exactly the case per-file capture cannot see coming.
+
+## Naming
+
+One name per entity, one entity per name. A suffix says what a value is, so
+reading an assignment is never needed to know whether a string is a path, and
+whether that path is absolute:
+
+- `*File` — an absolute path to a file: `manifestFile`, `beforeImageFile`,
+  `targetFile`, `copiedFile`.
+- `*Dir` — an absolute path to a directory: `chatDir`, `repoDir`, `gitDir`,
+  `beforeDir`.
+- `*Path` — a path that is relative, or whose kind is not known there:
+  `beforePath` as git reports it, `targetPath` in `removeRecursive`.
+- `*Name` — a bare name with no separators: `dirName`, `fileName`.
+- `*Uri` — a `vscode.Uri`: `resourceUri`, `beforeUri`, `dirUri`.
+- `*Contents` — bytes or text: `beforeContents`, `blobContents`.
+
+The `Path`/`File` boundary is where a bug used to live. Git reports
+repo-relative paths, and `beforePath`/`afterPath` once named both those and the
+absolute paths in the manifest, so whether a value still needed joining to its
+repository depended on which function you were reading.
+`join(repoDir, beforePath)` yielding a `beforeFile` is now the visible seam
+between the two, and nothing carries the word "relative" because the `File`
+suffix already says the other thing.
+
+Some words mean exactly one thing each. `entry` is a directory entry from
+`listEntries` and nothing else — it once also meant a hook config, a manifest
+record, a diff resource and a state path. `change` is a manifest record,
+`snapshot` is a `snapshots.tsv` row, `blob` is git object content and never our
+own copy of a file, `image` is a published before-image. A repository root is a
+`repoDir`, never `repository`, `repo` or `root`. `workspaceDirs` holds our own
+path strings, never VS Code's `WorkspaceFolder` objects.
+
+Verbs follow the return type: `read*` gives contents, `get*` gives an attribute
+or a derived value, `list*` gives a collection. That is why the before-image is
+served by `readBeforeImageContents` and measured by `getBeforeImageSize`.
+
+Nothing outside `utils/files.js` calls an fs read that can throw, so callers
+branch on a value instead of wrapping every read. A failure is `undefined` for a
+single value and `[]` for a list.
+
+Names we do not own are left alone: the file system provider's method names,
+`fsPath`, `extensionPath` and `workspace.workspaceFolders` from VS Code, and
+`file_path`, `notebook_path`, `transcript_path` and `session_id` from the hook
+payload.
+
+Everything else is imported by name, builtins with the `node:` prefix, and no
+module namespace imports remain. Each file then declares exactly what it
+touches, which is also what makes sweeping for unused imports worth doing.
+`assert` in the tests is the one default import left, because a bare
+`strictEqual(...)` says too little about where it came from. A name is aliased
+only where the bare one loses its meaning at the use site — `sep as
+PATH_SEPARATOR` and `relative as getRelativePath`.

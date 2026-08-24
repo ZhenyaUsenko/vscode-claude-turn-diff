@@ -15,9 +15,9 @@ export const snapshotWorkspace = async (chatDir, workspaceDirs) => {
     if (tree) snapshots.push([repoDir, gitDir, tree])
   }
 
-  const snapshotsFileContents = snapshots.map((snapshot) => snapshot.join('\t')).join('\n')
+  const snapshotsFileContents = snapshots.map((snapshot) => `${snapshot.join('\t')}\n`).join('')
 
-  writeFileSync(getSnapshotsFile(chatDir), snapshots.length ? `${snapshotsFileContents}\n` : '')
+  writeFileSync(getSnapshotsFile(chatDir), snapshotsFileContents)
 
   return snapshots
 }

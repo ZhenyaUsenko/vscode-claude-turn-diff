@@ -8,7 +8,7 @@ const watchersBySession = new Map()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const getWatchers = (sessionId) => {
+const getOutsideWatchers = (sessionId) => {
   let watchers = watchersBySession.get(sessionId)
 
   if (!watchers) {
@@ -24,7 +24,7 @@ const getWatchers = (sessionId) => {
 
 export const watchFilesOutsideWorkspace = (targetFiles, workspaceDirs, sessionId) => {
   const canonicalWorkspaceDirs = workspaceDirs.map(canonicalize)
-  const watchers = getWatchers(sessionId)
+  const watchers = getOutsideWatchers(sessionId)
 
   for (const targetFile of targetFiles) {
     if (watchers.has(targetFile)) continue
@@ -39,7 +39,7 @@ export const watchFilesOutsideWorkspace = (targetFiles, workspaceDirs, sessionId
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const disposeWatchers = (sessionId) => {
+export const disposeOutsideWatchers = (sessionId) => {
   const watchers = watchersBySession.get(sessionId)
 
   if (!watchers) return
@@ -50,7 +50,7 @@ export const disposeWatchers = (sessionId) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const disposeAllWatchers = () => {
+export const disposeAllOutsideWatchers = () => {
   watchersBySession.forEach((watchers) => watchers.forEach((watcher) => watcher.dispose()))
   watchersBySession.clear()
 }

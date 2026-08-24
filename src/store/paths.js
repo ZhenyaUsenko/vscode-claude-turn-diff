@@ -27,7 +27,7 @@ export const getChatsDir = (project) => join(getProjectDir(project), 'chats')
 
 export const getChatDir = (project, sessionId) => join(getChatsDir(project), sessionId)
 
-export const getManifestFile = (project) => join(getProjectDir(project), 'open.json')
+export const getManifestFile = (project) => join(getProjectDir(project), 'manifest.json')
 
 export const getServerDir = (project) => join(getProjectDir(project), 'servers')
 

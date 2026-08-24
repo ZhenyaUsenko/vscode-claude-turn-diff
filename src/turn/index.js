@@ -1,7 +1,7 @@
 import { publishManifest } from '../store/manifest.js'
 import { getArmedTurnPaths, getBeforeDir, getChatDir, getSnapshotsFile } from '../store/paths.js'
 import { readLines, canonicalize, isUnder, removeRecursive } from '../utils/files.js'
-import { disposeWatchers, watchFilesOutsideWorkspace } from '../utils/watch.js'
+import { disposeOutsideWatchers, watchFilesOutsideWorkspace } from '../utils/watch.js'
 import { captureTouchedFile, snapshotWorkspace } from './capture.js'
 import { collectChanges } from './collect.js'
 import { purgeSupersededTurns } from './purge.js'
@@ -51,7 +51,7 @@ const endTurn = async ({ project, sessionId }) => {
   const chatDir = getChatDir(project, sessionId)
   const armed = existsSync(getSnapshotsFile(chatDir))
 
-  disposeWatchers(sessionId)
+  disposeOutsideWatchers(sessionId)
 
   if (!armed) return
 

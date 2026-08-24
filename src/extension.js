@@ -1,7 +1,7 @@
 import { installHookScript, promptToRegisterHooks, removeHooks, setUpHooks } from './install/hooks.js'
 import { startServer } from './server.js'
 import { getProjectKey, getProjectDir } from './store/paths.js'
-import { disposeAllWatchers } from './utils/watch.js'
+import { disposeAllOutsideWatchers } from './utils/watch.js'
 import { getWorkspaceDirs } from './utils/workspace.js'
 import { forgetLastRenderedTurn, markCurrentTurnAsSeen, registerBeforeImageProvider, showLastTurn } from './view.js'
 import { mkdirSync, watch } from 'node:fs'
@@ -9,56 +9,26 @@ import { commands, window, workspace } from 'vscode'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const WATCH_DEBOUNCE_MS = 60
+let manifestWatcher = null
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const watchProject = (watchState) => {
-  const workspaceDirs = getWorkspaceDirs()
-
-  if (!workspaceDirs.length) return null
-
+const watchManifest = (logError) => {
   try {
+    const workspaceDirs = getWorkspaceDirs()
+
+    manifestWatcher?.close()
+
+    if (!workspaceDirs.length) return
+
     const projectDir = getProjectDir(getProjectKey(workspaceDirs[0]))
 
     mkdirSync(projectDir, { recursive: true })
 
-    return watch(projectDir, (_event, fileName) => {
-      if (fileName !== 'open.json') return
-
-      clearTimeout(watchState.debounceTimer)
-
-      watchState.debounceTimer = setTimeout(() => showLastTurn(), WATCH_DEBOUNCE_MS)
-    })
+    manifestWatcher = watch(projectDir, (_event, fileName) => { if (fileName === 'manifest.json') showLastTurn() })
   } catch (error) {
-    watchState.logError(`could not watch project directory: ${error.message}`)
-
-    return null
+    logError(`could not watch project directory: ${error.message}`)
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-const rewatchProject = (watchState) => {
-  if (watchState.projectWatcher) watchState.projectWatcher.close()
-
-  watchState.projectWatcher = watchProject(watchState)
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-const disposeWatch = (watchState) => {
-  clearTimeout(watchState.debounceTimer)
-
-  if (watchState.projectWatcher) watchState.projectWatcher.close()
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-const createManifestWatch = (logError) => {
-  const watchState = { logError, debounceTimer: null, projectWatcher: null }
-
-  return { rewatch: () => rewatchProject(watchState), dispose: () => disposeWatch(watchState) }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -68,22 +38,20 @@ export const activate = (context) => {
 
   const logError = (message) => outputChannel.error(message)
 
-  const manifestWatch = createManifestWatch(logError)
-
   markCurrentTurnAsSeen()
-  manifestWatch.rewatch()
+  watchManifest(logError)
 
   const server = startServer(logError)
 
   context.subscriptions.push(
     outputChannel,
     server,
-    manifestWatch,
     registerBeforeImageProvider(),
-    { dispose: disposeAllWatchers },
+    { dispose: () => manifestWatcher?.close() },
+    { dispose: () => disposeAllOutsideWatchers() },
     workspace.onDidChangeWorkspaceFolders(() => {
       forgetLastRenderedTurn()
-      manifestWatch.rewatch()
+      watchManifest(logError)
       server.readvertise()
     }),
     commands.registerCommand('claudeTurnDiff.showLast', () => showLastTurn({ force: true })),
@@ -97,7 +65,7 @@ export const activate = (context) => {
     logError(`could not install the hook script: ${error.message}`)
   }
 
-  void promptToRegisterHooks(context)
+  promptToRegisterHooks(context)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
