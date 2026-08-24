@@ -2,7 +2,7 @@ import { installHookScript, promptToRegisterHooks, removeHooks, setUpHooks } fro
 import { startServer } from './server.js'
 import { getProjectKey, getProjectDir } from './store/paths.js'
 import { disposeAllWatchers } from './utils/watch.js'
-import { getWorkspaceFolders } from './utils/workspace.js'
+import { getWorkspaceDirs } from './utils/workspace.js'
 import { forgetLastRenderedTurn, markCurrentTurnAsSeen, registerBeforeImageProvider, showLastTurn } from './view.js'
 import { mkdirSync, watch } from 'node:fs'
 import { commands, window, workspace } from 'vscode'
@@ -14,17 +14,17 @@ const WATCH_DEBOUNCE_MS = 60
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const watchProject = (watchState) => {
-  const workspaceFolders = getWorkspaceFolders()
+  const workspaceDirs = getWorkspaceDirs()
 
-  if (!workspaceFolders.length) return null
+  if (!workspaceDirs.length) return null
 
   try {
-    const projectDir = getProjectDir(getProjectKey(workspaceFolders[0]))
+    const projectDir = getProjectDir(getProjectKey(workspaceDirs[0]))
 
     mkdirSync(projectDir, { recursive: true })
 
-    return watch(projectDir, (_event, filename) => {
-      if (filename !== 'open.json') return
+    return watch(projectDir, (_event, fileName) => {
+      if (fileName !== 'open.json') return
 
       clearTimeout(watchState.debounceTimer)
 

@@ -1,7 +1,7 @@
 import { getProjectKey, getServerDir, getServerFile } from './store/paths.js'
 import { handleTurn } from './turn/index.js'
 import { outputFile, listEntries, removeFile } from './utils/files.js'
-import { getWorkspaceFolders } from './utils/workspace.js'
+import { getWorkspaceDirs } from './utils/workspace.js'
 import { randomBytes } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { createServer } from 'node:net'
@@ -61,7 +61,7 @@ const serve = (socket, token, log) => {
     if (request.token !== token) return void socket.end('err\n')
 
     try {
-      await handleTurn(request.mode, request.project, JSON.parse(request.body), getWorkspaceFolders())
+      await handleTurn(request.mode, request.project, JSON.parse(request.body), getWorkspaceDirs())
 
       socket.end('ok\n')
     } catch (error) {
@@ -87,12 +87,12 @@ const withdrawAdvert = (advertState) => {
 
 const advertise = (advertState) => {
   const { server, token, log } = advertState
-  const workspaceFolders = getWorkspaceFolders()
+  const workspaceDirs = getWorkspaceDirs()
   const port = server.address()?.port
 
-  if (!workspaceFolders.length || !port) return void withdrawAdvert(advertState)
+  if (!workspaceDirs.length || !port) return void withdrawAdvert(advertState)
 
-  const project = getProjectKey(workspaceFolders[0])
+  const project = getProjectKey(workspaceDirs[0])
   const targetAdvert = getServerFile(project, process.pid)
 
   if (targetAdvert === advertState.writtenAdvert && existsSync(targetAdvert)) return

@@ -24,9 +24,9 @@ export const forgetChat = (dir, sessionId) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const readStatuses = (dir) => {
-  const { files } = readManifest(getProjectKey(dir))
+  const { changes } = readManifest(getProjectKey(dir))
 
-  const labels = files.map((entry) => `${entry.status} ${basename(entry.beforePath)}`)
+  const labels = changes.map((change) => `${change.status} ${basename(change.beforeFile)}`)
 
   return labels.sort()
 }
@@ -39,21 +39,21 @@ export const nextSecond = () => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const runTurn = async (dir, sessionId, workspaceFolders, mutate, params) => {
+export const runTurn = async (dir, sessionId, workspaceDirs, mutate, params) => {
   const project = getProjectKey(dir)
 
   registerChat(dir, sessionId)
 
-  await handleTurn('begin', project, { session_id: sessionId, prompt: 'p' }, workspaceFolders)
-  await handleTurn('arm', project, { session_id: sessionId }, workspaceFolders)
+  await handleTurn('begin', project, { session_id: sessionId, prompt: 'p' }, workspaceDirs)
+  await handleTurn('arm', project, { session_id: sessionId }, workspaceDirs)
 
   for (const file of params?.touchedFiles ?? []) {
     const payload = { session_id: sessionId, tool_input: { file_path: file } }
 
-    await handleTurn('arm', project, payload, workspaceFolders)
+    await handleTurn('arm', project, payload, workspaceDirs)
   }
 
   mutate()
 
-  await handleTurn('end', project, { session_id: sessionId }, workspaceFolders)
+  await handleTurn('end', project, { session_id: sessionId }, workspaceDirs)
 }

@@ -82,7 +82,7 @@ from the palette, or add this yourself:
 |---|---|---|
 | `UserPromptSubmit` | you hit enter | clears anything an interrupted turn left. No git. |
 | `PreToolUse` | first write-capable tool of the turn | snapshots every git repo in the workspace to dangling tree objects |
-| `PreToolUse` | every `Edit`/`Write` naming a path | if that path is outside all those repos, copies its before-image |
+| `PreToolUse` | every `Edit`/`Write` naming a path | if that path is outside all those repos, copies the file aside |
 | `Stop` | Claude finishes | diffs and opens the editor |
 | `StopFailure` | the turn dies on an API error | the same, so the work still gets a diff |
 

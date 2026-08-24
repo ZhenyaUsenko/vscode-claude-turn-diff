@@ -5,16 +5,16 @@ import { copyFileSync, existsSync } from 'node:fs'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const isOurEntry = (entry) => {
-  return typeof entry?.command === 'string' && entry.command.includes(HOOK_MARKER)
+const isOurHook = (hook) => {
+  return typeof hook?.command === 'string' && hook.command.includes(HOOK_MARKER)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const readSettings = () => {
-  const rawSettings = readFile(SETTINGS_FILE, 'utf8')
+  const settingsContents = readFile(SETTINGS_FILE, 'utf8')
 
-  return rawSettings?.trim() ? JSON.parse(rawSettings) : {}
+  return settingsContents?.trim() ? JSON.parse(settingsContents) : {}
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -29,7 +29,7 @@ export const writeSettings = (settings) => {
 
 export const hooksMatchSpec = (settings) => {
   return Object.entries(HOOK_SPEC).every(([event, groups]) => {
-    const ourGroups = settings.hooks?.[event]?.filter((group) => group.hooks?.some(isOurEntry)) ?? []
+    const ourGroups = settings.hooks?.[event]?.filter((group) => group.hooks?.some(isOurHook)) ?? []
 
     return JSON.stringify(ourGroups) === JSON.stringify(groups)
   })
@@ -45,7 +45,7 @@ export const stripOurHooks = (settings) => {
   for (const event of Object.keys(hooks)) {
     if (!Array.isArray(hooks[event])) continue
 
-    hooks[event] = hooks[event].filter((group) => !group.hooks?.some(isOurEntry))
+    hooks[event] = hooks[event].filter((group) => !group.hooks?.some(isOurHook))
 
     if (!hooks[event].length) delete hooks[event]
   }

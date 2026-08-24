@@ -45,11 +45,11 @@ const showVscodeError = (...args) => window.showErrorMessage(...args)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const installHookScript = (context) => {
-  const bundledScript = readFile(join(context.extensionPath, 'hooks', 'turn-diff.sh'))
+  const bundledScriptContents = readFile(join(context.extensionPath, 'hooks', 'turn-diff.sh'))
 
-  if (readFile(INSTALLED_HOOK)?.equals(bundledScript)) return
+  if (readFile(INSTALLED_HOOK)?.equals(bundledScriptContents)) return
 
-  outputFile(INSTALLED_HOOK, bundledScript, { mode: 0o755 })
+  outputFile(INSTALLED_HOOK, bundledScriptContents, { mode: 0o755 })
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

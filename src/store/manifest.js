@@ -4,11 +4,10 @@ import { renameSync, writeFileSync } from 'node:fs'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const publishManifest = (project, stamp, entries) => {
+export const publishManifest = (project, stamp, changes) => {
   const manifestFile = getManifestFile(project)
-  const manifestBody = { ts: `${stamp}-${process.pid}`, files: entries }
 
-  writeFileSync(`${manifestFile}.tmp`, JSON.stringify(manifestBody))
+  writeFileSync(`${manifestFile}.tmp`, JSON.stringify({ ts: `${stamp}-${process.pid}`, changes }))
   renameSync(`${manifestFile}.tmp`, manifestFile)
 }
 

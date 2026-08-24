@@ -44,21 +44,21 @@ const getAdvert = (dir) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 check('re-advertising an unchanged workspace leaves the advert in place', async () => {
-  const repo = createRepo()
+  const repoDir = createRepo()
 
-  resetStub([repo])
+  resetStub([repoDir])
 
   const server = startServer()
 
   await settle()
 
-  const firstAdvert = getAdvert(repo)
+  const firstAdvert = getAdvert(repoDir)
 
   assert.ok(firstAdvert, 'the window advertises once it is listening')
 
   server.readvertise()
 
-  assert.strictEqual(getAdvert(repo), firstAdvert, 'a no-op re-advertise must not disturb it')
+  assert.strictEqual(getAdvert(repoDir), firstAdvert, 'a no-op re-advertise must not disturb it')
 
   server.dispose()
 })
@@ -66,7 +66,7 @@ check('re-advertising an unchanged workspace leaves the advert in place', async 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 check('a window with no folders advertises nothing', async () => {
-  const repo = createRepo()
+  const repoDir = createRepo()
 
   resetStub([])
 
@@ -74,19 +74,19 @@ check('a window with no folders advertises nothing', async () => {
 
   await settle()
 
-  assert.strictEqual(getAdvert(repo), undefined, 'nothing to serve, nothing advertised')
+  assert.strictEqual(getAdvert(repoDir), undefined, 'nothing to serve, nothing advertised')
 
-  stubState.folders = [repo]
-
-  server.readvertise()
-
-  assert.ok(getAdvert(repo), 'it advertises once a folder arrives')
-
-  stubState.folders = []
+  stubState.workspaceDirs = [repoDir]
 
   server.readvertise()
 
-  assert.strictEqual(getAdvert(repo), undefined, 'and withdraws when the last one goes')
+  assert.ok(getAdvert(repoDir), 'it advertises once a folder arrives')
+
+  stubState.workspaceDirs = []
+
+  server.readvertise()
+
+  assert.strictEqual(getAdvert(repoDir), undefined, 'and withdraws when the last one goes')
 
   server.dispose()
 })
@@ -94,15 +94,15 @@ check('a window with no folders advertises nothing', async () => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 check('an advert deleted underneath the window is written again', async () => {
-  const repo = createRepo()
+  const repoDir = createRepo()
 
-  resetStub([repo])
+  resetStub([repoDir])
 
   const server = startServer()
 
   await settle()
 
-  const advertFile = getServerFile(getProjectKey(repo), process.pid)
+  const advertFile = getServerFile(getProjectKey(repoDir), process.pid)
 
   removeFile(advertFile)
   server.readvertise()
@@ -115,28 +115,28 @@ check('an advert deleted underneath the window is written again', async () => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 check('disposing removes the advert', async () => {
-  const repo = createRepo()
+  const repoDir = createRepo()
 
-  resetStub([repo])
+  resetStub([repoDir])
 
   const server = startServer()
 
   await settle()
 
-  assert.ok(getAdvert(repo))
+  assert.ok(getAdvert(repoDir))
 
   server.dispose()
 
-  assert.strictEqual(getAdvert(repo), undefined)
+  assert.strictEqual(getAdvert(repoDir), undefined)
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 check('the hook keys state by the session, not by a cwd Claude has moved', async () => {
-  const repo = createRepo()
-  const project = getProjectKey(repo)
+  const repoDir = createRepo()
+  const project = getProjectKey(repoDir)
 
-  resetStub([repo])
+  resetStub([repoDir])
 
   const server = startServer()
 

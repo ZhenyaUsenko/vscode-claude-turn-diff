@@ -1,7 +1,7 @@
 import { readManifest } from './store/manifest.js'
 import { getProjectKey } from './store/paths.js'
 import { getFileSize, readFile, sameContents } from './utils/files.js'
-import { getWorkspaceFolders } from './utils/workspace.js'
+import { getWorkspaceDirs } from './utils/workspace.js'
 import { existsSync } from 'node:fs'
 import { commands, Disposable, FileSystemError, FileType, Uri, workspace } from 'vscode'
 
@@ -15,30 +15,30 @@ const EDITOR_TITLE = 'Last turn changes'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const getBeforeUri = (absolutePath, stamp) => {
-  return Uri.file(absolutePath).with({ scheme: SCHEME, query: stamp })
+const getBeforeUri = (beforeFile, stamp) => {
+  return Uri.file(beforeFile).with({ scheme: SCHEME, query: stamp })
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const readCurrentManifest = () => {
-  const workspaceFolders = getWorkspaceFolders()
+  const workspaceDirs = getWorkspaceDirs()
 
-  if (!workspaceFolders.length) return
+  if (!workspaceDirs.length) return
 
-  return readManifest(getProjectKey(workspaceFolders[0]))
+  return readManifest(getProjectKey(workspaceDirs[0]))
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const stillRenderable = (beforePath, beforeImage, afterPath, status) => {
-  const afterFileExists = existsSync(afterPath)
+const stillRenderable = (beforeFile, beforeImageFile, afterFile, status) => {
+  const afterFileExists = existsSync(afterFile)
 
   if (status === 'A') return afterFileExists
-  if (!existsSync(beforeImage)) return false
-  if (beforePath !== afterPath) return afterFileExists
+  if (!existsSync(beforeImageFile)) return false
+  if (beforeFile !== afterFile) return afterFileExists
 
-  return !(afterFileExists && sameContents(beforeImage, afterPath))
+  return !(afterFileExists && sameContents(beforeImageFile, afterFile))
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -46,15 +46,15 @@ const stillRenderable = (beforePath, beforeImage, afterPath, status) => {
 const getResources = (manifest) => {
   const resources = []
 
-  for (const { beforePath, beforeImage, afterPath, status } of manifest?.files ?? []) {
-    if (!stillRenderable(beforePath, beforeImage, afterPath, status)) continue
+  for (const { beforeFile, beforeImageFile, afterFile, status } of manifest?.changes ?? []) {
+    if (!stillRenderable(beforeFile, beforeImageFile, afterFile, status)) continue
 
-    const fileUri = Uri.file(afterPath)
+    const resourceUri = Uri.file(afterFile)
 
-    const original = status === 'A' ? undefined : getBeforeUri(beforePath, manifest.ts)
-    const modified = status === 'D' ? undefined : fileUri
+    const beforeUri = status === 'A' ? undefined : getBeforeUri(beforeFile, manifest.ts)
+    const afterUri = status === 'D' ? undefined : resourceUri
 
-    resources.push([fileUri, original, modified])
+    resources.push([resourceUri, beforeUri, afterUri])
   }
 
   return resources
@@ -78,18 +78,12 @@ export const showLastTurn = async (params) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const readBeforeImage = (uri, params) => {
+const findBeforeImageFile = (uri) => {
   const manifest = readCurrentManifest()
 
   if (manifest && uri.query === manifest.ts) {
-    for (const { beforePath, beforeImage } of manifest.files) {
-      if (beforePath !== uri.fsPath) continue
-
-      const image = params?.sizeOnly ? getFileSize(beforeImage) : readFile(beforeImage)
-
-      if (image == null) break
-
-      return image
+    for (const { beforeFile, beforeImageFile } of manifest.changes) {
+      if (beforeFile === uri.fsPath) return beforeImageFile
     }
   }
 
@@ -98,11 +92,31 @@ const readBeforeImage = (uri, params) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+const getBeforeImageSize = (uri) => {
+  const size = getFileSize(findBeforeImageFile(uri))
+
+  if (size == null) throw FileSystemError.FileNotFound(uri)
+
+  return size
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const readBeforeImageContents = (uri) => {
+  const contents = readFile(findBeforeImageFile(uri))
+
+  if (contents == null) throw FileSystemError.FileNotFound(uri)
+
+  return contents
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 const beforeImageProvider = {
   onDidChangeFile: () => new Disposable(() => {}),
   watch: () => new Disposable(() => {}),
-  stat: (uri) => ({ type: FileType.File, ctime: 0, mtime: 0, size: readBeforeImage(uri, { sizeOnly: true }) }),
-  readFile: (uri) => readBeforeImage(uri),
+  stat: (uri) => ({ type: FileType.File, ctime: 0, mtime: 0, size: getBeforeImageSize(uri) }),
+  readFile: (uri) => readBeforeImageContents(uri),
   readDirectory: () => { throw FileSystemError.FileNotADirectory() },
   createDirectory: () => { throw FileSystemError.NoPermissions() },
   writeFile: () => { throw FileSystemError.NoPermissions() },

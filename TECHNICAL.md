@@ -193,7 +193,7 @@ the repository collector, so a binary outside every repository was counted and
 then rendered as nothing.
 
 A manifest's statuses were frozen when it was written and the tree may have
-moved on, so entries that no longer represent something renderable are dropped
+moved on, so changes that no longer represent something renderable are dropped
 at render time — a file reverted by hand, or a before-image already reclaimed.
 
 ## Watching files outside the workspace
@@ -228,7 +228,7 @@ in place.
 
 ## Settings
 
-`hooksRegistered` compares our entries against `HOOK_SPEC` exactly rather than
+`hooksMatchSpec` compares our hooks against `HOOK_SPEC` exactly rather than
 merely checking that something of ours is present. Changing a matcher, a timeout
 or a command has to re-prompt, or everyone keeps running whatever they
 registered first.

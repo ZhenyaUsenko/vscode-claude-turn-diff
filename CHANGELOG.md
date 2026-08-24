@@ -39,6 +39,10 @@ overwrite each other's diff.
 - Fixed: a moved file was reported as an addition, and the path it moved from
   never appeared at all, so a file moved and edited in one turn looked brand
   new. Moves now show as renames, old path to new, with the edit in the diff.
+- Fixed: creating an empty file was never reported. An absent before-image was
+  written out as an empty file and then compared against the new one, so the two
+  matched byte for byte and the addition was dropped. Deleting an empty file was
+  always reported, and still is.
 - Removed `refs/claude/turns`. It only ever recorded the repository containing
   the folder Claude Code was started in, so in a multi-root workspace it stayed
   silently out of date as soon as you edited anything in one of the other

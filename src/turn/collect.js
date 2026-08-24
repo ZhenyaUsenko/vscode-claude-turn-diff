@@ -1,6 +1,6 @@
-import { getBlobsDir, getReposFile, getTouchListFile } from '../store/paths.js'
+import { getSnapshotsFile, getTouchCopiesDir, getTouchListFile } from '../store/paths.js'
 import { outputFile, readFile, readLines } from '../utils/files.js'
-import { listChanges, readBlobs, snapshotTree } from '../utils/git.js'
+import { listChangedPaths, readBlobContents, snapshotTree } from '../utils/git.js'
 import { join } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -15,41 +15,41 @@ const isBinary = (contents) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const addEntry = (collector, beforePath, afterPath, beforeContents) => {
-  const previousContents = beforeContents ?? Buffer.alloc(0)
-  const currentContents = readFile(afterPath)
+const addChange = (collector, beforeFile, afterFile, beforeContents) => {
+  const afterContents = readFile(afterFile)
 
-  const unchanged = currentContents && previousContents.equals(currentContents)
+  if (beforeFile === afterFile && afterContents && beforeContents?.equals(afterContents)) return
 
-  if (unchanged && beforePath === afterPath) return
-  if (isBinary(previousContents) || isBinary(currentContents)) return
+  if (isBinary(beforeContents) || isBinary(afterContents)) return
 
-  const beforeImage = join(collector.beforeDir, beforePath)
-  const status = beforeContents == null ? 'A' : currentContents ? 'M' : 'D'
+  const beforeImageFile = join(collector.beforeDir, beforeFile)
+  const status = beforeContents == null ? 'A' : afterContents ? 'M' : 'D'
 
-  outputFile(beforeImage, previousContents)
+  outputFile(beforeImageFile, beforeContents ?? Buffer.alloc(0))
 
-  collector.entries.push({ beforeImage, beforePath, afterPath, status })
+  collector.changes.push({ beforeImageFile, beforeFile, afterFile, status })
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const collectRepositoryChanges = async (chatDir, collector) => {
-  for (const line of readLines(getReposFile(chatDir))) {
-    const [repository, gitDir, treeBefore] = line.split('\t')
+const collectRepoChanges = async (chatDir, collector) => {
+  for (const line of readLines(getSnapshotsFile(chatDir))) {
+    const [repoDir, gitDir, treeBefore] = line.split('\t')
 
-    const treeAfter = await snapshotTree(repository, gitDir, chatDir)
+    const treeAfter = await snapshotTree(repoDir, gitDir, chatDir)
 
     if (!treeAfter || treeAfter === treeBefore) continue
 
-    const changes = await listChanges(repository, treeBefore, treeAfter)
+    const changedPaths = await listChangedPaths(repoDir, treeBefore, treeAfter)
 
-    const blobs = await readBlobs(repository, treeBefore, changes.map((change) => change.beforePath))
+    const beforePaths = changedPaths.map((changedPath) => changedPath.beforePath)
 
-    if (!blobs) continue
+    const blobContents = await readBlobContents(repoDir, treeBefore, beforePaths)
 
-    changes.forEach(({ beforePath, afterPath }, index) => {
-      addEntry(collector, join(repository, beforePath), join(repository, afterPath), blobs[index])
+    if (!blobContents) continue
+
+    changedPaths.forEach(({ beforePath, afterPath }, index) => {
+      addChange(collector, join(repoDir, beforePath), join(repoDir, afterPath), blobContents[index])
     })
   }
 }
@@ -57,21 +57,21 @@ const collectRepositoryChanges = async (chatDir, collector) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const collectOutsideChanges = (chatDir, collector) => {
-  for (const absolutePath of readLines(getTouchListFile(chatDir))) {
-    const contents = readFile(join(getBlobsDir(chatDir), absolutePath))
+  for (const touchedFile of readLines(getTouchListFile(chatDir))) {
+    const beforeContents = readFile(join(getTouchCopiesDir(chatDir), touchedFile))
 
-    addEntry(collector, absolutePath, absolutePath, contents)
+    addChange(collector, touchedFile, touchedFile, beforeContents)
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const collectChanges = async (chatDir, beforeDir) => {
-  const collector = { beforeDir, entries: [] }
+  const collector = { beforeDir, changes: [] }
 
-  await collectRepositoryChanges(chatDir, collector)
+  await collectRepoChanges(chatDir, collector)
 
   collectOutsideChanges(chatDir, collector)
 
-  return collector.entries
+  return collector.changes
 }

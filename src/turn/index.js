@@ -1,8 +1,8 @@
 import { publishManifest } from '../store/manifest.js'
-import { getArmedTurnEntries, getBeforeDir, getChatDir, getReposFile } from '../store/paths.js'
+import { getArmedTurnPaths, getBeforeDir, getChatDir, getSnapshotsFile } from '../store/paths.js'
 import { readLines, canonicalize, isUnder, removeRecursive } from '../utils/files.js'
 import { disposeWatchers, watchFilesOutsideWorkspace } from '../utils/watch.js'
-import { captureBeforeImage, snapshotWorkspace } from './capture.js'
+import { captureTouchedFile, snapshotWorkspace } from './capture.js'
 import { collectChanges } from './collect.js'
 import { purgeSupersededTurns } from './purge.js'
 import { existsSync, mkdirSync } from 'node:fs'
@@ -15,41 +15,41 @@ const beginTurn = ({ project, sessionId }) => {
 
   mkdirSync(chatDir, { recursive: true })
 
-  for (const entryPath of getArmedTurnEntries(chatDir)) removeRecursive(entryPath)
+  for (const armedTurnPath of getArmedTurnPaths(chatDir)) removeRecursive(armedTurnPath)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const armTurn = async ({ project, sessionId, payload, workspaceFolders }) => {
-  let repositories
+const armTurn = async ({ project, sessionId, payload, workspaceDirs }) => {
+  let snapshots
 
-  const toolFile = payload.tool_input?.file_path || payload.tool_input?.notebook_path
-  const file = toolFile && isAbsolute(toolFile) ? toolFile : null
+  const toolPath = payload.tool_input?.file_path || payload.tool_input?.notebook_path
+  const targetFile = toolPath && isAbsolute(toolPath) ? toolPath : null
 
   const chatDir = getChatDir(project, sessionId)
-  const reposFile = getReposFile(chatDir)
+  const snapshotsFile = getSnapshotsFile(chatDir)
 
-  if (file) watchFilesOutsideWorkspace([file], workspaceFolders, sessionId)
+  if (targetFile) watchFilesOutsideWorkspace([targetFile], workspaceDirs, sessionId)
 
   mkdirSync(chatDir, { recursive: true })
 
-  if (existsSync(reposFile)) {
-    repositories = readLines(reposFile).map((line) => line.split('\t'))
+  if (existsSync(snapshotsFile)) {
+    snapshots = readLines(snapshotsFile).map((line) => line.split('\t'))
   } else {
-    repositories = await snapshotWorkspace(chatDir, workspaceFolders)
+    snapshots = await snapshotWorkspace(chatDir, workspaceDirs)
   }
 
-  if (!file) return
-  if (repositories.some(([repository]) => isUnder(canonicalize(file), repository))) return
+  if (!targetFile) return
+  if (snapshots.some(([repoDir]) => isUnder(canonicalize(targetFile), repoDir))) return
 
-  captureBeforeImage(chatDir, file)
+  captureTouchedFile(chatDir, targetFile)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const endTurn = async ({ project, sessionId }) => {
   const chatDir = getChatDir(project, sessionId)
-  const armed = existsSync(getReposFile(chatDir))
+  const armed = existsSync(getSnapshotsFile(chatDir))
 
   disposeWatchers(sessionId)
 
@@ -58,12 +58,12 @@ const endTurn = async ({ project, sessionId }) => {
   const stamp = Math.floor(Date.now() / 1000)
   const beforeDir = getBeforeDir(chatDir, stamp)
 
-  const entries = await collectChanges(chatDir, beforeDir)
+  const changes = await collectChanges(chatDir, beforeDir)
 
-  for (const entryPath of getArmedTurnEntries(chatDir)) removeRecursive(entryPath)
+  for (const armedTurnPath of getArmedTurnPaths(chatDir)) removeRecursive(armedTurnPath)
 
-  if (entries.length) {
-    publishManifest(project, stamp, entries)
+  if (changes.length) {
+    publishManifest(project, stamp, changes)
     purgeSupersededTurns({ project, sessionId, stamp, currentBeforeDir: beforeDir })
   } else {
     removeRecursive(beforeDir)
@@ -76,11 +76,11 @@ const HANDLERS = { begin: beginTurn, arm: armTurn, end: endTurn }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const handleTurn = async (mode, project, payload, workspaceFolders) => {
+export const handleTurn = async (mode, project, payload, workspaceDirs) => {
   const handler = HANDLERS[mode]
   const sessionId = payload?.session_id
 
   if (!handler || !sessionId || !project) return
 
-  await handler({ project, sessionId, payload, workspaceFolders })
+  await handler({ project, sessionId, payload, workspaceDirs })
 }

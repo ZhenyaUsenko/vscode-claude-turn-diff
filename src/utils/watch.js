@@ -22,16 +22,16 @@ const getWatchers = (sessionId) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const watchFilesOutsideWorkspace = (targetFiles, workspaceFolders, sessionId) => {
-  const workspaceRoots = workspaceFolders.map(canonicalize)
+export const watchFilesOutsideWorkspace = (targetFiles, workspaceDirs, sessionId) => {
+  const canonicalWorkspaceDirs = workspaceDirs.map(canonicalize)
   const watchers = getWatchers(sessionId)
 
   for (const targetFile of targetFiles) {
     if (watchers.has(targetFile)) continue
-    if (workspaceRoots.some((root) => isUnder(canonicalize(targetFile), root))) continue
+    if (canonicalWorkspaceDirs.some((workspaceDir) => isUnder(canonicalize(targetFile), workspaceDir))) continue
 
-    const dir = Uri.file(dirname(targetFile))
-    const pattern = new RelativePattern(dir, basename(targetFile))
+    const dirUri = Uri.file(dirname(targetFile))
+    const pattern = new RelativePattern(dirUri, basename(targetFile))
 
     watchers.set(targetFile, workspace.createFileSystemWatcher(pattern))
   }

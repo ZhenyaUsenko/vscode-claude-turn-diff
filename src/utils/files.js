@@ -15,8 +15,8 @@ export const getFileSize = (file) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const getRealPath = (target) => {
-  try { return realpathSync(target) } catch { return undefined }
+export const getRealPath = (targetPath) => {
+  try { return realpathSync(targetPath) } catch { return undefined }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -40,8 +40,8 @@ export const removeFile = (file) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const removeRecursive = (target) => {
-  rmSync(target, { recursive: true, force: true })
+export const removeRecursive = (targetPath) => {
+  rmSync(targetPath, { recursive: true, force: true })
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -72,12 +72,12 @@ export const sameContents = (left, right) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const canonicalize = (target) => {
-  const realPath = getRealPath(target)
+export const canonicalize = (targetPath) => {
+  const realPath = getRealPath(targetPath)
 
   if (realPath) return realPath
 
-  const realParent = getRealPath(dirname(target))
+  const realParent = getRealPath(dirname(targetPath))
 
-  return realParent ? join(realParent, basename(target)) : target
+  return realParent ? join(realParent, basename(targetPath)) : targetPath
 }

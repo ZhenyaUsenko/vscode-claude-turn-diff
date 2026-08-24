@@ -37,13 +37,15 @@ export const getTranscriptFile = (project, sessionId) => join(TRANSCRIPTS_ROOT, 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const getReposFile = (chatDir) => join(chatDir, 'repos.tsv')
+export const getSnapshotsFile = (chatDir) => join(chatDir, 'snapshots.tsv')
 
 export const getTouchListFile = (chatDir) => join(chatDir, 'touchList.txt')
 
-export const getBlobsDir = (chatDir) => join(chatDir, 'blobs')
+export const getTouchCopiesDir = (chatDir) => join(chatDir, 'touchCopies')
 
-export const getArmedTurnEntries = (chatDir) => [getReposFile(chatDir), getTouchListFile(chatDir), getBlobsDir(chatDir)]
+export const getArmedTurnPaths = (chatDir) => {
+  return [getSnapshotsFile(chatDir), getTouchListFile(chatDir), getTouchCopiesDir(chatDir)]
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

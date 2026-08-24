@@ -1,41 +1,41 @@
-import { getBlobsDir, getReposFile, getTouchListFile } from '../store/paths.js'
+import { getSnapshotsFile, getTouchCopiesDir, getTouchListFile } from '../store/paths.js'
 import { readLines } from '../utils/files.js'
-import { listRepositories, snapshotTree } from '../utils/git.js'
+import { listRepos, snapshotTree } from '../utils/git.js'
 import { appendFileSync, copyFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const snapshotWorkspace = async (chatDir, workspaceFolders) => {
+export const snapshotWorkspace = async (chatDir, workspaceDirs) => {
   const snapshots = []
 
-  for (const [repository, gitDir] of await listRepositories(workspaceFolders)) {
-    const tree = await snapshotTree(repository, gitDir, chatDir)
+  for (const { repoDir, gitDir } of await listRepos(workspaceDirs)) {
+    const tree = await snapshotTree(repoDir, gitDir, chatDir)
 
-    if (tree) snapshots.push([repository, gitDir, tree])
+    if (tree) snapshots.push([repoDir, gitDir, tree])
   }
 
-  const tsvBody = snapshots.map((entry) => entry.join('\t')).join('\n')
+  const snapshotsFileContents = snapshots.map((snapshot) => snapshot.join('\t')).join('\n')
 
-  writeFileSync(getReposFile(chatDir), snapshots.length ? `${tsvBody}\n` : '')
+  writeFileSync(getSnapshotsFile(chatDir), snapshots.length ? `${snapshotsFileContents}\n` : '')
 
   return snapshots
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const captureBeforeImage = (chatDir, file) => {
+export const captureTouchedFile = (chatDir, targetFile) => {
   const touchListFile = getTouchListFile(chatDir)
   const alreadySeenFiles = readLines(touchListFile)
 
-  if (alreadySeenFiles.includes(file)) return
+  if (alreadySeenFiles.includes(targetFile)) return
 
-  if (existsSync(file)) {
-    const blobPath = join(getBlobsDir(chatDir), file)
+  if (existsSync(targetFile)) {
+    const copiedFile = join(getTouchCopiesDir(chatDir), targetFile)
 
-    mkdirSync(dirname(blobPath), { recursive: true })
-    copyFileSync(file, blobPath)
+    mkdirSync(dirname(copiedFile), { recursive: true })
+    copyFileSync(targetFile, copiedFile)
   }
 
-  appendFileSync(touchListFile, `${file}\n`)
+  appendFileSync(touchListFile, `${targetFile}\n`)
 }

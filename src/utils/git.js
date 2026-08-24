@@ -29,7 +29,7 @@ const runText = async (args, env) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const listPaths = async (args, env) => {
+const runNullSeparated = async (args, env) => {
   const output = await run(args, env)
 
   return output?.toString('utf8').split('\0').filter(Boolean) ?? []
@@ -37,20 +37,20 @@ const listPaths = async (args, env) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const listRepositories = async (folders) => {
-  const gitDirByRoot = new Map()
+export const listRepos = async (workspaceDirs) => {
+  const gitDirByRepoDir = new Map()
 
-  for (const folder of folders) {
-    const output = await runText(['-C', folder, 'rev-parse', '--show-toplevel', '--absolute-git-dir'])
+  for (const workspaceDir of workspaceDirs) {
+    const output = await runText(['-C', workspaceDir, 'rev-parse', '--show-toplevel', '--absolute-git-dir'])
 
     if (output == null) continue
 
-    const [root, gitDir] = output.split('\n')
+    const [repoDir, gitDir] = output.split('\n')
 
-    gitDirByRoot.set(root, gitDir)
+    gitDirByRepoDir.set(repoDir, gitDir)
   }
 
-  return [...gitDirByRoot]
+  return [...gitDirByRepoDir].map(([repoDir, gitDir]) => ({ repoDir, gitDir }))
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -65,105 +65,104 @@ const copyPreservingMtime = (source, destination) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const listSmallUntrackedFiles = async (repository, env) => {
-  const listingArgs = ['-C', repository, 'ls-files', '-o', '--exclude-standard', '-z']
+const listSmallUntrackedFiles = async (repoDir, env) => {
+  const listingArgs = ['-C', repoDir, 'ls-files', '-o', '--exclude-standard', '-z']
 
-  const untrackedFiles = await listPaths(listingArgs, env)
+  const untrackedPaths = await runNullSeparated(listingArgs, env)
 
-  return untrackedFiles.filter((relativePath) => {
-    return getFileSize(join(repository, relativePath)) <= MAX_UNTRACKED_BYTES
+  return untrackedPaths.filter((untrackedPath) => {
+    return getFileSize(join(repoDir, untrackedPath)) <= MAX_UNTRACKED_BYTES
   })
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const snapshotTree = async (repository, gitDir, scratchDir) => {
-  const indexCopy = join(scratchDir, 'index.tmp')
+export const snapshotTree = async (repoDir, gitDir, scratchDir) => {
+  const indexCopyFile = join(scratchDir, 'index.tmp')
 
-  try { copyPreservingMtime(join(gitDir, 'index'), indexCopy) } catch { return null }
+  try { copyPreservingMtime(join(gitDir, 'index'), indexCopyFile) } catch { return null }
 
-  const env = { GIT_INDEX_FILE: indexCopy }
+  const env = { GIT_INDEX_FILE: indexCopyFile }
 
-  await run(['-C', repository, 'add', '-u'], env)
+  await run(['-C', repoDir, 'add', '-u'], env)
 
-  const untrackedFiles = await listSmallUntrackedFiles(repository, env)
+  const untrackedPaths = await listSmallUntrackedFiles(repoDir, env)
 
-  if (untrackedFiles.length) await run(['-C', repository, 'add', '-f', '--', ...untrackedFiles], env)
+  if (untrackedPaths.length) await run(['-C', repoDir, 'add', '-f', '--', ...untrackedPaths], env)
 
-  const tree = await runText(['-C', repository, 'write-tree'], env)
+  const tree = await runText(['-C', repoDir, 'write-tree'], env)
 
-  removeFile(indexCopy)
+  removeFile(indexCopyFile)
 
   return tree
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const splitBlobs = (output, expectedCount) => {
+const splitBlobContents = (output, expectedCount) => {
   let offset = 0
 
-  const blobs = []
+  const blobContents = []
 
-  while (blobs.length < expectedCount) {
+  while (blobContents.length < expectedCount) {
     const endOfHeader = output.indexOf(0x0a, offset)
     const header = output.toString('utf8', offset, endOfHeader)
 
     if (header.endsWith(' missing')) {
-      blobs.push(null)
+      blobContents.push(null)
 
       offset = endOfHeader + 1
     } else {
       const size = +header.slice(header.lastIndexOf(' ') + 1)
 
-      blobs.push(output.subarray(endOfHeader + 1, endOfHeader + 1 + size))
+      blobContents.push(output.subarray(endOfHeader + 1, endOfHeader + 1 + size))
 
       offset = endOfHeader + 1 + size + 1
     }
   }
 
-  return blobs
+  return blobContents
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const splitChanges = (records) => {
+const splitChangedPaths = (nameStatusRecords) => {
   let offset = 0
 
-  const changes = []
+  const changedPaths = []
 
-  while (offset < records.length) {
-    const renamed = records[offset].startsWith('R') || records[offset].startsWith('C')
+  while (offset < nameStatusRecords.length) {
+    const renamed = nameStatusRecords[offset].startsWith('R') || nameStatusRecords[offset].startsWith('C')
 
-    if (renamed) {
-      changes.push({ beforePath: records[offset + 1], afterPath: records[offset + 2] })
-    } else {
-      changes.push({ beforePath: records[offset + 1], afterPath: records[offset + 1] })
-    }
+    const beforePath = nameStatusRecords[offset + 1]
+    const afterPath = renamed ? nameStatusRecords[offset + 2] : beforePath
+
+    changedPaths.push({ beforePath, afterPath })
 
     offset += renamed ? 3 : 2
   }
 
-  return changes
+  return changedPaths
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const listChanges = async (repository, treeBefore, treeAfter) => {
-  const diffArgs = ['-C', repository, 'diff', '--name-status', '-z', '-M', treeBefore, treeAfter]
+export const listChangedPaths = async (repoDir, treeBefore, treeAfter) => {
+  const diffArgs = ['-C', repoDir, 'diff', '--name-status', '-z', '-M', treeBefore, treeAfter]
 
-  return splitChanges(await listPaths(diffArgs))
+  return splitChangedPaths(await runNullSeparated(diffArgs))
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const readBlobs = (repository, tree, relativePaths) => {
+export const readBlobContents = (repoDir, tree, treePaths) => {
   return new Promise((resolve) => {
     const options = { maxBuffer: MAX_OUTPUT_BYTES, encoding: 'buffer' }
 
-    const resolveBlobs = (error, stdout) => resolve(error ? null : splitBlobs(stdout, relativePaths.length))
+    const resolveContents = (error, stdout) => resolve(error ? null : splitBlobContents(stdout, treePaths.length))
 
-    const child = execFile('git', ['-C', repository, 'cat-file', '--batch', '-z'], options, resolveBlobs)
+    const child = execFile('git', ['-C', repoDir, 'cat-file', '--batch', '-z'], options, resolveContents)
 
-    child.stdin.end(relativePaths.map((relativePath) => `${tree}:${relativePath}\0`).join(''))
+    child.stdin.end(treePaths.map((treePath) => `${tree}:${treePath}\0`).join(''))
   })
 }

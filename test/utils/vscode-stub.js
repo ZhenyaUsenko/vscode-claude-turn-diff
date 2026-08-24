@@ -1,5 +1,5 @@
 export const stubState = {
-  folders: [],
+  workspaceDirs: [],
   executed: [],
   watchers: [],
   provider: null,
@@ -8,8 +8,8 @@ export const stubState = {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const resetStub = (folders) => {
-  stubState.folders = folders
+export const resetStub = (workspaceDirs) => {
+  stubState.workspaceDirs = workspaceDirs
   stubState.executed = []
   stubState.watchers = []
 }
@@ -75,7 +75,7 @@ export class Disposable {
 
 export const workspace = {
   get workspaceFolders() {
-    return stubState.folders.map((folder) => ({ uri: Uri.file(folder) }))
+    return stubState.workspaceDirs.map((workspaceDir) => ({ uri: Uri.file(workspaceDir) }))
   },
   createFileSystemWatcher: (pattern) => {
     const watcher = { pattern, disposed: false, dispose: () => { watcher.disposed = true } }
