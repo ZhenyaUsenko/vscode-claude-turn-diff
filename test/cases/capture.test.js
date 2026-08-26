@@ -4,14 +4,22 @@ import { handleTurn } from '../../src/turn/index.js'
 import { getRealPath, outputFile, readFile, removeFile } from '../../src/utils/files.js'
 import { check } from '../utils/checks.js'
 import { commitAll, createRepo } from '../utils/fixtures.js'
-import { nextSecond, readStatuses, registerChat, runTurn } from '../utils/turn.js'
+import { nextSecond, readChangedFileNames, registerChat, runTurn } from '../utils/turn.js'
 import assert from 'node:assert'
-import { mkdirSync, renameSync } from 'node:fs'
+import { existsSync, mkdirSync, renameSync } from 'node:fs'
 import { join, relative as getRelativePath } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-check('reports A, M and D with correct before-images', async () => {
+const getBeforeImageFile = (manifest, fileName) => {
+  const { beforeFile } = manifest.changes.find((change) => change.beforeFile.endsWith(fileName))
+
+  return join(manifest.beforeDir, beforeFile)
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+check('records every changed file, keeping what each held before the turn', async () => {
   const repoDir = createRepo()
 
   outputFile(join(repoDir, 'keep.txt'), 'one\n')
@@ -24,13 +32,14 @@ check('reports A, M and D with correct before-images', async () => {
     removeFile(join(repoDir, 'gone.txt'))
   })
 
-  const { changes } = readManifest(getProjectKey(repoDir))
+  const manifest = readManifest(getProjectKey(repoDir))
 
-  const modifiedChange = changes.find((change) => change.beforeFile.endsWith('keep.txt'))
-  const beforeImageContents = readFile(modifiedChange.beforeImageFile, 'utf8')
+  const preTurn = 'the before-image holds what the file held before the turn'
 
-  assert.deepStrictEqual(readStatuses(repoDir), ['A added.txt', 'D gone.txt', 'M keep.txt'])
-  assert.strictEqual(beforeImageContents, 'one\n', 'the before-image holds the pre-turn content')
+  assert.deepStrictEqual(readChangedFileNames(repoDir), ['added.txt', 'gone.txt', 'keep.txt'])
+  assert.strictEqual(readFile(getBeforeImageFile(manifest, 'keep.txt'), 'utf8'), 'one\n', preTurn)
+  assert.strictEqual(readFile(getBeforeImageFile(manifest, 'gone.txt'), 'utf8'), 'bye\n', 'it keeps its contents')
+  assert.ok(!existsSync(getBeforeImageFile(manifest, 'added.txt')), 'a created file has no before-image')
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -47,12 +56,12 @@ check('a file changed and changed back is not reported', async () => {
     outputFile(join(repoDir, 'b.txt'), 'real\n')
   })
 
-  assert.deepStrictEqual(readStatuses(repoDir), ['A b.txt'])
+  assert.deepStrictEqual(readChangedFileNames(repoDir), ['b.txt'])
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-check('creating an empty file is reported as an addition', async () => {
+check('creating an empty file is recorded, and writes no before-image', async () => {
   const repoDir = createRepo()
 
   outputFile(join(repoDir, 'seed.txt'), 'one\n')
@@ -60,14 +69,16 @@ check('creating an empty file is reported as an addition', async () => {
 
   await runTurn(repoDir, 'chat', [repoDir], () => outputFile(join(repoDir, 'added.txt'), ''))
 
-  const reason = 'an empty file matches an absent before-image byte for byte, but creating it is still a change'
+  const manifest = readManifest(getProjectKey(repoDir))
+  const reason = 'an absent before-image is what marks a creation, so an empty one would read as unchanged'
 
-  assert.deepStrictEqual(readStatuses(repoDir), ['A added.txt'], reason)
+  assert.deepStrictEqual(readChangedFileNames(repoDir), ['added.txt'])
+  assert.ok(!existsSync(getBeforeImageFile(manifest, 'added.txt')), reason)
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-check('deleting an empty file is reported as a deletion', async () => {
+check('deleting an empty file is recorded, with an empty before-image', async () => {
   const repoDir = createRepo()
 
   outputFile(join(repoDir, 'gone.txt'), '')
@@ -75,7 +86,11 @@ check('deleting an empty file is reported as a deletion', async () => {
 
   await runTurn(repoDir, 'chat', [repoDir], () => removeFile(join(repoDir, 'gone.txt')))
 
-  assert.deepStrictEqual(readStatuses(repoDir), ['D gone.txt'])
+  const manifest = readManifest(getProjectKey(repoDir))
+  const reason = 'a zero-byte image still has to exist, or the deletion would read as a creation'
+
+  assert.deepStrictEqual(readChangedFileNames(repoDir), ['gone.txt'])
+  assert.strictEqual(readFile(getBeforeImageFile(manifest, 'gone.txt'), 'utf8'), '', reason)
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -94,7 +109,7 @@ check('binary files are skipped', async () => {
 
   const reason = 'the png cannot render in a multi-diff editor, so it must not be listed'
 
-  assert.deepStrictEqual(readStatuses(repoDir), ['M notes.txt'], reason)
+  assert.deepStrictEqual(readChangedFileNames(repoDir), ['notes.txt'], reason)
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -111,7 +126,7 @@ check('untracked files over the size cap are excluded from both snapshots', asyn
     outputFile(join(repoDir, 'seed.txt'), 'y\n')
   })
 
-  assert.deepStrictEqual(readStatuses(repoDir), ['M seed.txt'])
+  assert.deepStrictEqual(readChangedFileNames(repoDir), ['seed.txt'])
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -132,7 +147,7 @@ check('a same-size edit is still seen when the snapshot lands a second later', a
   await nextSecond()
   await handleTurn('end', project, { session_id: 'chat' }, [repoDir])
 
-  assert.deepStrictEqual(readStatuses(repoDir), ['M f.txt'])
+  assert.deepStrictEqual(readChangedFileNames(repoDir), ['f.txt'])
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -151,18 +166,18 @@ check('a move is one change naming both paths, not an addition', async () => {
     outputFile(join(repoDir, 'new', 'edited.txt'), 'one\ntwo CHANGED\nthree\nfour\n')
   })
 
-  const { changes } = readManifest(getProjectKey(repoDir))
+  const manifest = readManifest(getProjectKey(repoDir))
 
-  const moves = changes.map((change) => {
+  const moves = manifest.changes.map((change) => {
     const beforePath = getRelativePath(getRealPath(repoDir), change.beforeFile)
     const afterPath = getRelativePath(getRealPath(repoDir), change.afterFile)
 
-    return `${change.status} ${beforePath} -> ${afterPath}`
+    return `${beforePath} -> ${afterPath}`
   })
 
   const reason = 'git names only a rename destination, so a move used to arrive as an addition out of nowhere'
 
-  const expectedMoves = ['M old/edited.txt -> new/edited.txt', 'M old/moved.txt -> new/moved.txt']
+  const expectedMoves = ['old/edited.txt -> new/edited.txt', 'old/moved.txt -> new/moved.txt']
 
   assert.deepStrictEqual(moves.sort(), expectedMoves, reason)
 })
@@ -181,8 +196,10 @@ check('a move keeps what the file held at its old path as the before-image', asy
     outputFile(join(repoDir, 'new', 'f.txt'), 'one\ntwo CHANGED\nthree\nfour\n')
   })
 
-  const { beforeImageFile } = readManifest(getProjectKey(repoDir)).changes[0]
+  const manifest = readManifest(getProjectKey(repoDir))
   const reason = 'a moved file diffs against its old contents, which is what makes the edit visible'
+
+  const beforeImageFile = getBeforeImageFile(manifest, 'f.txt')
 
   assert.strictEqual(readFile(beforeImageFile, 'utf8'), 'one\ntwo\nthree\nfour\n', reason)
 })

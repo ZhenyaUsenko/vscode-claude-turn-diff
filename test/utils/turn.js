@@ -23,12 +23,10 @@ export const forgetChat = (dir, sessionId) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const readStatuses = (dir) => {
-  const { changes } = readManifest(getProjectKey(dir))
+export const readChangedFileNames = (dir) => {
+  const manifest = readManifest(getProjectKey(dir))
 
-  const labels = changes.map((change) => `${change.status} ${basename(change.beforeFile)}`)
-
-  return labels.sort()
+  return manifest.changes.map((change) => basename(change.beforeFile)).sort()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

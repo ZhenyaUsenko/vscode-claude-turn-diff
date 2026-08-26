@@ -18,12 +18,16 @@ check('a later chat supersedes an earlier one in the same project', async () => 
 
   await runTurn(repoDir, 'first', [repoDir], () => outputFile(join(repoDir, 'f.txt'), 'two\n'))
 
-  const supersededImageFile = readManifest(getProjectKey(repoDir)).changes[0].beforeImageFile
+  const supersededManifest = readManifest(getProjectKey(repoDir))
+
+  const supersededImageFile = join(supersededManifest.beforeDir, supersededManifest.changes[0].beforeFile)
 
   await nextSecond()
   await runTurn(repoDir, 'second', [repoDir], () => outputFile(join(repoDir, 'f.txt'), 'three\n'))
 
-  const winningImageFile = readManifest(getProjectKey(repoDir)).changes[0].beforeImageFile
+  const winningManifest = readManifest(getProjectKey(repoDir))
+
+  const winningImageFile = join(winningManifest.beforeDir, winningManifest.changes[0].beforeFile)
 
   assert.ok(!existsSync(supersededImageFile), 'the first chat\'s before-image was reclaimed')
   assert.ok(existsSync(winningImageFile), 'the winning manifest still resolves')

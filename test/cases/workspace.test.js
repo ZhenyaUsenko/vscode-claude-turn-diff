@@ -5,7 +5,7 @@ import { outputFile } from '../../src/utils/files.js'
 import { check } from '../utils/checks.js'
 import { commitAll, createRepo } from '../utils/fixtures.js'
 import { HOME } from '../utils/home.js'
-import { readStatuses, registerChat, runTurn } from '../utils/turn.js'
+import { readChangedFileNames, registerChat, runTurn } from '../utils/turn.js'
 import { resetStub, stubState } from '../utils/vscode-stub.js'
 import assert from 'node:assert'
 import { existsSync } from 'node:fs'
@@ -59,12 +59,12 @@ check('a file outside every repository is captured', async () => {
 
   await runTurn(repoDir, 'chat', [repoDir], mutate, { touchedFiles: [outsideFile] })
 
-  assert.deepStrictEqual(readStatuses(repoDir), ['M f.txt', 'M notes.md'])
+  assert.deepStrictEqual(readChangedFileNames(repoDir), ['f.txt', 'notes.md'])
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-check('a file created outside every repository is reported as an addition', async () => {
+check('a file created outside every repository is captured with no before-image', async () => {
   const repoDir = seedRepo()
   const outsideFile = join(HOME, 'created', 'notes.md')
 
@@ -75,9 +75,12 @@ check('a file created outside every repository is reported as an addition', asyn
 
   await runTurn(repoDir, 'chat', [repoDir], mutate, { touchedFiles: [outsideFile] })
 
-  const reason = 'the file did not exist when the turn armed, so it has no before-image'
+  const manifest = readManifest(getProjectKey(repoDir))
+  const createdChange = manifest.changes.find((change) => change.beforeFile === outsideFile)
+  const reason = 'the file did not exist when the turn armed, so nothing was copied for it'
 
-  assert.deepStrictEqual(readStatuses(repoDir), ['A notes.md', 'M f.txt'], reason)
+  assert.deepStrictEqual(readChangedFileNames(repoDir), ['f.txt', 'notes.md'])
+  assert.ok(!existsSync(join(manifest.beforeDir, createdChange.beforeFile)), reason)
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -97,7 +100,7 @@ check('a binary file outside every repository is skipped, not counted', async ()
 
   const reason = 'a listed binary is counted in the title and then fails to render, so the count would lie'
 
-  assert.deepStrictEqual(readStatuses(repoDir), ['M f.txt'], reason)
+  assert.deepStrictEqual(readChangedFileNames(repoDir), ['f.txt'], reason)
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -160,7 +163,10 @@ check('two projects do not overwrite each other', async () => {
 
   const reason = 'project A\'s before-image survived project B\'s turn'
 
+  const manifestA = readManifest(getProjectKey(repoDirA))
+  const manifestB = readManifest(getProjectKey(repoDirB))
+
   assert.notStrictEqual(manifestFileA, manifestFileB)
-  assert.ok(existsSync(readManifest(getProjectKey(repoDirA)).changes[0].beforeImageFile), reason)
-  assert.ok(existsSync(readManifest(getProjectKey(repoDirB)).changes[0].beforeImageFile))
+  assert.ok(existsSync(join(manifestA.beforeDir, manifestA.changes[0].beforeFile)), reason)
+  assert.ok(existsSync(join(manifestB.beforeDir, manifestB.changes[0].beforeFile)))
 })

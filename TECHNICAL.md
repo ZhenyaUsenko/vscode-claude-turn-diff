@@ -83,7 +83,7 @@ from scratch on every snapshot.
 A repository's before-images are read by one `git cat-file --batch`, not by
 `git show` per file. Spawning git costs about 10 ms, so per-file reads made
 ending a turn scale with the number of files changed: 50 files spent half a
-second on process startup alone. A turn now spawns a constant eleven git
+second on process startup alone. A turn now spawns a constant nine git
 processes. Input is NUL-terminated (`-z`) so paths containing newlines survive,
 matching the `-z` already used to list them.
 
@@ -198,17 +198,24 @@ heuristic git uses, at the single point every entry passes through. It was once
 the repository collector, so a binary outside every repository was counted and
 then rendered as nothing.
 
-A manifest's statuses were frozen when it was written and the tree may have
-moved on, so changes that no longer represent something renderable are dropped
-at render time — a file reverted by hand, or a before-image already reclaimed.
+Status is not stored. It is derived at render time from two `existsSync` calls:
+no before-image is an addition, no after file is a deletion, both present is a
+modification, and differing paths are a rename. A stored status froze what the
+turn did at the moment it ended, while the tree moved on — a file modified and
+then deleted by hand rendered with a right side that no longer existed, and one
+deleted and then recreated by hand still rendered as a deletion.
 
-The status is stored rather than derived because it cannot be recovered from
-disk. An addition writes an *empty* before-image, so an empty image cannot be
-told apart from a file that was already empty; and purge reclaims whole
-`before-*` directories, so a missing image cannot be told apart from a
-reclaimed one. Deriving it would mean writing no image for an addition and
-recording the turn's before-directory in the manifest — and it would report
-what the tree looks like now rather than what the turn did.
+Two things keep that derivation unambiguous. An addition writes **no**
+before-image, so an empty image can only mean the file was already empty. And
+the turn's `beforeDir` is recorded in the manifest and created even when every
+change is an addition and nothing is written into it, so a missing directory
+means the images were reclaimed while a missing image inside an existing one
+means there was no before. Without that directory a reclaimed turn would render
+every modified file as newly created — a confident lie rather than a silent
+omission.
+
+Changes that no longer represent anything renderable still drop out at render
+time: a file reverted by hand, or one whose sides have both gone.
 
 ## Watching files outside the workspace
 

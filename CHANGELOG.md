@@ -43,6 +43,11 @@ overwrite each other's diff.
   written out as an empty file and then compared against the new one, so the two
   matched byte for byte and the addition was dropped. Deleting an empty file was
   always reported, and still is.
+- Fixed: editing a file yourself after a turn could make its diff entry lie. One
+  the turn had changed, deleted by hand, still offered a right-hand side that no
+  longer existed; one the turn had deleted, recreated by hand, still showed as a
+  deletion. Whether a file counts as added, changed or deleted is now worked out
+  when the diff opens rather than fixed when the turn ends.
 - Removed `refs/claude/turns`. It only ever recorded the repository containing
   the folder Claude Code was started in, so in a multi-root workspace it stayed
   silently out of date as soon as you edited anything in one of the other

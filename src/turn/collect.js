@@ -1,6 +1,7 @@
 import { getSnapshotsFile, getTouchCopiesDir, getTouchListFile } from '../store/paths.js'
 import { outputFile, readFile, readLines } from '../utils/files.js'
 import { listChangedPaths, readBlobContents, snapshotTree } from '../utils/git.js'
+import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -22,12 +23,9 @@ const addChange = (collector, beforeFile, afterFile, beforeContents) => {
 
   if (isBinary(beforeContents) || isBinary(afterContents)) return
 
-  const beforeImageFile = join(collector.beforeDir, beforeFile)
-  const status = beforeContents == null ? 'A' : afterContents ? 'M' : 'D'
+  if (beforeContents != null) outputFile(join(collector.beforeDir, beforeFile), beforeContents)
 
-  outputFile(beforeImageFile, beforeContents ?? Buffer.alloc(0))
-
-  collector.changes.push({ beforeImageFile, beforeFile, afterFile, status })
+  collector.changes.push({ beforeFile, afterFile })
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -68,6 +66,8 @@ const collectOutsideChanges = (chatDir, collector) => {
 
 export const collectChanges = async (chatDir, beforeDir) => {
   const collector = { beforeDir, changes: [] }
+
+  mkdirSync(beforeDir, { recursive: true })
 
   await collectRepoChanges(chatDir, collector)
 

@@ -63,7 +63,7 @@ const endTurn = async ({ project, sessionId }) => {
   for (const armedTurnPath of getArmedTurnPaths(chatDir)) removeRecursive(armedTurnPath)
 
   if (changes.length) {
-    publishManifest(project, stamp, changes)
+    publishManifest(project, stamp, beforeDir, changes)
     purgeSupersededTurns({ project, sessionId, stamp, currentBeforeDir: beforeDir })
   } else {
     removeRecursive(beforeDir)
