@@ -18,6 +18,9 @@ overwrite each other's diff.
   two can never be pruned apart.
 - Each window advertises its own server, so two windows on one project cannot
   delete each other's advertisement.
+- A window with no folder open gets diffs too. Claude Code keys a chat started
+  there under your home directory, so that is where such a window advertises
+  itself and looks for the turn to show.
 - A turn cut short by an API error now produces a diff too, via the
   `StopFailure` hook. Reloading is not enough to pick this up — the extension
   will offer to register the new hook.

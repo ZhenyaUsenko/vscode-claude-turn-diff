@@ -1,7 +1,6 @@
 import { readManifest } from './store/manifest.js'
-import { getProjectKey } from './store/paths.js'
 import { getFileSize, readFile, sameContents } from './utils/files.js'
-import { getWorkspaceDirs } from './utils/workspace.js'
+import { getCurrentProject } from './utils/workspace.js'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { commands, Disposable, FileSystemError, FileType, Uri, workspace } from 'vscode'
@@ -13,16 +12,6 @@ let lastRenderedStamp = null
 const SCHEME = 'claude-before'
 
 const EDITOR_TITLE = 'Last turn changes'
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-const readCurrentManifest = () => {
-  const workspaceDirs = getWorkspaceDirs()
-
-  if (!workspaceDirs.length) return
-
-  return readManifest(getProjectKey(workspaceDirs[0]))
-}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -54,7 +43,7 @@ const getResources = (manifest) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const showLastTurn = async (params) => {
-  const manifest = readCurrentManifest()
+  const manifest = readManifest(getCurrentProject())
 
   if (manifest?.ts === lastRenderedStamp && !params?.force) return
 
@@ -70,7 +59,7 @@ export const showLastTurn = async (params) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const readBeforeImage = (uri, getImageData) => {
-  const manifest = readCurrentManifest()
+  const manifest = readManifest(getCurrentProject())
 
   if (!manifest || uri.query !== manifest.ts) throw FileSystemError.FileNotFound(uri)
 
@@ -106,7 +95,7 @@ export const registerBeforeImageProvider = () => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const markCurrentTurnAsSeen = () => {
-  lastRenderedStamp = readCurrentManifest()?.ts ?? null
+  lastRenderedStamp = readManifest(getCurrentProject())?.ts ?? null
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

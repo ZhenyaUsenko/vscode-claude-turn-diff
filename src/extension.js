@@ -1,8 +1,8 @@
 import { installHookScript, promptToRegisterHooks, removeHooks, setUpHooks } from './install/hooks.js'
 import { startServer } from './server.js'
-import { getProjectKey, getProjectDir } from './store/paths.js'
+import { getProjectDir } from './store/paths.js'
 import { disposeAllOutsideWatchers } from './utils/watch.js'
-import { getWorkspaceDirs } from './utils/workspace.js'
+import { getCurrentProject } from './utils/workspace.js'
 import { forgetLastRenderedTurn, markCurrentTurnAsSeen, registerBeforeImageProvider, showLastTurn } from './view.js'
 import { mkdirSync, watch } from 'node:fs'
 import { commands, window, workspace } from 'vscode'
@@ -15,15 +15,11 @@ let manifestWatcher = null
 
 const watchManifest = (logError) => {
   try {
-    const workspaceDirs = getWorkspaceDirs()
-
-    manifestWatcher?.close()
-
-    if (!workspaceDirs.length) return
-
-    const projectDir = getProjectDir(getProjectKey(workspaceDirs[0]))
+    const projectDir = getProjectDir(getCurrentProject())
 
     mkdirSync(projectDir, { recursive: true })
+
+    manifestWatcher?.close()
 
     manifestWatcher = watch(projectDir, (_event, fileName) => { if (fileName === 'manifest.json') showLastTurn() })
   } catch (error) {

@@ -43,8 +43,16 @@ written under a key nobody was serving and the diff silently never appeared. It
 looked intermittent because only long, `cd`-heavy turns hit it.
 
 For the same reason nothing below the wire boundary ever sees a directory —
-`turn/` and `store/` take a key, and `getProjectKey()` is called only where the
-extension legitimately starts from a workspace folder.
+`turn/` and `store/` take a key, and `getProjectKey()` is called only from
+`getCurrentProject()`, the single place the extension turns its own
+surroundings into a key.
+
+That function falls back to the home directory when no folder is open. Claude
+Code keys a chat by the directory it started in, and VS Code's terminal starts
+in the home directory for a window with no folder, so that is the key such a
+window has to advertise under and read from. It is a guess at a default rather
+than something observable: a `terminal.integrated.cwd` override, or a `claude`
+started from elsewhere, files the chat under a key that window never checks.
 
 ## Two capture mechanisms
 

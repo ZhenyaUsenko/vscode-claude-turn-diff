@@ -1,7 +1,7 @@
-import { getProjectKey, getServerDir, getServerFile } from './store/paths.js'
+import { getServerDir, getServerFile } from './store/paths.js'
 import { handleTurn } from './turn/index.js'
 import { outputFile, listEntries, removeFile } from './utils/files.js'
-import { getWorkspaceDirs } from './utils/workspace.js'
+import { getCurrentProject, getWorkspaceDirs } from './utils/workspace.js'
 import { randomBytes } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { createServer } from 'node:net'
@@ -87,12 +87,11 @@ const withdrawAdvert = (advertState) => {
 
 const advertise = (advertState) => {
   const { server, token, log } = advertState
-  const workspaceDirs = getWorkspaceDirs()
   const port = server.address()?.port
 
-  if (!workspaceDirs.length || !port) return void withdrawAdvert(advertState)
+  if (!port) return void withdrawAdvert(advertState)
 
-  const project = getProjectKey(workspaceDirs[0])
+  const project = getCurrentProject()
   const targetAdvert = getServerFile(project, process.pid)
 
   if (targetAdvert === advertState.writtenAdvert && existsSync(targetAdvert)) return

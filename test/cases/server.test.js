@@ -65,7 +65,7 @@ check('re-advertising an unchanged workspace leaves the advert in place', async 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-check('a window with no folders advertises nothing', async () => {
+check('a window with no folders serves the home project', async () => {
   const repoDir = createRepo()
 
   resetStub([])
@@ -74,19 +74,17 @@ check('a window with no folders advertises nothing', async () => {
 
   await settle()
 
-  assert.strictEqual(getAdvert(repoDir), undefined, 'nothing to serve, nothing advertised')
+  const homeReason = 'Claude Code keys a chat started with no folder open under the home directory'
+
+  assert.ok(getAdvert(HOME), homeReason)
+  assert.strictEqual(getAdvert(repoDir), undefined, 'and not under a project it cannot see')
 
   stubState.workspaceDirs = [repoDir]
 
   server.readvertise()
 
-  assert.ok(getAdvert(repoDir), 'it advertises once a folder arrives')
-
-  stubState.workspaceDirs = []
-
-  server.readvertise()
-
-  assert.strictEqual(getAdvert(repoDir), undefined, 'and withdraws when the last one goes')
+  assert.ok(getAdvert(repoDir), 'it moves to the folder once one arrives')
+  assert.strictEqual(getAdvert(HOME), undefined, 'leaving only one advert per window')
 
   server.dispose()
 })
