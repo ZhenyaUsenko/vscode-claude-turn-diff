@@ -18,12 +18,6 @@ const getResource = (diffData, fileName) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const getBeforeUri = (beforeFile, stamp) => {
-  return Uri.file(beforeFile).with({ scheme: 'claude-before', query: stamp })
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 const readContents = (uri) => {
   return stubState.provider.readFile(uri).toString()
 }
@@ -119,10 +113,10 @@ check('a before-image resolves with no render to prime it, as after a restart', 
   resetStub([repoDir])
   registerBeforeImageProvider()
 
-  const { ts, changes } = readManifest(getProjectKey(repoDir))
+  const { beforeDir, changes } = readManifest(getProjectKey(repoDir))
   const { beforeFile } = changes[0]
 
-  const beforeUri = getBeforeUri(beforeFile, ts)
+  const beforeUri = Uri.file(beforeFile).with({ scheme: 'claude-before', query: beforeDir })
   const restartReason = 'a restored editor asks for its uri directly, so the provider cannot rely on a render'
 
   assert.strictEqual(readContents(beforeUri), 'before\n', restartReason)

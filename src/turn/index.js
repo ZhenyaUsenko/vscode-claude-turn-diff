@@ -39,8 +39,7 @@ const armTurn = async ({ project, sessionId, payload, workspaceDirs }) => {
     snapshots = await snapshotWorkspace(chatDir, workspaceDirs)
   }
 
-  if (!targetFile) return
-  if (snapshots.some(([repoDir]) => isUnder(canonicalize(targetFile), repoDir))) return
+  if (!targetFile || snapshots.some(([repoDir]) => isUnder(canonicalize(targetFile), repoDir))) return
 
   captureTouchedFile(chatDir, targetFile)
 }

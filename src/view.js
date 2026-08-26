@@ -20,6 +20,8 @@ const getResources = (manifest) => {
 
   if (!manifest || !existsSync(manifest.beforeDir)) return resources
 
+  const beforeUriParams = { scheme: SCHEME, query: manifest.beforeDir }
+
   for (const { beforeFile, afterFile } of manifest.changes) {
     const beforeImageFile = join(manifest.beforeDir, beforeFile)
 
@@ -30,8 +32,7 @@ const getResources = (manifest) => {
 
     if (beforeFile === afterFile && sameContents(beforeImageFile, afterFile)) continue
 
-    const beforeUri = beforeImageExists ? Uri.file(beforeFile).with({ scheme: SCHEME, query: manifest.ts }) : undefined
-
+    const beforeUri = beforeImageExists ? Uri.file(beforeFile).with(beforeUriParams) : undefined
     const afterUri = afterFileExists ? Uri.file(afterFile) : undefined
 
     resources.push([afterUri ?? Uri.file(beforeFile), beforeUri, afterUri])
@@ -59,11 +60,7 @@ export const showLastTurn = async (params) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const readBeforeImage = (uri, getImageData) => {
-  const manifest = readManifest(getCurrentProject())
-
-  if (!manifest || uri.query !== manifest.ts) throw FileSystemError.FileNotFound(uri)
-
-  const imageData = getImageData(join(manifest.beforeDir, uri.fsPath))
+  const imageData = getImageData(join(uri.query, uri.fsPath))
 
   if (imageData == null) throw FileSystemError.FileNotFound(uri)
 
