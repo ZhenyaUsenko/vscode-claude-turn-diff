@@ -1,5 +1,5 @@
 import { getSnapshotsFile, getTouchCopiesDir, getTouchListFile } from '../store/paths.js'
-import { outputFile, readFile, readLines } from '../utils/files.js'
+import { compareFilesInTreeOrder, outputFile, readFile, readLines } from '../utils/files.js'
 import { listChangedPaths, readBlobContents, snapshotTree } from '../utils/git.js'
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
@@ -40,6 +40,8 @@ const collectRepoChanges = async (chatDir, collector) => {
 
     const changedPaths = await listChangedPaths(repoDir, treeBefore, treeAfter)
 
+    changedPaths.sort((a, b) => compareFilesInTreeOrder(a.afterPath, b.afterPath))
+
     const beforePaths = changedPaths.map((changedPath) => changedPath.beforePath)
 
     const blobContents = await readBlobContents(repoDir, treeBefore, beforePaths)
@@ -55,7 +57,9 @@ const collectRepoChanges = async (chatDir, collector) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const collectOutsideChanges = (chatDir, collector) => {
-  for (const touchedFile of readLines(getTouchListFile(chatDir))) {
+  const touchedFiles = readLines(getTouchListFile(chatDir)).sort(compareFilesInTreeOrder)
+
+  for (const touchedFile of touchedFiles) {
     const beforeContents = readFile(join(getTouchCopiesDir(chatDir), touchedFile))
 
     addChange(collector, touchedFile, touchedFile, beforeContents)

@@ -179,7 +179,7 @@ check('a move is one change naming both paths, not an addition', async () => {
 
   const expectedMoves = ['old/edited.txt -> new/edited.txt', 'old/moved.txt -> new/moved.txt']
 
-  assert.deepStrictEqual(moves.sort(), expectedMoves, reason)
+  assert.deepStrictEqual(moves, expectedMoves, reason)
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -203,3 +203,33 @@ check('a move keeps what the file held at its old path as the before-image', asy
 
   assert.strictEqual(readFile(beforeImageFile, 'utf8'), 'one\ntwo\nthree\nfour\n', reason)
 })
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+check('changes are ordered the way the explorer shows them', async () => {
+  const repoDir = createRepo()
+  const seeded = ['zebra.txt', 'Alpha.txt', 'src/util/b.js', 'src/a.js', 'old/moved.txt']
+
+  for (const name of seeded) outputFile(join(repoDir, name), 'one\ntwo\nthree\nfour\n')
+
+  commitAll(repoDir)
+
+  await runTurn(repoDir, 'chat', [repoDir], () => {
+    for (const name of seeded.slice(0, -1)) outputFile(join(repoDir, name), 'CHANGED\ntwo\nthree\nfour\n')
+
+    mkdirSync(join(repoDir, 'new'), { recursive: true })
+    renameSync(join(repoDir, 'old', 'moved.txt'), join(repoDir, 'new', 'moved.txt'))
+  })
+
+  const root = getRealPath(repoDir)
+
+  const order = readManifest(getProjectKey(repoDir)).changes.map((change) => {
+    return getRelativePath(root, change.afterFile)
+  })
+
+  const expected = ['new/moved.txt', 'src/util/b.js', 'src/a.js', 'Alpha.txt', 'zebra.txt']
+  const reason = 'folders come before files at every level, and a move sits where it landed'
+
+  assert.deepStrictEqual(order, expected, reason)
+})
+

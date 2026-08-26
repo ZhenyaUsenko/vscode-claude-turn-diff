@@ -9,7 +9,7 @@ import { readChangedFileNames, registerChat, runTurn } from '../utils/turn.js'
 import { resetStub, stubState } from '../utils/vscode-stub.js'
 import assert from 'node:assert'
 import { existsSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -170,3 +170,28 @@ check('two projects do not overwrite each other', async () => {
   assert.ok(existsSync(join(manifestA.beforeDir, manifestA.changes[0].beforeFile)), reason)
   assert.ok(existsSync(join(manifestB.beforeDir, manifestB.changes[0].beforeFile)))
 })
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+check('files outside every repository come last, in their own order', async () => {
+  const repoDir = seedRepo()
+  const laterFile = join(HOME, 'zzz-outside', 'later.md')
+  const earlierFile = join(HOME, 'aaa-outside', 'earlier.md')
+
+  outputFile(laterFile, 'before\n')
+  outputFile(earlierFile, 'before\n')
+
+  const mutate = () => {
+    outputFile(join(repoDir, 'f.txt'), 'two\n')
+    outputFile(laterFile, 'after\n')
+    outputFile(earlierFile, 'after\n')
+  }
+
+  await runTurn(repoDir, 'chat', [repoDir], mutate, { touchedFiles: [laterFile, earlierFile] })
+
+  const names = readManifest(getProjectKey(repoDir)).changes.map((change) => basename(change.afterFile))
+  const reason = 'they were touched the other way round, and they belong after everything in the repository'
+
+  assert.deepStrictEqual(names, ['f.txt', 'earlier.md', 'later.md'], reason)
+})
+

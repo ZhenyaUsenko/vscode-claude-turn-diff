@@ -3,6 +3,10 @@ import { basename, dirname, join, sep as PATH_SEPARATOR } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+const NAME_COLLATOR = new Intl.Collator(undefined, { numeric: true })
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 export const readFile = (file, encoding) => {
   try { return readFileSync(file, encoding) } catch { return undefined }
 }
@@ -80,4 +84,25 @@ export const canonicalize = (targetPath) => {
   const realParent = getRealPath(dirname(targetPath))
 
   return realParent ? join(realParent, basename(targetPath)) : targetPath
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const compareFilesInTreeOrder = (a, b) => {
+  const left = a.split(PATH_SEPARATOR)
+  const right = b.split(PATH_SEPARATOR)
+  const sharedLength = Math.min(left.length, right.length)
+
+  for (let index = 0; index < sharedLength; index++) {
+    if (left[index] === right[index]) continue
+
+    const leftIsDir = index < left.length - 1
+    const rightIsDir = index < right.length - 1
+
+    if (leftIsDir !== rightIsDir) return leftIsDir ? -1 : 1
+
+    return NAME_COLLATOR.compare(left[index], right[index])
+  }
+
+  return left.length - right.length
 }

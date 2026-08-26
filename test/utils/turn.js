@@ -26,7 +26,7 @@ export const forgetChat = (dir, sessionId) => {
 export const readChangedFileNames = (dir) => {
   const manifest = readManifest(getProjectKey(dir))
 
-  return manifest.changes.map((change) => basename(change.beforeFile)).sort()
+  return manifest.changes.map((change) => basename(change.beforeFile))
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
