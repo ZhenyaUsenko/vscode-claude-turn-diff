@@ -26,6 +26,9 @@ the chat panel instead. This closes that gap.
   `package-lock.json` churn from a shell command appears just like a direct
   edit — anything landing in a git worktree is seen, however it got there.
 - **`A` / `M` / `D` badges**, with no spurious rename markers.
+- **A look at work in progress.** Ask for the diff while Claude is still
+  working and you get what the turn has changed so far, brought up to date each
+  time you ask.
 
 ## Requirements
 
@@ -72,7 +75,7 @@ from the palette, or add this yourself:
 
 | Command | Does |
 |---|---|
-| Turn Diff: Show last turn changes | Reopens the last diff, skipping anything since reverted |
+| Turn Diff: Show last turn changes | The turn in progress if there is one, otherwise the last one that finished. Skips anything since reverted |
 | Turn Diff: Register hooks in Claude settings | Writes the hook config, after a backup |
 | Turn Diff: Remove hooks from Claude settings | Removes only this extension's entries |
 
@@ -88,6 +91,11 @@ from the palette, or add this yourself:
 
 Snapshots use a throwaway copy of `.git/index`, so your real index and staging
 area are never touched.
+
+Asking for the diff mid-turn diffs against that same snapshot without ending the
+turn, so it is a look at the work in progress rather than a checkpoint of it. If
+the turn turns out to be over already, asking finishes it off instead, and you
+get an ordinary last-turn diff.
 
 The hook is a thin client. It locates the window serving this project through a
 small file under `~/.claude/turn-diff/` and hands the payload over a loopback
@@ -107,10 +115,14 @@ are — the pieces that are not visible from reading the source.
 
 ## Storage
 
-Before-images live in `~/.claude/turn-diff/`, and only the most recent turn is
-kept — each turn purges the last. The diff compares against the *current* file,
-which is what makes it editable, so an older turn stops being meaningful the
-moment the tree moves on.
+Before-images live in `~/.claude/turn-diff/<project>/`, and only the most recent
+turn is kept — each turn replaces the last. The diff compares against the
+*current* file, which is what makes it editable, so an older turn stops being
+meaningful the moment the tree moves on.
+
+A diff you already have open keeps working after a later turn replaces it, since
+the editor holds on to the text it has read — but only until you close the tab
+or reload the window.
 
 ## Limitations
 
@@ -123,6 +135,17 @@ moment the tree moves on.
 - Binary files are not shown. The multi-file diff editor resolves both sides
   through VS Code's text model service, so a binary entry cannot render, and
   there is no image diff to fall back on.
+- A turn you interrupt opens no diff by itself: Claude Code runs no `Stop` hook
+  on one. Run **Turn Diff: Show last turn changes** and it is finished off then
+  and there, so you get its diff and keep it. Do that before your next message,
+  which discards the turn's baseline. The same recovers a turn that ended while
+  the window was closed or reloading.
+- A turn that dies outright — the window killed, a crash, the connection lost
+  mid-reply — leaves nothing to tell it apart from one still working, so it
+  cannot be recovered this way.
+- Two chats running at once in the same project share one diff: the second
+  reuses the first's baseline and produces nothing of its own. A snapshot covers
+  the whole workspace anyway, so each would have shown the other's edits.
 - Paths containing tabs or newlines are not handled.
 
 ## License

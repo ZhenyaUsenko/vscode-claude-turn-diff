@@ -6,32 +6,30 @@ import { dirname, join } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const snapshotWorkspace = async (chatDir, workspaceDirs) => {
+export const snapshotWorkspace = async (project, workspaceDirs) => {
   const snapshots = []
 
   for (const { repoDir, gitDir } of await listRepos(workspaceDirs)) {
-    const tree = await snapshotTree(repoDir, gitDir, chatDir)
+    const tree = await snapshotTree(repoDir, gitDir)
 
     if (tree) snapshots.push([repoDir, gitDir, tree])
   }
 
-  const snapshotsFileContents = snapshots.map((snapshot) => `${snapshot.join('\t')}\n`).join('')
-
-  writeFileSync(getSnapshotsFile(chatDir), snapshotsFileContents)
+  writeFileSync(getSnapshotsFile(project), snapshots.map((snapshot) => `${snapshot.join('\t')}\n`).join(''))
 
   return snapshots
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const captureTouchedFile = (chatDir, targetFile) => {
-  const touchListFile = getTouchListFile(chatDir)
+export const captureTouchedFile = (project, targetFile) => {
+  const touchListFile = getTouchListFile(project)
   const alreadySeenFiles = readLines(touchListFile)
 
   if (alreadySeenFiles.includes(targetFile)) return
 
   if (existsSync(targetFile)) {
-    const copiedFile = join(getTouchCopiesDir(chatDir), targetFile)
+    const copiedFile = join(getTouchCopiesDir(project), targetFile)
 
     mkdirSync(dirname(copiedFile), { recursive: true })
     copyFileSync(targetFile, copiedFile)

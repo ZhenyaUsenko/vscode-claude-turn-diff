@@ -1,6 +1,7 @@
-import { getFileSize, removeFile } from './files.js'
+import { getFileSize, removeRecursive } from './files.js'
 import { execFile } from 'node:child_process'
-import { copyFileSync, statSync, utimesSync } from 'node:fs'
+import { copyFileSync, mkdtempSync, statSync, utimesSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -77,10 +78,11 @@ const listSmallUntrackedFiles = async (repoDir, env) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const snapshotTree = async (repoDir, gitDir, scratchDir) => {
-  const indexCopyFile = join(scratchDir, 'index.tmp')
+export const snapshotTree = async (repoDir, gitDir) => {
+  const scratchDir = mkdtempSync(join(tmpdir(), 'turn-diff-'))
+  const indexCopyFile = join(scratchDir, 'index')
 
-  try { copyPreservingMtime(join(gitDir, 'index'), indexCopyFile) } catch { return null }
+  try { copyPreservingMtime(join(gitDir, 'index'), indexCopyFile) } catch { return void removeRecursive(scratchDir) }
 
   const env = { GIT_INDEX_FILE: indexCopyFile }
 
@@ -92,7 +94,7 @@ export const snapshotTree = async (repoDir, gitDir, scratchDir) => {
 
   const tree = await runText(['-C', repoDir, 'write-tree'], env)
 
-  removeFile(indexCopyFile)
+  removeRecursive(scratchDir)
 
   return tree
 }

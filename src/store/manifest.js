@@ -1,13 +1,19 @@
-import { readFile } from '../utils/files.js'
+import { readFile, removeFile } from '../utils/files.js'
 import { getManifestFile } from './paths.js'
 import { renameSync, writeFileSync } from 'node:fs'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const publishManifest = (project, stamp, beforeDir, changes) => {
+export const removeManifest = (project) => {
+  removeFile(getManifestFile(project))
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const publishManifest = (project, changes, params) => {
   const manifestFile = getManifestFile(project)
 
-  const manifestBody = { ts: `${stamp}-${process.pid}`, beforeDir, changes }
+  const manifestBody = { ts: `${Date.now()}-${process.pid}`, changes, running: params.running }
 
   writeFileSync(`${manifestFile}.tmp`, JSON.stringify(manifestBody))
   renameSync(`${manifestFile}.tmp`, manifestFile)

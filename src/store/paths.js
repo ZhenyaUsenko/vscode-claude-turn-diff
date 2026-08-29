@@ -3,8 +3,6 @@ import { join } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const BEFORE_PREFIX = 'before-'
-
 const CLAUDE_DIR = join(homedir(), '.claude')
 
 const STATE_ROOT = join(CLAUDE_DIR, 'turn-diff')
@@ -23,11 +21,9 @@ export const getProjectKey = (dir) => dir.replace(/[^a-zA-Z0-9]/g, '-')
 
 export const getProjectDir = (project) => join(STATE_ROOT, project)
 
-export const getChatsDir = (project) => join(getProjectDir(project), 'chats')
-
-export const getChatDir = (project, sessionId) => join(getChatsDir(project), sessionId)
-
 export const getManifestFile = (project) => join(getProjectDir(project), 'manifest.json')
+
+export const getBeforeImagesDir = (project) => join(getProjectDir(project), 'beforeImages')
 
 export const getServerDir = (project) => join(getProjectDir(project), 'servers')
 
@@ -37,20 +33,14 @@ export const getTranscriptFile = (project, sessionId) => join(TRANSCRIPTS_ROOT, 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const getSnapshotsFile = (chatDir) => join(chatDir, 'snapshots.tsv')
+export const getSessionIdFile = (project) => join(getProjectDir(project), 'sessionId.txt')
 
-export const getTouchListFile = (chatDir) => join(chatDir, 'touchList.txt')
+export const getSnapshotsFile = (project) => join(getProjectDir(project), 'snapshots.tsv')
 
-export const getTouchCopiesDir = (chatDir) => join(chatDir, 'touchCopies')
+export const getTouchListFile = (project) => join(getProjectDir(project), 'touchList.txt')
 
-export const getArmedTurnPaths = (chatDir) => {
-  return [getSnapshotsFile(chatDir), getTouchListFile(chatDir), getTouchCopiesDir(chatDir)]
+export const getTouchCopiesDir = (project) => join(getProjectDir(project), 'touchCopies')
+
+export const getArmedTurnPaths = (project) => {
+  return [getSessionIdFile(project), getSnapshotsFile(project), getTouchListFile(project), getTouchCopiesDir(project)]
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export const getBeforeDir = (chatDir, stamp) => join(chatDir, `${BEFORE_PREFIX}${stamp}`)
-
-export const isBeforeDirName = (dirName) => dirName.startsWith(BEFORE_PREFIX)
-
-export const getBeforeStamp = (dirName) => +dirName.slice(BEFORE_PREFIX.length)

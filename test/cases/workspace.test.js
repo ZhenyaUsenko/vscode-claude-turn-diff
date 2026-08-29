@@ -1,11 +1,10 @@
 import { readManifest } from '../../src/store/manifest.js'
-import { getManifestFile, getProjectKey } from '../../src/store/paths.js'
-import { handleTurn } from '../../src/turn/index.js'
+import { getBeforeImagesDir, getManifestFile, getProjectKey } from '../../src/store/paths.js'
 import { outputFile } from '../../src/utils/files.js'
 import { check } from '../utils/checks.js'
 import { commitAll, createRepo } from '../utils/fixtures.js'
 import { HOME } from '../utils/home.js'
-import { readChangedFileNames, registerChat, runTurn } from '../utils/turn.js'
+import { readChangedFileNames, runTurn } from '../utils/turn.js'
 import { resetStub, stubState } from '../utils/vscode-stub.js'
 import assert from 'node:assert'
 import { existsSync } from 'node:fs'
@@ -20,14 +19,6 @@ const seedRepo = () => {
   commitAll(repoDir)
 
   return repoDir
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-const getWatcher = (targetFile) => {
-  const dir = dirname(targetFile)
-
-  return stubState.watchers.find((watcher) => watcher.pattern.base.fsPath === dir)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -80,7 +71,7 @@ check('a file created outside every repository is captured with no before-image'
   const reason = 'the file did not exist when the turn armed, so nothing was copied for it'
 
   assert.deepStrictEqual(readChangedFileNames(repoDir), ['f.txt', 'notes.md'])
-  assert.ok(!existsSync(join(manifest.beforeDir, createdChange.beforeFile)), reason)
+  assert.ok(!existsSync(join(getBeforeImagesDir(getProjectKey(repoDir)), createdChange.beforeFile)), reason)
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -130,27 +121,6 @@ check('arming a file outside the workspace watches it, once', async () => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-check('a chat ending leaves a parallel chat mid-turn still watching', async () => {
-  const repoDir = seedRepo()
-  const project = getProjectKey(repoDir)
-  const fileForA = join(HOME, 'chat-a', 'notes.md')
-  const fileForB = join(HOME, 'chat-b', 'notes.md')
-
-  outputFile(fileForA, 'before\n')
-  outputFile(fileForB, 'before\n')
-  resetStub([repoDir])
-  registerChat(repoDir, 'b')
-
-  await handleTurn('begin', project, { session_id: 'b', prompt: 'p' }, [repoDir])
-  await handleTurn('arm', project, { session_id: 'b', tool_input: { file_path: fileForB } }, [repoDir])
-  await runTurn(repoDir, 'a', [repoDir], () => outputFile(fileForA, 'after\n'), { touchedFiles: [fileForA] })
-
-  assert.ok(getWatcher(fileForA).disposed, 'the chat that finished released its own')
-  assert.ok(!getWatcher(fileForB).disposed, 'the chat still mid-turn keeps watching')
-})
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 check('two projects do not overwrite each other', async () => {
   const repoDirA = seedRepo()
   const repoDirB = seedRepo()
@@ -163,12 +133,15 @@ check('two projects do not overwrite each other', async () => {
 
   const reason = 'project A\'s before-image survived project B\'s turn'
 
+  const imagesA = getBeforeImagesDir(getProjectKey(repoDirA))
+  const imagesB = getBeforeImagesDir(getProjectKey(repoDirB))
+
   const manifestA = readManifest(getProjectKey(repoDirA))
   const manifestB = readManifest(getProjectKey(repoDirB))
 
   assert.notStrictEqual(manifestFileA, manifestFileB)
-  assert.ok(existsSync(join(manifestA.beforeDir, manifestA.changes[0].beforeFile)), reason)
-  assert.ok(existsSync(join(manifestB.beforeDir, manifestB.changes[0].beforeFile)))
+  assert.ok(existsSync(join(imagesA, manifestA.changes[0].beforeFile)), reason)
+  assert.ok(existsSync(join(imagesB, manifestB.changes[0].beforeFile)))
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

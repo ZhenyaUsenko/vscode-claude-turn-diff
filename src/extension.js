@@ -1,9 +1,9 @@
 import { installHookScript, promptToRegisterHooks, removeHooks, setUpHooks } from './install/hooks.js'
 import { startServer } from './server.js'
 import { getProjectDir } from './store/paths.js'
-import { disposeAllOutsideWatchers } from './utils/watch.js'
+import { disposeOutsideWatchers } from './utils/watch.js'
 import { getCurrentProject } from './utils/workspace.js'
-import { forgetLastRenderedTurn, markCurrentTurnAsSeen, registerBeforeImageProvider, showLastTurn } from './view.js'
+import { registerBeforeImageProvider, showLastTurn } from './view.js'
 import { mkdirSync, watch } from 'node:fs'
 import { commands, window, workspace } from 'vscode'
 
@@ -34,7 +34,6 @@ export const activate = (context) => {
 
   const logError = (message) => outputChannel.error(message)
 
-  markCurrentTurnAsSeen()
   watchManifest(logError)
 
   const server = startServer(logError)
@@ -44,9 +43,8 @@ export const activate = (context) => {
     server,
     registerBeforeImageProvider(),
     { dispose: () => manifestWatcher?.close() },
-    { dispose: () => disposeAllOutsideWatchers() },
+    { dispose: () => disposeOutsideWatchers() },
     workspace.onDidChangeWorkspaceFolders(() => {
-      forgetLastRenderedTurn()
       watchManifest(logError)
       server.readvertise()
     }),

@@ -7,15 +7,18 @@ now kept per project — keyed by the directory the session started in, the way
 Claude Code keys `~/.claude/projects` — so several VS Code windows no longer
 overwrite each other's diff.
 
-- The hook is now a 44-line client that hands the payload to the extension over
+- The hook is now a 38-line client that hands the payload to the extension over
   a loopback socket. All capture logic moved into the extension, so it is one
   language, unit-tested, and the hook runs on bash builtins alone instead of
   spawning `jq` and `git` before every tool call. `jq` is no longer required.
 - Ending a turn no longer spawns a git process per changed file. It reads every
   before-image in one batch, so a turn touching fifty files costs the same as
   one touching two.
-- A project's manifest now lives beside the before-images it points at, so the
-  two can never be pruned apart.
+- A project's state is one flat directory: the manifest, one set of
+  before-images, and whatever the running turn has captured. They are written
+  together, so the diff can never point at images that have moved on, and
+  nothing is left to age out. Two chats at once in one project now share a
+  single diff rather than getting one each.
 - Each window advertises its own server, so two windows on one project cannot
   delete each other's advertisement.
 - A window with no folder open gets diffs too. Claude Code keys a chat started
@@ -24,6 +27,17 @@ overwrite each other's diff.
 - A turn cut short by an API error now produces a diff too, via the
   `StopFailure` hook. Reloading is not enough to pick this up — the extension
   will offer to register the new hook.
+- **Turn Diff: Show last turn changes** now shows the turn in progress when
+  there is one, so you can look at what Claude has changed so far without
+  waiting for it to finish. It brings the diff up to date each time you ask,
+  leaves the turn running, and falls back to the last finished turn while a turn
+  has changed nothing yet.
+- A turn that ends without the extension hearing about it is no longer lost.
+  Claude Code runs no `Stop` hook on a turn you interrupt, and a turn that ends
+  cleanly reaches nothing if the window was closed or reloading at the time. In
+  either case nothing opens by itself, but asking for the diff now finishes the
+  turn off and publishes it like any other — as long as you ask before your next
+  message, which discards its baseline.
 - Files in the diff are ordered the way the explorer shows them: folders before
   files at each level, then by name, ignoring case and reading digits as
   numbers. Repositories come in workspace order with anything outside them

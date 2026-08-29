@@ -1,4 +1,7 @@
-import { mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import {
+  closeSync, fstatSync, mkdirSync, openSync, readdirSync, readFileSync,
+  readSync, realpathSync, rmSync, statSync, writeFileSync,
+} from 'node:fs'
 import { basename, dirname, join, sep as PATH_SEPARATOR } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -62,12 +65,6 @@ export const readLines = (file) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const listDirNames = (dir) => {
-  return listEntries(dir).filter((entry) => entry.isDirectory()).map((entry) => entry.name)
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 export const sameContents = (left, right) => {
   if (+getFileSize(left) !== +getFileSize(right)) return false
 
@@ -84,6 +81,28 @@ export const canonicalize = (targetPath) => {
   const realParent = getRealPath(dirname(targetPath))
 
   return realParent ? join(realParent, basename(targetPath)) : targetPath
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const readFileTail = (file, maxBytes) => {
+  let descriptor
+
+  try {
+    descriptor = openSync(file, 'r')
+
+    const size = fstatSync(descriptor).size
+    const length = Math.min(size, maxBytes)
+    const buffer = Buffer.alloc(length)
+
+    readSync(descriptor, buffer, 0, length, size - length)
+
+    return buffer.toString('utf8')
+  } catch {
+    return undefined
+  } finally {
+    if (descriptor != null) closeSync(descriptor)
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -73,7 +73,11 @@ affordable.
 
 A worktree is snapshotted to a dangling tree object by copying `.git/index`
 aside and pointing `GIT_INDEX_FILE` at the copy, so the real staging area is
-never touched.
+never touched. Each snapshot makes its own temporary directory to hold that
+copy, because a look at a running turn snapshots while `arm` may be snapshotting
+too — the server handles each hook request independently. Two snapshots sharing
+one path overwrite each other's index mid-read, and `write-tree` returns nothing
+for the loser, which drops that repository out of the turn silently.
 
 The copy has to keep the source's mtime. Git decides an index entry needs its
 content re-read by comparing the entry's mtime against the index file's own; a
@@ -88,44 +92,144 @@ so they cancel out and never appear. Tracked files are never size-filtered: git
 only re-hashes those whose stat info changed, whereas untracked ones are hashed
 from scratch on every snapshot.
 
-A repository's before-images are read by one `git cat-file --batch`, not by
-`git show` per file. Spawning git costs about 10 ms, so per-file reads made
-ending a turn scale with the number of files changed: 50 files spent half a
-second on process startup alone. A turn now spawns a constant nine git
-processes. Input is NUL-terminated (`-z`) so paths containing newlines survive,
-matching the `-z` already used to list them.
+A repository's before-images are read by one `git cat-file --batch`. Spawning
+git costs about 10 ms, so reading them a file at a time would make ending a turn
+scale with the number of files changed — fifty files would spend half a second
+on process startup alone. As it is, a turn spawns the same handful whatever it
+touched: nine, or up to eleven when there are untracked files to stage. Input is
+NUL-terminated (`-z`) so paths containing newlines survive, matching the `-z`
+already used to list them.
 
 ## Publishing and reclaiming
 
-`end` writes the manifest to `manifest.json.tmp` and renames it into place. The
-rename is atomic, so the watcher can never read a half-written file.
+Everything a project needs sits directly in its own directory — the armed
+state, one `beforeImages/`, one `manifest.json` — with no per-chat and no
+per-turn nesting, because only one diff is ever shown.
 
-Replacing the manifest fires two `rename` events for one write — the unlink of
-the old inode and the link of the new one — so the watcher asks for a render
-twice per turn. It needs no debounce: `showLastTurn` records the manifest's
-stamp before its first `await`, so the second call finds the turn already
-rendered and returns.
+Two chats running at once in one project therefore share a turn: the second
+reuses the first's baseline and produces nothing of its own. Keeping state per
+chat would not make them independent anyway, since a snapshot covers the whole
+workspace and a parallel chat's edits land in the other's diff regardless.
 
-It publishes *before* purging. With parallel chats the manifest being replaced
-may still belong to another chat, and it must never point at before-images that
-have already been deleted.
+A turn is collected entirely before anything on disk moves, and then three
+things happen in an order that matters:
 
-Everything is reclaimed by events rather than by age — a finishing turn knows
-exactly which state its own manifest supersedes, so there is no scheduled sweep:
+```
+remove manifest.json      → nothing resolves; a stale tab keeps what it has
+clear and write beforeImages/
+rename the new manifest into place
+```
 
-- Its own older `before-*` directories.
-- Sibling chats that no longer exist in `~/.claude/projects`. Finding our own
-  transcript first proves the key mapping is right; without that check a
-  mismatched key would make every sibling look deleted.
-- Superseded turns of chats that still exist, but only ones strictly *older*
-  than this turn — two chats finishing in the same second must not delete each
-  other's images and leave the winning manifest dangling.
+Without the removal first there is a window where a superseded tab's stamp still
+matches the old manifest while the bytes underneath have already been replaced,
+and it would be handed the new turn's before-image for the old turn's diff.
+Removing the manifest costs nothing: the watcher fires, finds no manifest, and
+renders nothing.
 
-Chats live under `chats/` so that listing them yields chats and nothing else.
-They were once siblings of `servers/`, and since no chat is named "servers",
-every finishing turn concluded that directory belonged to a deleted chat and
-deleted the running window's own advert. The first diff of a session worked and
-every turn after it silently did nothing until the window was reloaded.
+Collecting into memory first is what makes a turn that changed nothing free. It
+publishes nothing, so it clears nothing, and the previous diff survives intact.
+Writing images as they were found would have destroyed them before knowing there
+was anything to replace them with — and `arm` fires on `Bash`, so a turn that
+runs one command and changes nothing is ordinary. Nothing is held that was not
+held already: `readBlobContents` reads a whole repository's before-images in one
+batch.
+
+`beforeImages/` is recreated even when every change is an addition and nothing
+is written into it, so its absence means the images were reclaimed while a
+missing file inside it means there was no before. Without that a reclaimed turn
+would render every modified file as newly created — a confident lie rather than
+a silent omission.
+
+The rename is atomic, so the watcher can never read a half-written manifest.
+Replacing it fires two `rename` events for one write — the unlink of the old
+inode and the link of the new one — so the watcher asks for a render twice per
+turn. It needs no debounce: `showLastTurn` records the manifest's stamp before
+its first `await`, so the second call finds the turn already rendered and
+returns. That is also why publishing from an explicit request opens one diff
+rather than two. It holds only because nothing between publishing and that
+assignment awaits real I/O — a microtask cannot let an `fs.watch` callback in,
+but an added `await` would.
+
+There is no sweep and nothing ages out. A turn's state is replaced by the next
+turn's, and a project directory is bounded by one turn's worth of it.
+
+## The turn still running
+
+A manifest only exists once a turn has ended, and a turn can end without `end`
+ever running. Claude Code runs no `Stop` hook on a turn you interrupt, and even
+a turn that ends cleanly reaches nothing if the window was closed or reloading
+at that moment, if the hook timed out, or if `end` threw. In every one of those
+the snapshot is stranded and the work is discarded unseen by the next `begin`.
+
+So asking for the diff runs `end` itself over anything still armed, before it
+renders. `endTurn` publishes whatever the armed turn has done so far, and only
+*tears the turn down* — clearing the armed state and releasing its watchers —
+when the transcript says the turn is actually over. A running turn keeps its
+baseline, so the rest of it is still captured and its real `Stop` publishes
+again on top.
+
+Everything else follows from that. A running turn is collected afresh every time
+it is asked for, because nothing remembers the last look. A turn that is over
+was collected when it was torn down, so its diff stops growing there and files
+you go on to touch by hand cannot wander into it. One that ended normally
+cleared `snapshots.tsv`, so there is nothing armed to collect.
+
+`running` on the manifest is what the turn was when it was published, so the
+editor's title describes the diff on screen rather than the state of the moment.
+A turn that has changed nothing publishes nothing, which leaves the previous
+turn — and its title — alone.
+
+Only an explicit request takes this path. The watcher fires on a manifest write,
+by which point the armed state is already gone, and collecting again there would
+publish a turn nobody asked to see.
+
+Stamps are milliseconds. A look and the end of the same turn usually fall within
+one second of each other, so at second granularity they would share a `ts` and
+the finished diff would read as already rendered and never open.
+
+### Reading the end of a turn out of the transcript
+
+The tail is scanned backwards to the last `user` or `assistant` entry, and that
+one entry decides. Every turn ends in one of two ways, and grouping real
+transcripts by `promptId` — which only user entries carry, so it marks the
+prompt boundary — shows nothing else ever ends one:
+
+- An assistant entry whose `stop_reason` is terminal. This is an Anthropic API
+  field rather than a Claude Code internal, and `tool_use` is exactly the
+  mid-turn case: stopping to call a tool is how a turn continues.
+- A user entry carrying `[Request interrupted by user`, one of the two markers
+  Claude Code writes on Esc. It counts its own `userInterruptions` metric by
+  testing for that same prefix.
+
+Terminal reasons are an allowlist, not "anything but `tool_use`". `pause_turn`
+already exists in the API and means carry on, so a reason we have not seen has
+to read as running.
+
+Scanning backwards rather than taking the last line matters twice over. The
+interrupt marker is not last — `queue-operation`, `last-prompt` and
+`file-history-snapshot` land after it. And a *rejected* tool records the same
+`toolDenialKind` an interrupt does, but the turn carries on, so a later
+assistant entry is found first and it reads as running. Sidechain entries are
+skipped, or a running subagent would hide the main chain's ending.
+
+Anything unreadable means not over. Wrongly finishing a running turn would clear
+its baseline and leave the real `Stop` with nothing to publish; wrongly leaving
+one alone costs only that it gets collected again next time. Only the last 64 KB
+is read, so a turn whose final entry is larger than that reads as running, which
+is what such an entry almost always means.
+
+What this cannot see is a turn that died without writing anything — the window
+killed, a crash, the connection dropping mid-stream. No assistant entry is ever
+written with a missing `stop_reason`, so such a turn leaves the same trace as
+one still thinking, and only elapsed time separates them. Those are cleared by
+the next `begin`, as before.
+
+### Which chat is armed
+
+`isTurnOver` needs a session id to find the transcript, and with no per-chat
+directory there is no name to read it off. The first `arm` of a turn writes one
+to `sessionId.txt`, on the cold path that also takes the snapshot rather than on
+every tool call.
 
 ## Rendering
 
@@ -149,16 +253,20 @@ files that start out identical can pair the wrong way, and a heavily rewritten
 move still arrives as a delete beside an add — the same as it would in staged
 changes.
 
-The turn stamp goes in the URI query, so each turn addresses its before-image by
-a distinct URI. Without it the URI is the file's own path with the scheme
-swapped — identical every turn — and VS Code may serve the text model it cached
-for the previous turn, which renders as no change at all.
+The turn's stamp goes in the URI query, and the provider serves an image only
+while it matches the published manifest. That gives every turn a distinct URI:
+without one the URI is the file's own path with the scheme swapped — identical
+every turn — and VS Code may serve the text model it cached for the previous
+turn, which renders as no change at all.
+
+Since every turn writes into the same `beforeImages/`, that comparison is also
+the only thing keeping a superseded tab off the new turn's contents.
 
 The provider answers from the manifest rather than from anything a render left
 behind. VS Code restores the multi-diff editor across a restart, but the
-extension host it was rendered by is gone, so a cache filled at render time no
-longer holds those before-images: every left side came back empty while the
-`A`/`M`/`D` badges, restored with the editor, still looked right.
+extension host it was rendered by is gone, so a cache filled at
+render time no longer holds those before-images: every left side came back empty
+while the `A`/`M`/`D` badges, restored with the editor, still looked right.
 
 A URI it cannot serve throws `FileNotFound` rather than resolving to empty. A
 file-backed model is re-read, where the one-shot content of a
@@ -191,20 +299,19 @@ as not found, with nothing pointing at the diff. The file service refusing
 writes on the readonly capability happens far later, and is no reason to leave
 them out.
 
-Firing `onDidChange` at registration was tried first, to refresh a model assumed
-to be stale. It dropped every modified entry from the restored editor, leaving
-only the added file — the one entry with no left side to resolve — and it
-treated the wrong problem: the model was never stale, it had never resolved.
+Firing `onDidChange` at registration is the tempting fix for a restored editor
+that shows nothing, and it makes matters worse: it drops every modified entry,
+leaving only the added file — the one with no left side to resolve. The model is
+not stale, it has never resolved.
 
 Binary files are skipped rather than listed. The editor resolves *both* sides
 through the text model service, so a binary entry cannot render: it would be
 counted in the title while missing from the view.
 
 Both sides are sniffed for a NUL byte within `BINARY_SNIFF_BYTES`, the same
-heuristic git uses, at the single point every entry passes through. It was once
-`git diff --numstat` per changed file — a subprocess each, and it covered only
-the repository collector, so a binary outside every repository was counted and
-then rendered as nothing.
+heuristic git uses, at the single point every entry passes through. Detecting
+them per collector instead leaves the other one blind: a binary outside every
+repository was counted in the title and then rendered as nothing.
 
 Status is not stored. It is derived at render time from two `existsSync` calls:
 no before-image is an addition, no after file is a deletion, both present is a
@@ -215,12 +322,9 @@ deleted and then recreated by hand still rendered as a deletion.
 
 Two things keep that derivation unambiguous. An addition writes **no**
 before-image, so an empty image can only mean the file was already empty. And
-the turn's `beforeDir` is recorded in the manifest and created even when every
-change is an addition and nothing is written into it, so a missing directory
+`beforeImages/` exists whenever a turn was published, so a missing directory
 means the images were reclaimed while a missing image inside an existing one
-means there was no before. Without that directory a reclaimed turn would render
-every modified file as newly created — a confident lie rather than a silent
-omission.
+means there was no before.
 
 Changes that no longer represent anything renderable still drop out at render
 time: a file reverted by hand, or one whose sides have both gone.
@@ -238,9 +342,9 @@ the write, which is what makes the editor reload. It has to happen in `arm`,
 before the tool writes; doing it at render time is too late for the first edit
 of each file.
 
-Watchers are keyed by session. The map is shared by every chat in the window, so
-disposing them wholesale at `end` would release a parallel chat's watchers
-mid-turn.
+They are released when a turn ends, and only then — a look at a running turn
+publishes without tearing the turn down, so the files it is still editing stay
+watched.
 
 ## Advertising
 
@@ -277,33 +381,31 @@ whether that path is absolute:
 
 - `*File` — an absolute path to a file: `manifestFile`, `beforeImageFile`,
   `targetFile`, `copiedFile`.
-- `*Dir` — an absolute path to a directory: `chatDir`, `repoDir`, `gitDir`,
-  `beforeDir`.
+- `*Dir` — an absolute path to a directory: `projectDir`, `repoDir`, `gitDir`,
+  `beforeImagesDir`.
 - `*Path` — a path that is relative, or whose kind is not known there:
   `beforePath` as git reports it, `targetPath` in `removeRecursive`.
-- `*Name` — a bare name with no separators: `dirName`, `fileName`.
+- `*Name` — a bare name with no separators: `fileName`.
 - `*Uri` — a `vscode.Uri`: `resourceUri`, `beforeUri`, `dirUri`.
 - `*Contents` — bytes or text: `beforeContents`, `blobContents`.
 
-The `Path`/`File` boundary is where a bug used to live. Git reports
-repo-relative paths, and `beforePath`/`afterPath` once named both those and the
-absolute paths in the manifest, so whether a value still needed joining to its
-repository depended on which function you were reading.
-`join(repoDir, beforePath)` yielding a `beforeFile` is now the visible seam
-between the two, and nothing carries the word "relative" because the `File`
-suffix already says the other thing.
+The `Path`/`File` boundary carries real weight. Git reports repo-relative paths
+while the manifest holds absolute ones, so whether a value still needs joining
+to its repository would otherwise depend on which function you were reading.
+`join(repoDir, beforePath)` yielding a `beforeFile` is the visible seam between
+the two, and nothing carries the word "relative" because the `File` suffix
+already says the other thing.
 
 Some words mean exactly one thing each. `entry` is a directory entry from
-`listEntries` and nothing else — it once also meant a hook config, a manifest
-record, a diff resource and a state path. `change` is a manifest record,
+`listEntries` and nothing else. `change` is a manifest record,
 `snapshot` is a `snapshots.tsv` row, `blob` is git object content and never our
 own copy of a file, `image` is a published before-image. A repository root is a
 `repoDir`, never `repository`, `repo` or `root`. `workspaceDirs` holds our own
 path strings, never VS Code's `WorkspaceFolder` objects.
 
 Verbs follow the return type: `read*` gives contents, `get*` gives an attribute
-or a derived value, `list*` gives a collection. That is why the before-image is
-served by `readBeforeImageContents` and measured by `getBeforeImageSize`.
+or a derived value, `list*` gives a collection — `readFile`, `getFileSize`,
+`listEntries`.
 
 Nothing outside `utils/files.js` calls an fs read that can throw, so callers
 branch on a value instead of wrapping every read. A failure is `undefined` for a
@@ -314,9 +416,9 @@ Names we do not own are left alone: the file system provider's method names,
 `file_path`, `notebook_path`, `transcript_path` and `session_id` from the hook
 payload.
 
-Everything else is imported by name, builtins with the `node:` prefix, and no
-module namespace imports remain. Each file then declares exactly what it
-touches, which is also what makes sweeping for unused imports worth doing.
+Everything else is imported by name, builtins with the `node:` prefix, and
+nothing is imported as a module namespace. Each file then declares exactly what
+it touches, which is also what makes sweeping for unused imports worth doing.
 `assert` in the tests is the one default import left, because a bare
 `strictEqual(...)` says too little about where it came from. A name is aliased
 only where the bare one loses its meaning at the use site — `sep as

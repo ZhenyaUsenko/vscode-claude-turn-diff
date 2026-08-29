@@ -1,10 +1,11 @@
 import { readManifest } from '../../src/store/manifest.js'
 import { getProjectKey } from '../../src/store/paths.js'
 import { getRealPath, outputFile, removeFile } from '../../src/utils/files.js'
-import { registerBeforeImageProvider, showLastTurn } from '../../src/view.js'
+import { registerBeforeImageProvider } from '../../src/view.js'
 import { check } from '../utils/checks.js'
 import { commitAll, createRepo } from '../utils/fixtures.js'
-import { nextSecond, runTurn } from '../utils/turn.js'
+import { getRenderedFileNames, render } from '../utils/render.js'
+import { runTurn } from '../utils/turn.js'
 import { resetStub, stubState, Uri } from '../utils/vscode-stub.js'
 import assert from 'node:assert'
 import { mkdirSync, renameSync } from 'node:fs'
@@ -20,16 +21,6 @@ const getResource = (diffData, fileName) => {
 
 const readContents = (uri) => {
   return stubState.provider.readFile(uri).toString()
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-const render = async (workspaceDirs) => {
-  resetStub(workspaceDirs)
-
-  await showLastTurn({ force: true })
-
-  return stubState.executed[stubState.executed.length - 1]
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -71,7 +62,6 @@ check('each turn addresses its before-image by a distinct uri', async () => {
 
   const firstUri = getResource(await render([repoDir]), 'f.txt')[1]
 
-  await nextSecond()
   await runTurn(repoDir, 'chat', [repoDir], () => outputFile(join(repoDir, 'f.txt'), 'three\n'))
 
   const secondUri = getResource(await render([repoDir]), 'f.txt')[1]
@@ -113,10 +103,10 @@ check('a before-image resolves with no render to prime it, as after a restart', 
   resetStub([repoDir])
   registerBeforeImageProvider()
 
-  const { beforeDir, changes } = readManifest(getProjectKey(repoDir))
+  const { ts, changes } = readManifest(getProjectKey(repoDir))
   const { beforeFile } = changes[0]
 
-  const beforeUri = Uri.file(beforeFile).with({ scheme: 'claude-before', query: beforeDir })
+  const beforeUri = Uri.file(beforeFile).with({ scheme: 'claude-before', query: ts })
   const restartReason = 'a restored editor asks for its uri directly, so the provider cannot rely on a render'
 
   assert.strictEqual(readContents(beforeUri), 'before\n', restartReason)
@@ -167,10 +157,7 @@ check('a file reverted by hand drops out of the diff', async () => {
 
   outputFile(join(repoDir, 'f.txt'), 'one\n')
 
-  const diffData = await render([repoDir])
-  const renderedFileNames = diffData.resources.map(([resourceUri]) => basename(resourceUri.fsPath))
-
-  assert.deepStrictEqual(renderedFileNames, ['g.txt'])
+  assert.deepStrictEqual(getRenderedFileNames(await render([repoDir])), ['g.txt'])
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -197,4 +184,41 @@ check('a move renders with its sides on different paths, so a rename is inferred
   assert.strictEqual(resourceUri.fsPath, newFile, 'the entry is named by where it landed')
   assert.strictEqual(beforeUri.path, oldFile, renameRule)
   assert.strictEqual(afterUri.path, newFile, renameRule)
+})
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+check('a before-image from a superseded turn is refused, not quietly replaced', async () => {
+  const repoDir = createRepo()
+
+  outputFile(join(repoDir, 'f.txt'), 'one\n')
+  commitAll(repoDir)
+
+  await runTurn(repoDir, 'chat', [repoDir], () => outputFile(join(repoDir, 'f.txt'), 'two\n'))
+
+  registerBeforeImageProvider()
+
+  const supersededUri = getResource(await render([repoDir]), 'f.txt')[1]
+
+  await runTurn(repoDir, 'chat', [repoDir], () => outputFile(join(repoDir, 'f.txt'), 'three\n'))
+
+  const reason = 'one directory holds every turn, so only the stamp keeps an old tab off the new contents'
+
+  assert.throws(() => readContents(supersededUri), reason)
+})
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+check('a turn that only adds files still renders', async () => {
+  const repoDir = createRepo()
+
+  outputFile(join(repoDir, 'seed.txt'), 'one\n')
+  commitAll(repoDir)
+
+  await runTurn(repoDir, 'chat', [repoDir], () => outputFile(join(repoDir, 'added.txt'), 'new\n'))
+
+  const diffData = await render([repoDir])
+  const reason = 'no before-image was written, so the directory has to exist on its own account'
+
+  assert.deepStrictEqual(getRenderedFileNames(diffData), ['added.txt'], reason)
 })

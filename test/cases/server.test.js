@@ -1,5 +1,5 @@
 import { startServer } from '../../src/server.js'
-import { getChatDir, getServerFile, getProjectKey } from '../../src/store/paths.js'
+import { getServerFile, getProjectKey, getSessionIdFile } from '../../src/store/paths.js'
 import { readFile, removeFile } from '../../src/utils/files.js'
 import { check } from '../utils/checks.js'
 import { createRepo } from '../utils/fixtures.js'
@@ -143,10 +143,10 @@ check('the hook keys state by the session, not by a cwd Claude has moved', async
   const elsewhereDir = mkdtempSync(join(tmpdir(), 'wandered-'))
   const transcriptFile = join(HOME, '.claude', 'projects', project, 'drifted.jsonl')
 
-  await runHook('begin', { session_id: 'drifted', transcript_path: transcriptFile }, elsewhereDir)
+  await runHook('arm', { session_id: 'drifted', transcript_path: transcriptFile }, elsewhereDir)
 
-  const belongsToSession = existsSync(getChatDir(project, 'drifted'))
-  const belongsToCwd = existsSync(getChatDir(getProjectKey(elsewhereDir), 'drifted'))
+  const belongsToSession = existsSync(getSessionIdFile(project))
+  const belongsToCwd = existsSync(getSessionIdFile(getProjectKey(elsewhereDir)))
 
   assert.ok(belongsToSession, 'the turn belongs to the project the session started in')
   assert.ok(!belongsToCwd, 'and never to the directory Claude happened to cd into')

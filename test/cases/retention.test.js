@@ -1,59 +1,37 @@
 import { readManifest } from '../../src/store/manifest.js'
-import { getChatDir, getManifestFile, getServerFile, getProjectKey } from '../../src/store/paths.js'
-import { listDirNames, outputFile, readFile } from '../../src/utils/files.js'
+import { getBeforeImagesDir, getManifestFile, getProjectKey, getServerFile } from '../../src/store/paths.js'
+import { outputFile, readFile } from '../../src/utils/files.js'
 import { check } from '../utils/checks.js'
 import { commitAll, createRepo } from '../utils/fixtures.js'
-import { forgetChat, nextSecond, runTurn } from '../utils/turn.js'
+import { interruptTurn, runTurn, startTurn } from '../utils/turn.js'
 import assert from 'node:assert'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-check('a later chat supersedes an earlier one in the same project', async () => {
+const readBeforeImage = (project, manifest) => {
+  return readFile(join(getBeforeImagesDir(project), manifest.changes[0].beforeFile), 'utf8')
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+check('a later turn replaces the before-images of the one it supersedes', async () => {
   const repoDir = createRepo()
+  const project = getProjectKey(repoDir)
 
   outputFile(join(repoDir, 'f.txt'), 'one\n')
   commitAll(repoDir)
 
   await runTurn(repoDir, 'first', [repoDir], () => outputFile(join(repoDir, 'f.txt'), 'two\n'))
 
-  const supersededManifest = readManifest(getProjectKey(repoDir))
+  assert.strictEqual(readBeforeImage(project, readManifest(project)), 'one\n')
 
-  const supersededImageFile = join(supersededManifest.beforeDir, supersededManifest.changes[0].beforeFile)
-
-  await nextSecond()
   await runTurn(repoDir, 'second', [repoDir], () => outputFile(join(repoDir, 'f.txt'), 'three\n'))
 
-  const winningManifest = readManifest(getProjectKey(repoDir))
+  const reason = 'the images have to describe the turn the manifest describes'
 
-  const winningImageFile = join(winningManifest.beforeDir, winningManifest.changes[0].beforeFile)
-
-  assert.ok(!existsSync(supersededImageFile), 'the first chat\'s before-image was reclaimed')
-  assert.ok(existsSync(winningImageFile), 'the winning manifest still resolves')
-})
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-check('a chat deleted in Claude Code has its whole directory reclaimed', async () => {
-  const repoDir = createRepo()
-
-  outputFile(join(repoDir, 'f.txt'), 'one\n')
-  commitAll(repoDir)
-
-  await runTurn(repoDir, 'ghost', [repoDir], () => outputFile(join(repoDir, 'f.txt'), 'two\n'))
-
-  const ghostDir = getChatDir(getProjectKey(repoDir), 'ghost')
-  const beforeDirNames = listDirNames(ghostDir).filter((name) => name.startsWith('before-'))
-
-  assert.strictEqual(beforeDirNames.length, 1, 'the finished turn left its before-images behind')
-
-  forgetChat(repoDir, 'ghost')
-
-  await nextSecond()
-  await runTurn(repoDir, 'alive', [repoDir], () => outputFile(join(repoDir, 'f.txt'), 'three\n'))
-
-  assert.ok(!existsSync(ghostDir), 'the deleted chat is gone, before-images included')
+  assert.strictEqual(readBeforeImage(project, readManifest(project)), 'two\n', reason)
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -73,9 +51,10 @@ check('a finishing turn leaves the server advert alone', async () => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-check('a turn that changes nothing leaves the previous manifest alone', async () => {
+check('a turn that changes nothing leaves the previous diff untouched', async () => {
   const repoDir = createRepo()
-  const manifestFile = getManifestFile(getProjectKey(repoDir))
+  const project = getProjectKey(repoDir)
+  const manifestFile = getManifestFile(project)
 
   outputFile(join(repoDir, 'f.txt'), 'one\n')
   commitAll(repoDir)
@@ -84,8 +63,31 @@ check('a turn that changes nothing leaves the previous manifest alone', async ()
 
   const publishedManifestContents = readFile(manifestFile, 'utf8')
 
-  await nextSecond()
   await runTurn(repoDir, 'chat', [repoDir], () => {})
 
+  const reason = 'nothing was published, so nothing may have been cleared to make room for it'
+
   assert.strictEqual(readFile(manifestFile, 'utf8'), publishedManifestContents)
+  assert.strictEqual(readBeforeImage(project, readManifest(project)), 'one\n', reason)
+})
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+check('a new turn discards what an abandoned one left armed', async () => {
+  const repoDir = createRepo()
+  const project = getProjectKey(repoDir)
+
+  outputFile(join(repoDir, 'f.txt'), 'one\n')
+  commitAll(repoDir)
+
+  await startTurn(repoDir, 'abandoned', [repoDir])
+
+  outputFile(join(repoDir, 'f.txt'), 'two\n')
+  interruptTurn(repoDir, 'abandoned')
+
+  await runTurn(repoDir, 'alive', [repoDir], () => outputFile(join(repoDir, 'f.txt'), 'three\n'))
+
+  const reason = 'its baseline is stale now that another turn has run on top of it'
+
+  assert.strictEqual(readBeforeImage(project, readManifest(project)), 'two\n', reason)
 })

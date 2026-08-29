@@ -1,5 +1,5 @@
-import { getSnapshotsFile, getTouchCopiesDir, getTouchListFile } from '../store/paths.js'
-import { compareFilesInTreeOrder, outputFile, readFile, readLines } from '../utils/files.js'
+import { getBeforeImagesDir, getSnapshotsFile, getTouchCopiesDir, getTouchListFile } from '../store/paths.js'
+import { compareFilesInTreeOrder, outputFile, readFile, readLines, removeRecursive } from '../utils/files.js'
 import { listChangedPaths, readBlobContents, snapshotTree } from '../utils/git.js'
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
@@ -23,18 +23,18 @@ const addChange = (collector, beforeFile, afterFile, beforeContents) => {
 
   if (isBinary(beforeContents) || isBinary(afterContents)) return
 
-  if (beforeContents != null) outputFile(join(collector.beforeDir, beforeFile), beforeContents)
+  if (beforeContents != null) collector.images.push({ beforeFile, beforeContents })
 
   collector.changes.push({ beforeFile, afterFile })
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const collectRepoChanges = async (chatDir, collector) => {
-  for (const line of readLines(getSnapshotsFile(chatDir))) {
+const collectRepoChanges = async (project, collector) => {
+  for (const line of readLines(getSnapshotsFile(project))) {
     const [repoDir, gitDir, treeBefore] = line.split('\t')
 
-    const treeAfter = await snapshotTree(repoDir, gitDir, chatDir)
+    const treeAfter = await snapshotTree(repoDir, gitDir)
 
     if (!treeAfter || treeAfter === treeBefore) continue
 
@@ -56,11 +56,11 @@ const collectRepoChanges = async (chatDir, collector) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const collectOutsideChanges = (chatDir, collector) => {
-  const touchedFiles = readLines(getTouchListFile(chatDir)).sort(compareFilesInTreeOrder)
+const collectOutsideChanges = (project, collector) => {
+  const touchedFiles = readLines(getTouchListFile(project)).sort(compareFilesInTreeOrder)
 
   for (const touchedFile of touchedFiles) {
-    const beforeContents = readFile(join(getTouchCopiesDir(chatDir), touchedFile))
+    const beforeContents = readFile(join(getTouchCopiesDir(project), touchedFile))
 
     addChange(collector, touchedFile, touchedFile, beforeContents)
   }
@@ -68,14 +68,25 @@ const collectOutsideChanges = (chatDir, collector) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const collectChanges = async (chatDir, beforeDir) => {
-  const collector = { beforeDir, changes: [] }
+export const collectChanges = async (project) => {
+  const collector = { changes: [], images: [] }
 
-  mkdirSync(beforeDir, { recursive: true })
+  await collectRepoChanges(project, collector)
 
-  await collectRepoChanges(chatDir, collector)
+  collectOutsideChanges(project, collector)
 
-  collectOutsideChanges(chatDir, collector)
+  return collector
+}
 
-  return collector.changes
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const writeBeforeImages = (project, images) => {
+  const beforeImagesDir = getBeforeImagesDir(project)
+
+  removeRecursive(beforeImagesDir)
+  mkdirSync(beforeImagesDir, { recursive: true })
+
+  for (const { beforeFile, beforeContents } of images) {
+    outputFile(join(beforeImagesDir, beforeFile), beforeContents)
+  }
 }

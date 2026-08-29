@@ -1,4 +1,6 @@
 import { readManifest } from './store/manifest.js'
+import { getBeforeImagesDir } from './store/paths.js'
+import { publishArmedTurn } from './turn/index.js'
 import { getFileSize, readFile, sameContents } from './utils/files.js'
 import { getCurrentProject } from './utils/workspace.js'
 import { existsSync } from 'node:fs'
@@ -11,19 +13,23 @@ let lastRenderedStamp = null
 
 const SCHEME = 'claude-before'
 
-const EDITOR_TITLE = 'Last turn changes'
+const LAST_TURN_TITLE = 'Last turn changes'
+
+const RUNNING_TURN_TITLE = 'Changes so far'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const getResources = (manifest) => {
+const getResources = (project, manifest) => {
   const resources = []
 
-  if (!manifest || !existsSync(manifest.beforeDir)) return resources
+  const beforeImagesDir = getBeforeImagesDir(project)
 
-  const beforeUriParams = { scheme: SCHEME, query: manifest.beforeDir }
+  if (!manifest || !existsSync(beforeImagesDir)) return resources
+
+  const beforeUriParams = { scheme: SCHEME, query: manifest.ts }
 
   for (const { beforeFile, afterFile } of manifest.changes) {
-    const beforeImageFile = join(manifest.beforeDir, beforeFile)
+    const beforeImageFile = join(beforeImagesDir, beforeFile)
 
     const beforeImageExists = existsSync(beforeImageFile)
     const afterFileExists = existsSync(afterFile)
@@ -44,23 +50,31 @@ const getResources = (manifest) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const showLastTurn = async (params) => {
-  const manifest = readManifest(getCurrentProject())
+  const project = getCurrentProject()
+
+  if (params?.force) await publishArmedTurn(project)
+
+  const manifest = readManifest(project)
 
   if (manifest?.ts === lastRenderedStamp && !params?.force) return
 
   if (manifest) lastRenderedStamp = manifest.ts
 
-  const resources = getResources(manifest)
+  const resources = getResources(project, manifest)
 
-  if (resources.length || params?.force) {
-    await commands.executeCommand('vscode.changes', EDITOR_TITLE, resources)
-  }
+  const title = manifest?.running ? RUNNING_TURN_TITLE : LAST_TURN_TITLE
+
+  if (resources.length || params?.force) return commands.executeCommand('vscode.changes', title, resources)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const readBeforeImage = (uri, getImageData) => {
-  const imageData = getImageData(join(uri.query, uri.fsPath))
+  const project = getCurrentProject()
+
+  if (readManifest(project)?.ts !== uri.query) throw FileSystemError.FileNotFound(uri)
+
+  const imageData = getImageData(join(getBeforeImagesDir(project), uri.fsPath))
 
   if (imageData == null) throw FileSystemError.FileNotFound(uri)
 
@@ -87,16 +101,4 @@ export const registerBeforeImageProvider = () => {
   const options = { isReadonly: true, isCaseSensitive: true }
 
   return workspace.registerFileSystemProvider(SCHEME, beforeImageProvider, options)
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export const markCurrentTurnAsSeen = () => {
-  lastRenderedStamp = readManifest(getCurrentProject())?.ts ?? null
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export const forgetLastRenderedTurn = () => {
-  lastRenderedStamp = null
 }

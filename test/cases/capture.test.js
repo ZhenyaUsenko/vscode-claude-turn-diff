@@ -1,5 +1,5 @@
 import { readManifest } from '../../src/store/manifest.js'
-import { getProjectKey } from '../../src/store/paths.js'
+import { getBeforeImagesDir, getProjectKey } from '../../src/store/paths.js'
 import { handleTurn } from '../../src/turn/index.js'
 import { getRealPath, outputFile, readFile, removeFile } from '../../src/utils/files.js'
 import { check } from '../utils/checks.js'
@@ -11,10 +11,10 @@ import { join, relative as getRelativePath } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const getBeforeImageFile = (manifest, fileName) => {
+const getBeforeImageFile = (project, manifest, fileName) => {
   const { beforeFile } = manifest.changes.find((change) => change.beforeFile.endsWith(fileName))
 
-  return join(manifest.beforeDir, beforeFile)
+  return join(getBeforeImagesDir(project), beforeFile)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -34,12 +34,13 @@ check('records every changed file, keeping what each held before the turn', asyn
 
   const manifest = readManifest(getProjectKey(repoDir))
 
+  const project = getProjectKey(repoDir)
   const preTurn = 'the before-image holds what the file held before the turn'
 
   assert.deepStrictEqual(readChangedFileNames(repoDir), ['added.txt', 'gone.txt', 'keep.txt'])
-  assert.strictEqual(readFile(getBeforeImageFile(manifest, 'keep.txt'), 'utf8'), 'one\n', preTurn)
-  assert.strictEqual(readFile(getBeforeImageFile(manifest, 'gone.txt'), 'utf8'), 'bye\n', 'it keeps its contents')
-  assert.ok(!existsSync(getBeforeImageFile(manifest, 'added.txt')), 'a created file has no before-image')
+  assert.strictEqual(readFile(getBeforeImageFile(project, manifest, 'keep.txt'), 'utf8'), 'one\n', preTurn)
+  assert.strictEqual(readFile(getBeforeImageFile(project, manifest, 'gone.txt'), 'utf8'), 'bye\n', 'and so does it')
+  assert.ok(!existsSync(getBeforeImageFile(project, manifest, 'added.txt')), 'a created file has no before-image')
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -73,7 +74,7 @@ check('creating an empty file is recorded, and writes no before-image', async ()
   const reason = 'an absent before-image is what marks a creation, so an empty one would read as unchanged'
 
   assert.deepStrictEqual(readChangedFileNames(repoDir), ['added.txt'])
-  assert.ok(!existsSync(getBeforeImageFile(manifest, 'added.txt')), reason)
+  assert.ok(!existsSync(getBeforeImageFile(getProjectKey(repoDir), manifest, 'added.txt')), reason)
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -90,7 +91,7 @@ check('deleting an empty file is recorded, with an empty before-image', async ()
   const reason = 'a zero-byte image still has to exist, or the deletion would read as a creation'
 
   assert.deepStrictEqual(readChangedFileNames(repoDir), ['gone.txt'])
-  assert.strictEqual(readFile(getBeforeImageFile(manifest, 'gone.txt'), 'utf8'), '', reason)
+  assert.strictEqual(readFile(getBeforeImageFile(getProjectKey(repoDir), manifest, 'gone.txt'), 'utf8'), '', reason)
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -199,7 +200,7 @@ check('a move keeps what the file held at its old path as the before-image', asy
   const manifest = readManifest(getProjectKey(repoDir))
   const reason = 'a moved file diffs against its old contents, which is what makes the edit visible'
 
-  const beforeImageFile = getBeforeImageFile(manifest, 'f.txt')
+  const beforeImageFile = getBeforeImageFile(getProjectKey(repoDir), manifest, 'f.txt')
 
   assert.strictEqual(readFile(beforeImageFile, 'utf8'), 'one\ntwo\nthree\nfour\n', reason)
 })

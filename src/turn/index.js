@@ -1,21 +1,24 @@
-import { publishManifest } from '../store/manifest.js'
-import { getArmedTurnPaths, getBeforeDir, getChatDir, getSnapshotsFile } from '../store/paths.js'
-import { readLines, canonicalize, isUnder, removeRecursive } from '../utils/files.js'
+import { publishManifest, removeManifest } from '../store/manifest.js'
+import { getArmedTurnPaths, getProjectDir, getSessionIdFile, getSnapshotsFile } from '../store/paths.js'
+import { isTurnOver } from '../store/transcript.js'
+import { canonicalize, isUnder, readFile, readLines, removeRecursive } from '../utils/files.js'
 import { disposeOutsideWatchers, watchFilesOutsideWorkspace } from '../utils/watch.js'
 import { captureTouchedFile, snapshotWorkspace } from './capture.js'
-import { collectChanges } from './collect.js'
-import { purgeSupersededTurns } from './purge.js'
-import { existsSync, mkdirSync } from 'node:fs'
+import { collectChanges, writeBeforeImages } from './collect.js'
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { isAbsolute } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const beginTurn = ({ project, sessionId }) => {
-  const chatDir = getChatDir(project, sessionId)
+const clearArmedState = (project) => {
+  for (const armedTurnPath of getArmedTurnPaths(project)) removeRecursive(armedTurnPath)
+}
 
-  mkdirSync(chatDir, { recursive: true })
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  for (const armedTurnPath of getArmedTurnPaths(chatDir)) removeRecursive(armedTurnPath)
+const beginTurn = ({ project }) => {
+  mkdirSync(getProjectDir(project), { recursive: true })
+  clearArmedState(project)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -26,47 +29,51 @@ const armTurn = async ({ project, sessionId, payload, workspaceDirs }) => {
   const toolPath = payload.tool_input?.file_path || payload.tool_input?.notebook_path
   const targetFile = toolPath && isAbsolute(toolPath) ? toolPath : null
 
-  const chatDir = getChatDir(project, sessionId)
-  const snapshotsFile = getSnapshotsFile(chatDir)
+  const snapshotsFile = getSnapshotsFile(project)
 
-  if (targetFile) watchFilesOutsideWorkspace([targetFile], workspaceDirs, sessionId)
+  if (targetFile) watchFilesOutsideWorkspace([targetFile], workspaceDirs)
 
-  mkdirSync(chatDir, { recursive: true })
+  mkdirSync(getProjectDir(project), { recursive: true })
 
   if (existsSync(snapshotsFile)) {
     snapshots = readLines(snapshotsFile).map((line) => line.split('\t'))
   } else {
-    snapshots = await snapshotWorkspace(chatDir, workspaceDirs)
+    writeFileSync(getSessionIdFile(project), sessionId)
+
+    snapshots = await snapshotWorkspace(project, workspaceDirs)
   }
 
   if (!targetFile || snapshots.some(([repoDir]) => isUnder(canonicalize(targetFile), repoDir))) return
 
-  captureTouchedFile(chatDir, targetFile)
+  captureTouchedFile(project, targetFile)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const endTurn = async ({ project, sessionId }) => {
-  const chatDir = getChatDir(project, sessionId)
-  const armed = existsSync(getSnapshotsFile(chatDir))
+export const endTurn = async ({ project, ended = true }) => {
+  if (ended) disposeOutsideWatchers()
 
-  disposeOutsideWatchers(sessionId)
+  if (!existsSync(getSnapshotsFile(project))) return
 
-  if (!armed) return
+  const { changes, images } = await collectChanges(project)
 
-  const stamp = Math.floor(Date.now() / 1000)
-  const beforeDir = getBeforeDir(chatDir, stamp)
+  if (ended) clearArmedState(project)
 
-  const changes = await collectChanges(chatDir, beforeDir)
+  if (!changes.length) return
 
-  for (const armedTurnPath of getArmedTurnPaths(chatDir)) removeRecursive(armedTurnPath)
+  removeManifest(project)
+  writeBeforeImages(project, images)
+  publishManifest(project, changes, { running: !ended })
+}
 
-  if (changes.length) {
-    publishManifest(project, stamp, beforeDir, changes)
-    purgeSupersededTurns({ project, sessionId, stamp, currentBeforeDir: beforeDir })
-  } else {
-    removeRecursive(beforeDir)
-  }
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const publishArmedTurn = async (project) => {
+  if (!existsSync(getSnapshotsFile(project))) return
+
+  const sessionId = readFile(getSessionIdFile(project), 'utf8')
+
+  await endTurn({ project, ended: isTurnOver(project, sessionId) })
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
