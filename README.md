@@ -143,6 +143,11 @@ or reload the window.
 - A turn that dies outright — the window killed, a crash, the connection lost
   mid-reply — leaves nothing to tell it apart from one still working, so it
   cannot be recovered this way.
+- One window serves a project at a time — whichever you last focused. Two
+  windows on one project takes some arranging, since VS Code will not open the
+  same folder twice, but if you manage it the diff opens by itself only in the
+  window that was focused when the turn ended. The other can still show it from
+  the palette.
 - Two chats running at once in the same project share one diff: the second
   reuses the first's baseline and produces nothing of its own. A snapshot covers
   the whole workspace anyway, so each would have shown the other's edits.

@@ -15,24 +15,22 @@ PROJECT=${PROJECT%%\"*}
 PROJECT=${PROJECT%/*}
 PROJECT=${PROJECT##*/}
 
-for advert in "$HOME/.claude/turn-diff/$PROJECT/servers/"*.json; do
-  [ -f "$advert" ] || continue
+ADVERT="$HOME/.claude/turn-diff/$PROJECT/server.json"
 
-  raw=$(<"$advert")
-  port=${raw#*\"port\":}
-  port=${port%%[!0-9]*}
-  token=${raw#*\"token\":\"}
-  token=${token%%\"*}
+[ -f "$ADVERT" ] || exit 0
 
-  [ -n "$port" ] && [ -n "$token" ] || continue
+raw=$(<"$ADVERT")
+port=${raw#*\"port\":}
+port=${port%%[!0-9]*}
+token=${raw#*\"token\":\"}
+token=${token%%\"*}
 
-  { exec 3<>"/dev/tcp/127.0.0.1/$port"; } 2>/dev/null || continue
+[ -n "$port" ] && [ -n "$token" ] || exit 0
 
-  printf '%s\t%s\t%s\n%s\n' "$token" "$MODE" "$PROJECT" "$payload" >&3
-  IFS= read -r -t 30 reply <&3 2>/dev/null
-  exec 3<&- 2>/dev/null
+{ exec 3<>"/dev/tcp/127.0.0.1/$port"; } 2>/dev/null || exit 0
 
-  [ "$reply" = "ok" ] && exit 0
-done
+printf '%s\t%s\t%s\n%s\n' "$token" "$MODE" "$PROJECT" "$payload" >&3
+IFS= read -r -t 30 reply <&3 2>/dev/null
+exec 3<&- 2>/dev/null
 
 exit 0

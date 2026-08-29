@@ -38,7 +38,7 @@ check('a later turn replaces the before-images of the one it supersedes', async 
 
 check('a finishing turn leaves the server advert alone', async () => {
   const repoDir = createRepo()
-  const advertFile = getServerFile(getProjectKey(repoDir), process.pid)
+  const advertFile = getServerFile(getProjectKey(repoDir))
 
   outputFile(join(repoDir, 'f.txt'), 'one\n')
   commitAll(repoDir)

@@ -123,8 +123,8 @@ rename the new manifest into place
 Without the removal first there is a window where a superseded tab's stamp still
 matches the old manifest while the bytes underneath have already been replaced,
 and it would be handed the new turn's before-image for the old turn's diff.
-Removing the manifest costs nothing: the watcher fires, finds no manifest, and
-renders nothing.
+Removing it costs nothing: nothing is watching, and a read landing in that
+window resolves to no manifest rather than to the wrong bytes.
 
 Collecting into memory first is what makes a turn that changed nothing free. It
 publishes nothing, so it clears nothing, and the previous diff survives intact.
@@ -140,15 +140,20 @@ missing file inside it means there was no before. Without that a reclaimed turn
 would render every modified file as newly created — a confident lie rather than
 a silent omission.
 
-The rename is atomic, so the watcher can never read a half-written manifest.
-Replacing it fires two `rename` events for one write — the unlink of the old
-inode and the link of the new one — so the watcher asks for a render twice per
-turn. It needs no debounce: `showLastTurn` records the manifest's stamp before
-its first `await`, so the second call finds the turn already rendered and
-returns. That is also why publishing from an explicit request opens one diff
-rather than two. It holds only because nothing between publishing and that
-assignment awaits real I/O — a microtask cannot let an `fs.watch` callback in,
-but an added `await` would.
+The manifest is written to a temporary file and renamed into place. The rename
+is atomic, so a read landing mid-publish sees the old manifest or the new one,
+never half of one — and the before-image provider reads it on every request.
+
+Nothing watches it. The window that publishes is the window that renders, so a
+turn reports `{ published: true }` back up through the request it arrived on and
+the extension opens the diff, while the command publishes and renders in the
+same breath. That report is what keeps a turn that changed nothing from
+reopening the diff it left alone.
+
+Watching the file instead would decouple the two, at the cost of waiting about
+12 ms for an event carrying news the publisher already had. The server takes a
+callback rather than calling the renderer itself, so it stays a transport: it
+knows a turn published, not what anyone does about it.
 
 There is no sweep and nothing ages out. A turn's state is replaced by the next
 turn's, and a project directory is bounded by one turn's worth of it.
@@ -179,9 +184,9 @@ editor's title describes the diff on screen rather than the state of the moment.
 A turn that has changed nothing publishes nothing, which leaves the previous
 turn — and its title — alone.
 
-Only an explicit request takes this path. The watcher fires on a manifest write,
-by which point the armed state is already gone, and collecting again there would
-publish a turn nobody asked to see.
+Only an explicit request takes this path. Rendering after `end` does not collect
+again — by then the armed state is gone — so a turn is only ever published by
+the hook that ends it or by someone asking to see it.
 
 Stamps are milliseconds. A look and the end of the same turn usually fall within
 one second of each other, so at second granularity they would share a `ts` and
@@ -348,16 +353,28 @@ watched.
 
 ## Advertising
 
-Each window writes `servers/<pid>.json` for the project of its first workspace
-folder, mirroring how Claude Code advertises its own IDE server in
-`~/.claude/ide`. The file is `0600` and holds a token; the server binds
-`127.0.0.1` on an ephemeral port and rejects any request whose token does not
-match.
+A window writes `server.json` for the project of its first workspace folder,
+mirroring how Claude Code advertises its own IDE server in `~/.claude/ide`. The
+file is `0600` and holds a token; the server binds `127.0.0.1` on an ephemeral
+port and rejects any request whose token does not match.
 
-A window only ever writes and removes its own file, so a second window on the
-same project is left alone. Adverts whose pid no longer exists are dropped —
-`EPERM` means the process exists but belongs to someone else, so those are left
-in place.
+One advert per project means one window serves it, and a window returning from a
+crash simply overwrites whatever was left behind. VS Code will not open two
+windows on the same folder — it focuses the one already open — so two of them
+arise only when two multi-root workspaces share a first folder, or when two
+editors that both run this extension are open on it.
+
+A window advertises again whenever it takes focus, so the window you are looking
+at is the one being served. That is why both writing and removing the advert
+compare its contents first: a window skips the write when the file is already
+its own, and leaves the file alone on the way out when another window has since
+claimed it. Without the second check, closing a window would take away an advert
+it no longer owned and leave the other one running but unreachable.
+
+The advert is written to a temporary file and renamed into place, like the
+manifest. The hook reads it with one shell redirection, so a write that
+truncates first would let it read an empty file, parse no port, and exit having
+done nothing.
 
 ## Settings
 

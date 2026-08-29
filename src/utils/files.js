@@ -1,6 +1,6 @@
 import {
-  closeSync, fstatSync, mkdirSync, openSync, readdirSync, readFileSync,
-  readSync, realpathSync, rmSync, statSync, writeFileSync,
+  closeSync, fstatSync, mkdirSync, openSync, readFileSync,
+  readSync, realpathSync, renameSync, rmSync, statSync, writeFileSync,
 } from 'node:fs'
 import { basename, dirname, join, sep as PATH_SEPARATOR } from 'node:path'
 
@@ -28,15 +28,16 @@ export const getRealPath = (targetPath) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const listEntries = (dir) => {
-  try { return readdirSync(dir, { withFileTypes: true }) } catch { return [] }
+export const outputFile = (file, contents, options) => {
+  mkdirSync(dirname(file), { recursive: true })
+  writeFileSync(file, contents, options)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const outputFile = (file, contents, options) => {
-  mkdirSync(dirname(file), { recursive: true })
-  writeFileSync(file, contents, options)
+export const replaceFile = (file, contents, options) => {
+  outputFile(`${file}.tmp`, contents, options)
+  renameSync(`${file}.tmp`, file)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

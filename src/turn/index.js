@@ -53,17 +53,19 @@ const armTurn = async ({ project, sessionId, payload, workspaceDirs }) => {
 export const endTurn = async ({ project, ended = true }) => {
   if (ended) disposeOutsideWatchers()
 
-  if (!existsSync(getSnapshotsFile(project))) return
+  if (!existsSync(getSnapshotsFile(project))) return { published: false }
 
   const { changes, images } = await collectChanges(project)
 
   if (ended) clearArmedState(project)
 
-  if (!changes.length) return
+  if (!changes.length) return { published: false }
 
   removeManifest(project)
   writeBeforeImages(project, images)
   publishManifest(project, changes, { running: !ended })
+
+  return { published: true }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -88,5 +90,5 @@ export const handleTurn = async (mode, project, payload, workspaceDirs) => {
 
   if (!handler || !sessionId || !project) return
 
-  await handler({ project, sessionId, payload, workspaceDirs })
+  return handler({ project, sessionId, payload, workspaceDirs })
 }

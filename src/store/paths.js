@@ -25,9 +25,7 @@ export const getManifestFile = (project) => join(getProjectDir(project), 'manife
 
 export const getBeforeImagesDir = (project) => join(getProjectDir(project), 'beforeImages')
 
-export const getServerDir = (project) => join(getProjectDir(project), 'servers')
-
-export const getServerFile = (project, pid) => join(getServerDir(project), `${pid}.json`)
+export const getServerFile = (project) => join(getProjectDir(project), 'server.json')
 
 export const getTranscriptFile = (project, sessionId) => join(TRANSCRIPTS_ROOT, project, `${sessionId}.jsonl`)
 

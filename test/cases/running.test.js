@@ -236,3 +236,23 @@ check('a look and the end of the same turn are told apart within one second', as
 
   assert.notStrictEqual(readManifest(project).ts, lookedAt, reason)
 })
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+check('only a turn that published anything asks for the diff to be opened', async () => {
+  const repoDir = seedRepo()
+  const project = getProjectKey(repoDir)
+
+  await startTurn(repoDir, 'chat', [repoDir])
+
+  outputFile(join(repoDir, 'f.txt'), 'two\n')
+
+  assert.deepStrictEqual(await handleTurn('end', project, { session_id: 'chat' }, [repoDir]), { published: true })
+
+  await startTurn(repoDir, 'chat', [repoDir])
+
+  const outcome = await handleTurn('end', project, { session_id: 'chat' }, [repoDir])
+  const reason = 'a turn that changed nothing must not reopen the diff it left alone'
+
+  assert.deepStrictEqual(outcome, { published: false }, reason)
+})

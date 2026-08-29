@@ -9,8 +9,6 @@ import { commands, Disposable, FileSystemError, FileType, Uri, workspace } from 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-let lastRenderedStamp = null
-
 const SCHEME = 'claude-before'
 
 const LAST_TURN_TITLE = 'Last turn changes'
@@ -55,10 +53,6 @@ export const showLastTurn = async (params) => {
   if (params?.force) await publishArmedTurn(project)
 
   const manifest = readManifest(project)
-
-  if (manifest?.ts === lastRenderedStamp && !params?.force) return
-
-  if (manifest) lastRenderedStamp = manifest.ts
 
   const resources = getResources(project, manifest)
 

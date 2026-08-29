@@ -1,31 +1,8 @@
 import { installHookScript, promptToRegisterHooks, removeHooks, setUpHooks } from './install/hooks.js'
 import { startServer } from './server.js'
-import { getProjectDir } from './store/paths.js'
 import { disposeOutsideWatchers } from './utils/watch.js'
-import { getCurrentProject } from './utils/workspace.js'
 import { registerBeforeImageProvider, showLastTurn } from './view.js'
-import { mkdirSync, watch } from 'node:fs'
 import { commands, window, workspace } from 'vscode'
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-let manifestWatcher = null
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-const watchManifest = (logError) => {
-  try {
-    const projectDir = getProjectDir(getCurrentProject())
-
-    mkdirSync(projectDir, { recursive: true })
-
-    manifestWatcher?.close()
-
-    manifestWatcher = watch(projectDir, (_event, fileName) => { if (fileName === 'manifest.json') showLastTurn() })
-  } catch (error) {
-    logError(`could not watch project directory: ${error.message}`)
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -34,20 +11,17 @@ export const activate = (context) => {
 
   const logError = (message) => outputChannel.error(message)
 
-  watchManifest(logError)
+  const onPublish = () => showLastTurn().catch((error) => logError(`could not open the diff: ${error.stack}`))
 
-  const server = startServer(logError)
+  const server = startServer(logError, onPublish)
 
   context.subscriptions.push(
     outputChannel,
     server,
+    { dispose: disposeOutsideWatchers },
     registerBeforeImageProvider(),
-    { dispose: () => manifestWatcher?.close() },
-    { dispose: () => disposeOutsideWatchers() },
-    workspace.onDidChangeWorkspaceFolders(() => {
-      watchManifest(logError)
-      server.readvertise()
-    }),
+    window.onDidChangeWindowState((windowState) => { if (windowState.focused) server.readvertise() }),
+    workspace.onDidChangeWorkspaceFolders(() => server.readvertise()),
     commands.registerCommand('claudeTurnDiff.showLast', () => showLastTurn({ force: true })),
     commands.registerCommand('claudeTurnDiff.installHooks', () => setUpHooks(context)),
     commands.registerCommand('claudeTurnDiff.uninstallHooks', removeHooks),

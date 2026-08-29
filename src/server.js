@@ -1,11 +1,9 @@
-import { getServerDir, getServerFile } from './store/paths.js'
+import { getServerFile } from './store/paths.js'
 import { handleTurn } from './turn/index.js'
-import { outputFile, listEntries, removeFile } from './utils/files.js'
+import { readFile, removeFile, replaceFile } from './utils/files.js'
 import { getCurrentProject, getWorkspaceDirs } from './utils/workspace.js'
 import { randomBytes } from 'node:crypto'
-import { existsSync } from 'node:fs'
 import { createServer } from 'node:net'
-import { join } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -26,25 +24,7 @@ const parseRequest = (buffer) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const dropDeadAdvertisements = (serverDir) => {
-  for (const entry of listEntries(serverDir)) {
-    const pid = +entry.name.replace(/\.json$/, '')
-
-    if (!Number.isInteger(pid) || pid === process.pid) continue
-
-    try {
-      process.kill(pid, 0)
-    } catch (error) {
-      if (error.code !== 'ESRCH') continue
-
-      removeFile(join(serverDir, entry.name))
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-const serve = (socket, token, log) => {
+const serve = (socket, token, log, onPublish) => {
   let buffer = ''
 
   socket.setEncoding('utf8')
@@ -61,13 +41,16 @@ const serve = (socket, token, log) => {
     if (request.token !== token) return void socket.end('err\n')
 
     try {
-      await handleTurn(request.mode, request.project, JSON.parse(request.body), getWorkspaceDirs())
+      const outcome = await handleTurn(request.mode, request.project, JSON.parse(request.body), getWorkspaceDirs())
 
-      socket.end('ok\n')
+      if (outcome?.published) onPublish?.()
     } catch (error) {
       log?.(`${request.mode} failed: ${error.stack}`)
-      socket.end('err\n')
+
+      return void socket.end('err\n')
     }
+
+    socket.end('ok\n')
   })
 
   socket.on('error', () => {})
@@ -76,11 +59,14 @@ const serve = (socket, token, log) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const withdrawAdvert = (advertState) => {
-  if (!advertState.writtenAdvert) return
+  const { writtenFile, writtenContents } = advertState
 
-  removeFile(advertState.writtenAdvert)
+  if (!writtenFile) return
 
-  advertState.writtenAdvert = null
+  if (readFile(writtenFile, 'utf8') === writtenContents) removeFile(writtenFile)
+
+  advertState.writtenFile = null
+  advertState.writtenContents = null
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -91,18 +77,18 @@ const advertise = (advertState) => {
 
   if (!port) return void withdrawAdvert(advertState)
 
-  const project = getCurrentProject()
-  const targetAdvert = getServerFile(project, process.pid)
+  const advertFile = getServerFile(getCurrentProject())
+  const contents = JSON.stringify({ port, token, pid: process.pid })
 
-  if (targetAdvert === advertState.writtenAdvert && existsSync(targetAdvert)) return
+  if (readFile(advertFile, 'utf8') === contents) return
 
   withdrawAdvert(advertState)
 
   try {
-    dropDeadAdvertisements(getServerDir(project))
-    outputFile(targetAdvert, JSON.stringify({ port, token, pid: process.pid }), { mode: 0o600 })
+    replaceFile(advertFile, contents, { mode: 0o600 })
 
-    advertState.writtenAdvert = targetAdvert
+    advertState.writtenFile = advertFile
+    advertState.writtenContents = contents
   } catch (error) {
     log?.(`could not advertise: ${error.message}`)
   }
@@ -118,10 +104,10 @@ const disposeServer = (advertState) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const startServer = (log) => {
+export const startServer = (log, onPublish) => {
   const token = randomBytes(24).toString('hex')
-  const server = createServer((socket) => serve(socket, token, log))
-  const advertState = { server, token, log, writtenAdvert: null }
+  const server = createServer((socket) => serve(socket, token, log, onPublish))
+  const advertState = { server, token, log, writtenFile: null, writtenContents: null }
 
   server.on('error', (error) => log?.(`server error: ${error.message}`))
   server.listen(0, '127.0.0.1', () => advertise(advertState))

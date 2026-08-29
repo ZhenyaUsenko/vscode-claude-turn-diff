@@ -7,7 +7,7 @@ now kept per project — keyed by the directory the session started in, the way
 Claude Code keys `~/.claude/projects` — so several VS Code windows no longer
 overwrite each other's diff.
 
-- The hook is now a 38-line client that hands the payload to the extension over
+- The hook is now a 36-line client that hands the payload to the extension over
   a loopback socket. All capture logic moved into the extension, so it is one
   language, unit-tested, and the hook runs on bash builtins alone instead of
   spawning `jq` and `git` before every tool call. `jq` is no longer required.
@@ -19,8 +19,8 @@ overwrite each other's diff.
   together, so the diff can never point at images that have moved on, and
   nothing is left to age out. Two chats at once in one project now share a
   single diff rather than getting one each.
-- Each window advertises its own server, so two windows on one project cannot
-  delete each other's advertisement.
+- Each window advertises the server it runs, under the project it has open, so
+  the hook knows where to send a turn.
 - A window with no folder open gets diffs too. Claude Code keys a chat started
   there under your home directory, so that is where such a window advertises
   itself and looks for the turn to show.
