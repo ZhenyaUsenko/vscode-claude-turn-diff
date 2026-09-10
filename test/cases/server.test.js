@@ -142,7 +142,7 @@ check('the hook keys state by the session, not by a cwd Claude has moved', async
   const elsewhereDir = mkdtempSync(join(tmpdir(), 'wandered-'))
   const transcriptFile = join(HOME, '.claude', 'projects', project, 'drifted.jsonl')
 
-  await runHook('arm', { session_id: 'drifted', transcript_path: transcriptFile }, elsewhereDir)
+  await runHook('arm', { session_id: 'drifted', prompt_id: 'drifted', transcript_path: transcriptFile }, elsewhereDir)
 
   const belongsToSession = existsSync(getSessionIdFile(project))
   const belongsToCwd = existsSync(getSessionIdFile(getProjectKey(elsewhereDir)))
@@ -169,7 +169,7 @@ check('a turn ending through the hook reports back, which is what opens the diff
 
   await settle()
 
-  const payload = { session_id: 'hooked', transcript_path: transcriptFile }
+  const payload = { session_id: 'hooked', prompt_id: 'hooked', transcript_path: transcriptFile }
 
   await runHook('begin', payload, repoDir)
   await runHook('arm', payload, repoDir)

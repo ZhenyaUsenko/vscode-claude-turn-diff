@@ -140,8 +140,8 @@ check('a same-size edit is still seen when the snapshot lands a second later', a
   commitAll(repoDir)
   registerChat(repoDir, 'chat')
 
-  await handleTurn('begin', project, { session_id: 'chat', prompt: 'p' }, [repoDir])
-  await handleTurn('arm', project, { session_id: 'chat' }, [repoDir])
+  await handleTurn('begin', project, { session_id: 'chat', prompt_id: 'racy' }, [repoDir])
+  await handleTurn('arm', project, { session_id: 'chat', prompt_id: 'racy' }, [repoDir])
 
   outputFile(join(repoDir, 'f.txt'), 'two\n')
 

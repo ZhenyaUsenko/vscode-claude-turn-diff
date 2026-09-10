@@ -7,6 +7,10 @@ import { basename } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+let promptCounter = 0
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 export const registerChat = (dir, sessionId) => {
   outputFile(getTranscriptFile(getProjectKey(dir), sessionId), '')
 }
@@ -64,17 +68,20 @@ export const nextSecond = () => {
 
 export const startTurn = async (dir, sessionId, workspaceDirs, params) => {
   const project = getProjectKey(dir)
+  const promptId = `prompt-${promptCounter++}`
 
   registerChat(dir, sessionId)
 
-  await handleTurn('begin', project, { session_id: sessionId }, workspaceDirs)
-  await handleTurn('arm', project, { session_id: sessionId }, workspaceDirs)
+  await handleTurn('begin', project, { session_id: sessionId, prompt_id: promptId }, workspaceDirs)
+  await handleTurn('arm', project, { session_id: sessionId, prompt_id: promptId }, workspaceDirs)
 
   for (const file of params?.touchedFiles ?? []) {
-    const payload = { session_id: sessionId, tool_input: { file_path: file } }
+    const payload = { session_id: sessionId, prompt_id: promptId, tool_input: { file_path: file } }
 
     await handleTurn('arm', project, payload, workspaceDirs)
   }
+
+  return promptId
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -33,12 +33,20 @@ export const getTranscriptFile = (project, sessionId) => join(TRANSCRIPTS_ROOT, 
 
 export const getSessionIdFile = (project) => join(getProjectDir(project), 'sessionId.txt')
 
+export const getPromptIdFile = (project) => join(getProjectDir(project), 'promptId.txt')
+
 export const getSnapshotsFile = (project) => join(getProjectDir(project), 'snapshots.tsv')
 
 export const getTouchListFile = (project) => join(getProjectDir(project), 'touchList.txt')
 
 export const getTouchCopiesDir = (project) => join(getProjectDir(project), 'touchCopies')
 
-export const getArmedTurnPaths = (project) => {
-  return [getSessionIdFile(project), getSnapshotsFile(project), getTouchListFile(project), getTouchCopiesDir(project)]
-}
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const getArmedTurnPaths = (project) => [
+  getSessionIdFile(project),
+  getPromptIdFile(project),
+  getSnapshotsFile(project),
+  getTouchListFile(project),
+  getTouchCopiesDir(project),
+]

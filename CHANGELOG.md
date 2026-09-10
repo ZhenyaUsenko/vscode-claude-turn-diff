@@ -42,6 +42,10 @@ overwrite each other's diff.
   files at each level, then by name, ignoring case and reading digits as
   numbers. Repositories come in workspace order with anything outside them
   last, and a moved file sits where it landed rather than where it came from.
+- Fixed: a background command finishing, or a message you queued, while a turn
+  was still running restarted its diff, so everything the turn had done before
+  that point was missing from it. Claude Code raises `UserPromptSubmit` for
+  anything it hands to a running turn, and it was taken for a new prompt.
 - Fixed: an edit that left a file the same size went unreported if it landed in
   the same second as the last commit. Snapshots copy `.git/index`, and the
   copy's fresh timestamp is what stopped git re-reading a file it had cached.
@@ -73,8 +77,6 @@ overwrite each other's diff.
   the folder Claude Code was started in, so in a multi-root workspace it stayed
   silently out of date as soon as you edited anything in one of the other
   folders. Nothing read it, and the diff never depended on it.
-- State is reclaimed when a turn supersedes it, and a chat deleted in Claude
-  Code has its state removed. No time-based sweep.
 
 ## 0.1.1
 

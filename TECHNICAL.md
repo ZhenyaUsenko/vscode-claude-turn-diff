@@ -158,6 +158,28 @@ knows a turn published, not what anyone does about it.
 There is no sweep and nothing ages out. A turn's state is replaced by the next
 turn's, and a project directory is bounded by one turn's worth of it.
 
+## A prompt is not always a new turn
+
+`begin` runs on `UserPromptSubmit`, and Claude Code raises that event for more
+than a prompt you type. A message you queue while it works, a background command
+finishing, a notification of any kind — each is handed to the running turn
+through the same event, and each arrives with the running turn's `prompt_id`,
+where a genuine prompt carries a fresh one. The tool calls that follow keep the
+running turn's id.
+
+So `arm` records the prompt id it armed for, and `begin` clears the armed state
+only when its own differs. Clearing on every `UserPromptSubmit` re-took the
+baseline at the next `arm`, and everything the turn had done before that point
+was missing from its diff: a turn that started a rebuilt server in the
+background and went on editing lost every edit made before the command finished,
+and showed only the files it touched afterwards.
+
+`prompt_id` is a common hook field from Claude Code 2.1.196 on, absent only
+before a session's first prompt, which no hook of ours runs before. The payload
+is also gaining a `source` field naming who injected the prompt, but it may be
+absent while it rolls out, and it would not tell a message you queued apart from
+a prompt you typed anyway.
+
 ## The turn still running
 
 A manifest only exists once a turn has ended, and a turn can end without `end`

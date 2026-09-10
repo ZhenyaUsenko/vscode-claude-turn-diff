@@ -1,5 +1,7 @@
 import { publishManifest, removeManifest } from '../store/manifest.js'
-import { getArmedTurnPaths, getProjectDir, getSessionIdFile, getSnapshotsFile } from '../store/paths.js'
+import {
+  getArmedTurnPaths, getProjectDir, getPromptIdFile, getSessionIdFile, getSnapshotsFile,
+} from '../store/paths.js'
 import { isTurnOver } from '../store/transcript.js'
 import { canonicalize, isUnder, readFile, readLines, removeRecursive } from '../utils/files.js'
 import { disposeOutsideWatchers, watchFilesOutsideWorkspace } from '../utils/watch.js'
@@ -10,15 +12,12 @@ import { isAbsolute } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const clearArmedState = (project) => {
-  for (const armedTurnPath of getArmedTurnPaths(project)) removeRecursive(armedTurnPath)
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-const beginTurn = ({ project }) => {
+const beginTurn = ({ project, payload }) => {
   mkdirSync(getProjectDir(project), { recursive: true })
-  clearArmedState(project)
+
+  if (payload.prompt_id === readFile(getPromptIdFile(project), 'utf8')) return
+
+  for (const armedTurnPath of getArmedTurnPaths(project)) removeRecursive(armedTurnPath)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -39,6 +38,7 @@ const armTurn = async ({ project, sessionId, payload, workspaceDirs }) => {
     snapshots = readLines(snapshotsFile).map((line) => line.split('\t'))
   } else {
     writeFileSync(getSessionIdFile(project), sessionId)
+    writeFileSync(getPromptIdFile(project), payload.prompt_id)
 
     snapshots = await snapshotWorkspace(project, workspaceDirs)
   }
@@ -57,7 +57,7 @@ export const endTurn = async ({ project, ended = true }) => {
 
   const { changes, images } = await collectChanges(project)
 
-  if (ended) clearArmedState(project)
+  if (ended) for (const armedTurnPath of getArmedTurnPaths(project)) removeRecursive(armedTurnPath)
 
   if (!changes.length) return { published: false }
 

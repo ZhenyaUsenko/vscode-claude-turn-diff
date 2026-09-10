@@ -1,9 +1,10 @@
 import { readManifest } from '../../src/store/manifest.js'
 import { getBeforeImagesDir, getManifestFile, getProjectKey, getServerFile } from '../../src/store/paths.js'
+import { handleTurn } from '../../src/turn/index.js'
 import { outputFile, readFile } from '../../src/utils/files.js'
 import { check } from '../utils/checks.js'
 import { commitAll, createRepo } from '../utils/fixtures.js'
-import { interruptTurn, runTurn, startTurn } from '../utils/turn.js'
+import { interruptTurn, readChangedFileNames, runTurn, startTurn } from '../utils/turn.js'
 import assert from 'node:assert'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
@@ -90,4 +91,30 @@ check('a new turn discards what an abandoned one left armed', async () => {
   const reason = 'its baseline is stale now that another turn has run on top of it'
 
   assert.strictEqual(readBeforeImage(project, readManifest(project)), 'two\n', reason)
+})
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+check('a prompt handed to a running turn leaves its baseline alone', async () => {
+  const repoDir = createRepo()
+  const project = getProjectKey(repoDir)
+
+  outputFile(join(repoDir, 'f.txt'), 'one\n')
+  outputFile(join(repoDir, 'g.txt'), 'one\n')
+  commitAll(repoDir)
+
+  const promptId = await startTurn(repoDir, 'chat', [repoDir])
+
+  outputFile(join(repoDir, 'f.txt'), 'two\n')
+
+  await handleTurn('begin', project, { session_id: 'chat', prompt_id: promptId }, [repoDir])
+  await handleTurn('arm', project, { session_id: 'chat', prompt_id: promptId }, [repoDir])
+
+  outputFile(join(repoDir, 'g.txt'), 'two\n')
+
+  await handleTurn('end', project, { session_id: 'chat', prompt_id: promptId }, [repoDir])
+
+  const reason = 'a queued message or a finished background command fires UserPromptSubmit with the running turn\'s id'
+
+  assert.deepStrictEqual(readChangedFileNames(repoDir), ['f.txt', 'g.txt'], reason)
 })

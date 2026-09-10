@@ -54,7 +54,7 @@
   "scripts": {
     "test": "node --import ./test/setup.js test/index.js",
     "build": "./scripts/build.sh",
-    "dev:install": "./scripts/install.sh",
-    "dev:restore": "./scripts/restore.sh"
+    "install": "./scripts/install.sh",
+    "restore": "./scripts/restore.sh"
   }
 }

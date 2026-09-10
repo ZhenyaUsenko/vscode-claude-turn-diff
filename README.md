@@ -32,7 +32,8 @@ the chat panel instead. This closes that gap.
 
 ## Requirements
 
-- [Claude Code for VS Code](https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code)
+- [Claude Code for VS Code](https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code),
+  2.1.196 or newer
 - macOS or Linux. On Windows, use WSL or Git Bash.
 
 ## Install
