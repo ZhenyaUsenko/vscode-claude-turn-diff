@@ -28,6 +28,8 @@ Claude Code writes files straight to disk, so its edits never pass through VS Co
 
 - [Claude Code for VS Code](https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code), 2.1.196 or newer
 
+- git 2.38 or newer. With an older git, changes inside a repository are not picked up.
+
 - macOS or Linux. On Windows, use WSL or Git Bash.
 
 ## Install
@@ -64,14 +66,16 @@ Prefer to do it by hand? Run **Turn Diff: Register hooks in Claude settings** fr
 
 ## Commands
 
-| Command | Does | |---|---|
+| Command | Does |
+|---|---|
 | Turn Diff: Show last turn changes | The turn in progress if there is one, otherwise the last one that finished. Skips anything since reverted |
 | Turn Diff: Register hooks in Claude settings | Writes the hook config, after a backup |
 | Turn Diff: Remove hooks from Claude settings | Removes only this extension's entries |
 
 ## How it works
 
-| Hook | Runs | Does | |---|---|---|
+| Hook | Runs | Does |
+|---|---|---|
 | `UserPromptSubmit` | you hit enter | clears anything an interrupted turn left. No git. |
 | `PreToolUse` | first write-capable tool of the turn | snapshots every git repo in the workspace to dangling tree objects |
 | `PreToolUse` | every `Edit`/`Write` naming a path | if that path is outside all those repos, copies the file aside |
@@ -98,7 +102,7 @@ A diff you already have open keeps working after a later turn replaces it, becau
 
 - Untracked files over 1 MB are left out of both snapshots, so they never appear.
 
-- Gitignored files do not appear unless an `Edit`/`Write` tool named them directly. Already-tracked files always appear, ignore rules notwithstanding.
+- Gitignored files inside a repo do not appear, even when an `Edit`/`Write` tool named them. Already-tracked files always appear, whatever the ignore rules say.
 
 - A shell command writing outside every repo is caught by neither mechanism.
 

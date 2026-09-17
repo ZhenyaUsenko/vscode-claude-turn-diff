@@ -32,8 +32,11 @@ jobs:
 
       - name: Syntax check
         run: |
-          node --check extension.js
+          find src -name '*.js' -print0 | xargs -0 -n 1 node --check
           bash -n hooks/turn-diff.sh
+
+      - name: Test
+        run: npm test
 
       - name: Verify README images exist
         run: |

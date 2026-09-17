@@ -220,7 +220,7 @@ One name per entity, one entity per name. A suffix says what a value is, so nobo
 
 - `*File`: an absolute path to a file. `manifestFile`, `beforeImageFile`, `targetFile`, `copiedFile`.
 
-- `*Dir`: an absolute path to a directory. `projectDir`, `repoDir`, `gitDir`, `beforeImagesDir`.
+- `*Dir`: an absolute path to a directory. `workspaceDir`, `repoDir`, `gitDir`, `beforeImagesDir`.
 
 - `*Path`: a path that is relative, or whose kind is not known there. `beforePath` as git reports it, `targetPath` in `removeRecursive`.
 
