@@ -97,7 +97,7 @@ const parseNotes = (markdown) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const readContext = (mode) => {
+export const readContext = (mode) => {
   if (mode === 'none') return undefined
   if (mode === 'technical') return { technical_notes: readFileSync(join(REPO_DIR, 'TECHNICAL.md'), 'utf8') }
 
@@ -118,13 +118,13 @@ const readSourceFile = (srcDir, path) => stripSeparators(readFileSync(join(srcDi
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const readSourceFiles = (srcDir, paths) => {
+export const readSourceFiles = (srcDir, paths) => {
   return Object.fromEntries(paths.map((path) => [path, readSourceFile(srcDir, path)]))
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const buildQuestion = (test, files) => {
+export const buildQuestion = (test, files) => {
   const kind = test.behavior ? 'behavior' : 'scenario'
   const instructions = {
     behavior: test.behavior,

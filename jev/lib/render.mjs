@@ -56,7 +56,7 @@ const formatDistribution = (probabilities, legend) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const formatAnswer = (answer) => {
+export const formatAnswer = (answer) => {
   if (answer.type === 'noul') return `noul ${formatPercent(answer.noul)}`
 
   const confidence = `confidence ${answer.confidence.toFixed(2)}`
