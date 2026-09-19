@@ -1,8 +1,10 @@
 import { isUnder, canonicalize } from './files.js'
-import { basename, dirname } from 'node:path'
+import { dirname } from 'node:path'
 import { RelativePattern, Uri, workspace } from 'vscode'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const MAX_WATCHED_DIRS = 100
 
 const outsideWatchers = new Map()
 
@@ -12,13 +14,26 @@ export const watchFilesOutsideWorkspace = (targetFiles, workspaceDirs) => {
   const canonicalWorkspaceDirs = workspaceDirs.map(canonicalize)
 
   for (const targetFile of targetFiles) {
-    if (outsideWatchers.has(targetFile)) continue
+    const dir = dirname(targetFile)
+    const existingWatcher = outsideWatchers.get(dir)
+
+    if (existingWatcher) {
+      outsideWatchers.delete(dir)
+      outsideWatchers.set(dir, existingWatcher)
+
+      continue
+    }
+
     if (canonicalWorkspaceDirs.some((workspaceDir) => isUnder(canonicalize(targetFile), workspaceDir))) continue
 
-    const dirUri = Uri.file(dirname(targetFile))
-    const pattern = new RelativePattern(dirUri, basename(targetFile))
+    outsideWatchers.set(dir, workspace.createFileSystemWatcher(new RelativePattern(Uri.file(dir), '*')))
 
-    outsideWatchers.set(targetFile, workspace.createFileSystemWatcher(pattern))
+    if (outsideWatchers.size > MAX_WATCHED_DIRS) {
+      const [oldestDir, oldestWatcher] = outsideWatchers.entries().next().value
+
+      oldestWatcher.dispose()
+      outsideWatchers.delete(oldestDir)
+    }
   }
 }
 

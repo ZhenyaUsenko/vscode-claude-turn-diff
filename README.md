@@ -16,9 +16,9 @@ Claude Code writes files straight to disk, so its edits never pass through VS Co
 
 - **Every repo in the workspace.** A turn touching two repos in a multi-root workspace produces one diff listing both.
 
-- **Files outside any repo too.** Edits to something in `~/.claude` or a scratch directory still show up.
+- **Files outside any repo too.** Edits to something in `~/.claude` or a scratch directory still show up, whether Claude used an edit tool or a shell command.
 
-- **Script-driven edits are caught.** An `rm`, `sed`, formatter run or `package-lock.json` churn from a shell command appears just like a direct edit. Anything landing in a git worktree is seen, however it got there.
+- **Script-driven edits are caught.** An `rm`, `sed`, formatter run or `package-lock.json` churn from a shell command appears just like a direct edit. Anything landing in a git worktree is seen, however it got there. Outside a worktree, the command itself is read for the files it writes: redirects, `rm`, `mv`, `cp`, `sed -i`, output options, and the paths inside an inline script.
 
 - **`A` / `M` / `D` badges**, and a moved file shows as a rename.
 
@@ -79,6 +79,7 @@ Prefer to do it by hand? Run **Turn Diff: Register hooks in Claude settings** fr
 | `UserPromptSubmit` | you hit enter | clears anything an interrupted turn left. No git. |
 | `PreToolUse` | first write-capable tool of the turn | snapshots every git repo in the workspace to dangling tree objects |
 | `PreToolUse` | every `Edit`/`Write` naming a path | if that path is outside all those repos, copies the file aside |
+| `PreToolUse` | every `Bash` call | reads the command for the files it will touch outside those repos, and copies them aside |
 | `Stop` | Claude finishes | diffs and opens the editor |
 | `StopFailure` | the turn dies on an API error | the same, so the work still gets a diff |
 
@@ -88,7 +89,7 @@ Asking for the diff mid-turn compares that same snapshot with the files as they 
 
 The hook is a small bash script. It finds the window serving this project through a file under `~/.claude/turn-diff/` and hands the payload to the extension over a loopback socket, so the capture runs inside the extension. A `PreToolUse` call costs a few milliseconds, and a turn that writes nothing never runs git. If no window serves the project, the hook exits without doing anything, since nothing could show the result.
 
-Two mechanisms, because neither is enough alone: **tree snapshots** catch anything happening inside a git worktree, however it happened, but cannot see outside a repo; **per-file capture** catches paths outside every repo, but only when a tool names them.
+Two mechanisms, because neither is enough alone: **tree snapshots** catch anything happening inside a git worktree, however it happened, but cannot see outside a repo; **per-file capture** catches paths outside every repo, but only when a tool names them, or when a shell command's text does.
 
 [TECHNICAL.md](TECHNICAL.md) explains why the internals are shaped the way they are, the parts you cannot tell from reading the source.
 
@@ -104,7 +105,7 @@ A diff you already have open keeps working after a later turn replaces it, becau
 
 - Gitignored files inside a repo do not appear, even when an `Edit`/`Write` tool named them. Already-tracked files always appear, whatever the ignore rules say.
 
-- A shell command writing outside every repo is caught by neither mechanism.
+- Outside every repo, a shell command is caught only for paths that appear in its text. A program writing elsewhere, such as `npm install` or a formatter run over a directory, a path built at run time, or a path held in a variable set from command output is not seen. A directory `rm -r` or `mv` covers at most 500 files.
 
 - Binary files are not shown. The multi-file diff editor resolves both sides through VS Code's text model service, so a binary entry cannot render, and there is no image diff to fall back on.
 

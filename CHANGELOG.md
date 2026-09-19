@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Shell commands outside every repository now show up in the diff. Before a Bash tool call runs, its text is read for the files it will create, change, delete, move or copy: redirects, `rm`, `mv`, `cp`, `sed -i`, `tee`, output options, and any path written inside an inline script such as a `python3 -` heredoc, with `cd` and variables assigned in the same command followed. Inside a repository nothing changes; the tree snapshot already covered it.
+
 ## 0.2.0
 
 The capture logic moved out of the bash hook and into the extension, and each project now keeps its own diff, so several VS Code windows no longer overwrite each other's. You can look at a turn while it is still running. A turn that was interrupted, or that ended while the window was closed, can still be shown afterwards, and one cut short by an API error gets a diff too. Moved files show as renames, files are listed in the explorer's order, and several cases where the diff came out empty, stale or incomplete are fixed.

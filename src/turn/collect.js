@@ -19,6 +19,7 @@ const isBinary = (contents) => {
 const addChange = (collector, beforeFile, afterFile, beforeContents) => {
   const afterContents = readFile(afterFile)
 
+  if (beforeContents == null && afterContents == null) return
   if (beforeFile === afterFile && afterContents && beforeContents?.equals(afterContents)) return
 
   if (isBinary(beforeContents) || isBinary(afterContents)) return

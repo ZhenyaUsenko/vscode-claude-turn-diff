@@ -30,6 +30,14 @@ jobs:
           echo "version=$PKG" >> "$GITHUB_OUTPUT"
           echo "vsix=claude-turn-diff-${PKG}.vsix" >> "$GITHUB_OUTPUT"
 
+      - name: Install dependencies
+        run: |
+          if grep -q '"file:' package.json; then
+            echo "::error::package.json depends on a local path; point it at a released version before tagging"
+            exit 1
+          fi
+          npm ci
+
       - name: Syntax check
         run: |
           find src -name '*.js' -print0 | xargs -0 -n 1 node --check

@@ -81,6 +81,12 @@ export const startTurn = async (dir, sessionId, workspaceDirs, params) => {
     await handleTurn('arm', project, payload, workspaceDirs)
   }
 
+  for (const { command, cwd } of params?.commands ?? []) {
+    const payload = { session_id: sessionId, prompt_id: promptId, tool_name: 'Bash', tool_input: { command }, cwd }
+
+    await handleTurn('arm', project, payload, workspaceDirs)
+  }
+
   return promptId
 }
 

@@ -6,5 +6,6 @@ import './cases/view.test.js'
 import './cases/running.test.js'
 import './cases/server.test.js'
 import './cases/install.test.js'
+import './cases/commands.test.js'
 
 runChecks()

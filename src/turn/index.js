@@ -5,7 +5,7 @@ import {
 import { isTurnOver } from '../store/transcript.js'
 import { canonicalize, isUnder, readFile, readLines, removeRecursive } from '../utils/files.js'
 import { disposeOutsideWatchers, watchFilesOutsideWorkspace } from '../utils/watch.js'
-import { captureTouchedFile, snapshotWorkspace } from './capture.js'
+import { captureCommandFiles, captureTouchedFile, snapshotWorkspace } from './capture.js'
 import { collectChanges, writeBeforeImages } from './collect.js'
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { isAbsolute } from 'node:path'
@@ -27,6 +27,7 @@ const armTurn = async ({ project, sessionId, payload, workspaceDirs }) => {
 
   const toolPath = payload.tool_input?.file_path || payload.tool_input?.notebook_path
   const targetFile = toolPath && isAbsolute(toolPath) ? toolPath : null
+  const command = payload.tool_name === 'Bash' ? payload.tool_input?.command : null
 
   const snapshotsFile = getSnapshotsFile(project)
 
@@ -41,6 +42,12 @@ const armTurn = async ({ project, sessionId, payload, workspaceDirs }) => {
     writeFileSync(getPromptIdFile(project), payload.prompt_id)
 
     snapshots = await snapshotWorkspace(project, workspaceDirs)
+  }
+
+  if (command) {
+    const commandFiles = captureCommandFiles(project, command, payload.cwd, snapshots)
+
+    watchFilesOutsideWorkspace(commandFiles, workspaceDirs)
   }
 
   if (!targetFile || snapshots.some(([repoDir]) => isUnder(canonicalize(targetFile), repoDir))) return

@@ -56,5 +56,8 @@
     "build": "./scripts/build.sh",
     "install-extension": "./scripts/install.sh",
     "restore-extension": "./scripts/restore.sh"
+  },
+  "dependencies": {
+    "shell-command-effects": "file:../shell-command-effects"
   }
 }

@@ -16,7 +16,7 @@ The script hands each payload to the VS Code window serving the project, and the
 
 - `begin` clears the state a turn that never ended left behind.
 
-- `arm` snapshots every git repository in the workspace the first time it runs in a turn, and copies aside any file a tool names outside those repositories.
+- `arm` snapshots every git repository in the workspace the first time it runs in a turn, and copies aside any file outside those repositories that a tool names or a shell command's text points at.
 
 - `end` snapshots again, works out what changed, writes the before-images and the manifest, and opens the diff.
 
@@ -27,7 +27,7 @@ server.json      which window serves the project
 sessionId.txt    the chat the armed turn belongs to
 promptId.txt     the prompt the armed turn belongs to
 snapshots.tsv    one row per repository: repoDir, gitDir, before tree
-touchList.txt    files outside every repository that a tool named
+touchList.txt    files outside every repository that a tool or a shell command named
 touchCopies/     copies of those files as they were
 beforeImages/    the published before-images
 manifest.json    the published diff
@@ -72,9 +72,9 @@ Neither covers everything on its own:
 
 - **Tree snapshots** catch anything a shell command does inside a git worktree: `rm`, `sed`, a formatter, package-lock churn.
 
-- **Per-file capture** catches edits outside every repository, but only for paths an `Edit` or `Write` tool names.
+- **Per-file capture** catches edits outside every repository, but only for paths that are named: by an `Edit` or `Write` tool, or in the text of a shell command.
 
-A shell command writing outside every repository is caught by neither.
+A program writing outside every repository to a path its command never mentions is caught by neither.
 
 The repository snapshot happens once per turn. Later `arm` calls fall through to the cheap per-file branch, which is what keeps a turn with dozens of tool calls affordable.
 
@@ -89,6 +89,14 @@ The `arm` that takes the snapshot also writes `sessionId.txt` and `promptId.txt`
 So `begin` clears the armed state only when its prompt id differs from the one in `promptId.txt`. Clearing on every `UserPromptSubmit` re-took the baseline at the next `arm`, and everything the turn had done before that point was missing from its diff. A turn that started a rebuilt server in the background and kept editing lost every edit made before the command finished, and showed only the files it touched afterwards.
 
 `prompt_id` is a common hook field from Claude Code 2.1.196 on. It is absent only before a session's first prompt, which no hook of ours runs before. A `source` field naming who injected the prompt is rolling out too, but it may be absent for now, and it would not tell a queued message of yours from a new prompt anyway.
+
+## Reading a shell command
+
+`arm` runs before every Bash tool call, and the tree snapshot covers whatever the command does inside a repository. Outside every repository there is no tree to diff, so the command's text is read for the files it will create, change, delete, move or copy. Each of them goes through the same per-file capture as an `Edit` or `Write` target: copied aside if it exists, recorded if it does not.
+
+The reading is done by [shell-command-effects](https://github.com/ZhenyaUsenko/shell-command-effects), a package of its own. It lives apart because it changes for different reasons: a new shape of command, not a change in VS Code or Claude Code. Its README says what it looks for and what it cannot see. The extension asks it for the files, drops those inside a snapshotted repository, since the tree diff covers them, and captures the rest.
+
+The package is deliberately generous, and that suits this use. Predicting a file the command never touches costs a copy and nothing more: an unchanged file drops out at collect time, and a recorded path that never appears is skipped once both sides are missing. The failure that matters is a path it never lists.
 
 ## Snapshots
 
@@ -192,9 +200,11 @@ Firing `onDidChange` at registration is the tempting fix for a restored editor t
 
 VS Code only watches what is inside the workspace, so its in-memory copy of a file outside it lags behind disk until the window is refocused. Claude Code opens the document to show its own inline diff and then writes to disk directly, so the editor keeps the pre-edit text. That is exactly what the before-image holds, and the diff renders as no change at all.
 
-Registering a `FileSystemWatcher` on such a path makes the file service report the write, which is what makes the editor reload. It has to happen in `arm`, before the tool writes. Doing it at render time is too late for the first edit of each file.
+Registering a `FileSystemWatcher` on such a path makes the file service report the write, which is what makes the editor reload. It has to happen in `arm`, before the tool writes. Doing it at render time is too late for the first edit of each file. Watchers are kept per directory, one watching `*` in it, because a shell command can name hundreds of files and VS Code watches the directory either way.
 
-Watchers are released when a turn ends, and only then. A look at a running turn publishes without tearing the turn down, so the files it is still editing stay watched.
+At most `MAX_WATCHED_DIRS` are held at once, counted over the whole turn, not per command. Past that, the directory watched longest is released to make room, and a directory a command names again moves to the back of that queue first. The order matters: a command can name a long-watched directory together with new ones, and without the move the new ones would push out a directory the same command is about to write to. So whatever is about to be written is always watched, and what loses its watcher has usually delivered its event already. A file that does lose it is not lost from the diff. It only looks stale until the window is refocused.
+
+Apart from that, watchers are released when a turn ends, and only then. A look at a running turn publishes without tearing the turn down, so the files it is still editing stay watched.
 
 ## Advertising
 
@@ -212,7 +222,7 @@ The advert is written to a temporary file and renamed into place, like the manif
 
 `end` is registered for `StopFailure` as well as `Stop`. A turn cut short by an API error never reaches `Stop`, and its snapshot would sit unclaimed until the next prompt discarded it.
 
-`arm` matches every tool that can write, including `Bash`, because a shell command is exactly what per-file capture cannot see coming.
+`arm` matches every tool that can write. `Bash` is among them for two reasons: the snapshot has to be in place before a shell command runs, and outside a repository the command's text is all there is to read.
 
 ## Naming
 

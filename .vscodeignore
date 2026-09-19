@@ -9,3 +9,7 @@ test/**
 scripts/**
 TECHNICAL.md
 CLAUDE.md
+node_modules/shell-command-effects/**
+!node_modules/shell-command-effects/package.json
+!node_modules/shell-command-effects/LICENSE
+!node_modules/shell-command-effects/src/**
