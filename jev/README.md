@@ -12,6 +12,7 @@ Scratch work for trying TypeSafe's Jev model on this extension. Nothing in here 
 | `run-tests.mjs` | Builds the state from the source files, with comment separators stripped, plus the chosen context, asks one Noul question per test in `tests.md` and prints per-test probabilities. |
 | `compare.mjs` | Reads two labelled test runs from `logs/` and prints them side by side, sorted by how far each test moved. |
 | `spread.mjs` | Reads several labelled runs of the same request and prints each test's values, range and standard deviation, sorted by range, with a summary of how much identical requests move. |
+| `run-probe.mjs`, `probes/` | Diagnostic questions around one test: the statement under test goes into the state as `statement`, and a probe module adds Noul, Choice and Score questions that split it into parts, check scope, and ask which part the code supports least. `--probe <name>` picks `probes/<name>.mjs`. |
 | `run-commits.mjs` | The git-history warm-up: classify a commit's diff blind, and tell its real message from a borrowed one. `--limit <n>` sends only the first n commits. |
 | `ask.mjs` | Sends one request from a JSON file, or lists models with `models`. |
 | `render-logs.mjs` | Re-renders existing logs to Markdown, all of them or the files named on the command line. |
@@ -33,6 +34,7 @@ node jev/run-tests.mjs --tests behavior-tests.md --label behavior-1 --files all 
 node jev/run-tests.mjs --label mutant-x --src jev/mutants/x --files all --context notes
 node jev/compare.mjs all-notes mutant-x
 node jev/spread.mjs var-1 var-2 var-3 var-4 var-5
+node jev/run-probe.mjs --probe every_changed_file --label ecf-1
 node jev/run-tests.mjs --dry --files focused --context notes
 node jev/run-commits.mjs --limit 3
 node jev/ask.mjs jev/smoke.json
