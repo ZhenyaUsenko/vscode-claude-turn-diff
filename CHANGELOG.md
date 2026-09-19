@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1
+
+- The diff of a finished turn now opens as a regular tab, where it used to be a preview. The next turn's diff, or a file you click once in the explorer, no longer takes its place, so it stays until you close it. A look at a turn still running remains a preview, and the finished diff replaces it.
+
+- Fixed: a background subagent failing on an API error, such as a usage limit, ended the diff of the turn it was running in. The diff opened while the turn was still going, and whatever the turn did afterwards landed in a separate, later diff. Several subagents failing together opened a diff each. Claude Code reports a failed subagent through the same `StopFailure` hook as the main agent, and the two are now told apart.
+
 ## 0.2.0
 
 The capture logic moved out of the bash hook and into the extension, and each project now keeps its own diff, so several VS Code windows no longer overwrite each other's. You can look at a turn while it is still running. A turn that was interrupted, or that ended while the window was closed, can still be shown afterwards, and one cut short by an API error gets a diff too. Moved files show as renames, files are listed in the explorer's order, and several cases where the diff came out empty, stale or incomplete are fixed.

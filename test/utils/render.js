@@ -9,7 +9,13 @@ export const render = async (workspaceDirs) => {
 
   await showLastTurn({ force: true })
 
-  return stubState.executed[stubState.executed.length - 1]
+  return stubState.executed.findLast(({ command }) => command === 'vscode.changes')
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const listExecutedCommands = () => {
+  return stubState.executed.map(({ command }) => command)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

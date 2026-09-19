@@ -174,6 +174,8 @@ Two things keep that derivation unambiguous. An addition writes no before-image,
 
 Changes that no longer represent anything renderable drop out at render time: a file reverted by hand, or one whose sides have both gone.
 
+The diff of a finished turn is kept as a regular tab. `vscode.changes` opens a preview tab, which the next preview replaces: the next turn's diff, or any file clicked once in the explorer. Only the newest turn has a manifest, so a diff replaced that way cannot be opened again. The command takes a title and a list of resources and nothing else, so there is no option to pass. `workbench.action.keepEditor` is run straight after it instead, which keeps whatever editor is active, and at that moment it is the diff. A look at a running turn is left as a preview on purpose. Each look would otherwise leave a tab behind, where a preview gives way to the next look and then to the finished diff, which is kept. An editor opened with nothing in it is not kept either.
+
 The multi-diff editor decides a file was renamed by comparing `originalUri.path !== modifiedUri.path`. Pointing `original` straight at the before-image on disk struck through every filename and stamped it `R`. The before side is served through a scheme that keeps the real path verbatim, so the two sides differ only where a file actually moved, which is exactly when a rename should show.
 
 The turn's stamp goes in the URI query, and the provider serves an image only while the stamp matches the published manifest. That gives every turn a distinct URI. Without it the URI would be the file's own path with the scheme swapped, identical every turn, and VS Code may serve the text model it cached for the previous turn, which renders as no change at all. Since every turn writes into the same `beforeImages/`, that comparison is also the only thing keeping a superseded tab off the new turn's contents.
@@ -211,6 +213,8 @@ The advert is written to a temporary file and renamed into place, like the manif
 `hooksMatchSpec` compares our hooks against `HOOK_SPEC` exactly rather than checking that something of ours is present. Changing a matcher, a timeout or a command has to re-prompt, or everyone keeps running whatever they registered first.
 
 `end` is registered for `StopFailure` as well as `Stop`. A turn cut short by an API error never reaches `Stop`, and its snapshot would sit unclaimed until the next prompt discarded it.
+
+A subagent shares the main chat's session, so its hooks arrive under the same project and look like the turn's own. Its tool calls run `arm`, which is right: what a subagent edits is part of the turn. Its ending is another matter. A subagent that finishes raises `SubagentStop`, which is not registered, but one that dies on an API error raises the same `StopFailure` the main agent does. Every payload from inside a subagent carries an `agent_id`, and the main agent's never does, so `end` ignores an event that has one. Taking it for the end of the turn published the diff while the turn was still running and cleared its baseline, once per failed subagent. Several background agents hitting a usage limit within a minute opened a diff each, and each held only what had changed since the one before.
 
 `arm` matches every tool that can write, including `Bash`, because a shell command is exactly what per-file capture cannot see coming.
 

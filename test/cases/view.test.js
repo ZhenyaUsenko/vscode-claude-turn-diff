@@ -1,11 +1,12 @@
 import { readManifest } from '../../src/store/manifest.js'
 import { getProjectKey } from '../../src/store/paths.js'
+import { handleTurn } from '../../src/turn/index.js'
 import { getRealPath, outputFile, removeFile } from '../../src/utils/files.js'
 import { registerBeforeImageProvider } from '../../src/view.js'
 import { check } from '../utils/checks.js'
 import { commitAll, createRepo } from '../utils/fixtures.js'
-import { getRenderedFileNames, render } from '../utils/render.js'
-import { runTurn } from '../utils/turn.js'
+import { getRenderedFileNames, listExecutedCommands, render } from '../utils/render.js'
+import { runTurn, startTurn } from '../utils/turn.js'
 import { resetStub, stubState, Uri } from '../utils/vscode-stub.js'
 import assert from 'node:assert'
 import { mkdirSync, renameSync } from 'node:fs'
@@ -221,4 +222,48 @@ check('a turn that only adds files still renders', async () => {
   const reason = 'no before-image was written, so the directory has to exist on its own account'
 
   assert.deepStrictEqual(getRenderedFileNames(diffData), ['added.txt'], reason)
+})
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+check('the diff of a finished turn is kept, so the next thing to open cannot replace it', async () => {
+  const repoDir = createRepo()
+
+  outputFile(join(repoDir, 'f.txt'), 'one\n')
+  commitAll(repoDir)
+
+  await runTurn(repoDir, 'chat', [repoDir], () => outputFile(join(repoDir, 'f.txt'), 'two\n'))
+  await render([repoDir])
+
+  const reason = 'vscode.changes opens a preview tab and takes no options, so the tab is kept right after it opens'
+
+  assert.deepStrictEqual(listExecutedCommands(), ['vscode.changes', 'workbench.action.keepEditor'], reason)
+})
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+check('an empty diff and a look at a running turn stay previews', async () => {
+  const repoDir = createRepo()
+  const project = getProjectKey(repoDir)
+
+  outputFile(join(repoDir, 'f.txt'), 'one\n')
+  commitAll(repoDir)
+
+  await render([repoDir])
+
+  const emptyReason = 'an editor with nothing in it is not worth keeping'
+
+  assert.deepStrictEqual(listExecutedCommands(), ['vscode.changes'], emptyReason)
+
+  await startTurn(repoDir, 'chat', [repoDir])
+
+  outputFile(join(repoDir, 'f.txt'), 'two\n')
+
+  await render([repoDir])
+
+  const runningReason = 'every look would leave a tab behind, where a preview gives way to the next look or final diff'
+
+  assert.deepStrictEqual(listExecutedCommands(), ['vscode.changes'], runningReason)
+
+  await handleTurn('end', project, { session_id: 'chat' }, [repoDir])
 })

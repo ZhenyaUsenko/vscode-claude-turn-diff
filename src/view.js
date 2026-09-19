@@ -58,7 +58,11 @@ export const showLastTurn = async (params) => {
 
   const title = manifest?.running ? RUNNING_TURN_TITLE : LAST_TURN_TITLE
 
-  if (resources.length || params?.force) return commands.executeCommand('vscode.changes', title, resources)
+  if (!resources.length && !params?.force) return
+
+  await commands.executeCommand('vscode.changes', title, resources)
+
+  if (resources.length && !manifest.running) await commands.executeCommand('workbench.action.keepEditor')
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

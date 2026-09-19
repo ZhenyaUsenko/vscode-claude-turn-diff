@@ -179,7 +179,8 @@ check('a turn ending through the hook reports back, which is what opens the diff
   await runHook('end', payload, repoDir)
   await settle()
 
-  const rendered = stubState.executed.map((call) => call.resources.map(([uri]) => basename(uri.fsPath)))
+  const openedDiffs = stubState.executed.filter(({ command }) => command === 'vscode.changes')
+  const rendered = openedDiffs.map(({ resources }) => resources.map(([uri]) => basename(uri.fsPath)))
   const reason = 'nothing watches the manifest, so a published turn has to announce itself'
 
   assert.deepStrictEqual(rendered, [['f.txt']], reason)

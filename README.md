@@ -10,7 +10,7 @@ Claude Code writes files straight to disk, so its edits never pass through VS Co
 
 ## What you get
 
-- **One tab per turn**, not one per file. Every changed file in a single scrollable multi-file diff, with per-file collapse.
+- **One tab per turn**, not one per file. Every changed file in a single scrollable multi-file diff, with per-file collapse. The tab stays until you close it, so the next turn's diff opens beside it, not over it.
 
 - **Editable in place.** The right-hand side is the real file, so the *Revert block* arrows work. Reviewing and undoing happen in the same view.
 

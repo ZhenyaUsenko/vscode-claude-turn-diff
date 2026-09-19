@@ -50,7 +50,9 @@ const armTurn = async ({ project, sessionId, payload, workspaceDirs }) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const endTurn = async ({ project, ended = true }) => {
+export const endTurn = async ({ project, payload, ended = true }) => {
+  if (payload?.agent_id) return { published: false }
+
   if (ended) disposeOutsideWatchers()
 
   if (!existsSync(getSnapshotsFile(project))) return { published: false }

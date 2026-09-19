@@ -1,5 +1,7 @@
 import { readManifest } from '../../src/store/manifest.js'
-import { getBeforeImagesDir, getManifestFile, getProjectKey, getServerFile } from '../../src/store/paths.js'
+import {
+  getBeforeImagesDir, getManifestFile, getProjectKey, getServerFile, getSnapshotsFile,
+} from '../../src/store/paths.js'
 import { handleTurn } from '../../src/turn/index.js'
 import { outputFile, readFile } from '../../src/utils/files.js'
 import { check } from '../utils/checks.js'
@@ -117,4 +119,32 @@ check('a prompt handed to a running turn leaves its baseline alone', async () =>
   const reason = 'a queued message or a finished background command fires UserPromptSubmit with the running turn\'s id'
 
   assert.deepStrictEqual(readChangedFileNames(repoDir), ['f.txt', 'g.txt'], reason)
+})
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+check('a subagent dying on an API error does not end the turn it runs in', async () => {
+  const repoDir = createRepo()
+  const project = getProjectKey(repoDir)
+
+  outputFile(join(repoDir, 'f.txt'), 'one\n')
+  outputFile(join(repoDir, 'g.txt'), 'one\n')
+  commitAll(repoDir)
+
+  await startTurn(repoDir, 'chat', [repoDir])
+
+  outputFile(join(repoDir, 'f.txt'), 'two\n')
+
+  const subagentOutcome = await handleTurn('end', project, { session_id: 'chat', agent_id: 'subagent' }, [repoDir])
+  const reason = 'Claude Code raises StopFailure for a failed subagent under the main session, with its agent_id'
+
+  assert.deepStrictEqual(subagentOutcome, { published: false }, reason)
+  assert.strictEqual(readManifest(project), undefined, 'so no diff opens for it')
+  assert.ok(existsSync(getSnapshotsFile(project)), 'and the turn keeps the baseline it started from')
+
+  outputFile(join(repoDir, 'g.txt'), 'two\n')
+
+  await handleTurn('end', project, { session_id: 'chat' }, [repoDir])
+
+  assert.deepStrictEqual(readChangedFileNames(repoDir), ['f.txt', 'g.txt'], 'its own end still reports all of it')
 })
