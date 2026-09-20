@@ -7,3 +7,5 @@ per entity, one entity per name.
 
 Verify with `npm test`, which runs the whole suite against a temporary `HOME`
 and a stubbed `vscode` module.
+
+Don't create memory files for this project.
