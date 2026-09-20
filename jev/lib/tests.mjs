@@ -126,22 +126,21 @@ export const readSourceFiles = (srcDir, paths) => {
 
 export const buildQuestion = (test, files) => {
   const kind = test.behavior ? 'behavior' : 'scenario'
-  const instructions = {
-    behavior: test.behavior,
-    scenario: test.scenario,
-    expected: test.expected,
-    notes: test.notes,
-    relevant_files: files,
-    question: QUESTIONS[kind],
-  }
+  const instructions = { behavior: test.behavior, scenario: test.scenario, expected: test.expected, notes: test.notes }
+
+  if (files) instructions.relevant_files = files
+
+  instructions.question = QUESTIONS[kind]
 
   return { type: 'noul', instructions, criteria: CRITERIA[kind] }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const buildQuestions = (suites) => {
-  const entries = suites.flatMap((suite) => suite.tests.map((test) => [test.id, buildQuestion(test, suite.files)]))
+const buildQuestions = (suites, relevantFiles) => {
+  const entries = suites.flatMap((suite) => {
+    return suite.tests.map((test) => [test.id, buildQuestion(test, relevantFiles ? suite.files : undefined)])
+  })
 
   return Object.fromEntries(entries)
 }
@@ -157,13 +156,15 @@ export const buildRequests = (suites, options) => {
 
   if (options.files === 'all') {
     const state = { context, files: readSourceFiles(options.src, SOURCE_FILES) }
+    const questions = buildQuestions(suites, options.relevantFiles)
 
-    return [{ name: 'all', body: { state, model: options.model, questions: buildQuestions(suites) } }]
+    return [{ name: 'all', body: { state, model: options.model, questions } }]
   }
 
   return suites.map((suite) => {
     const state = { context, files: readSourceFiles(options.src, suite.files) }
+    const questions = buildQuestions([suite], options.relevantFiles)
 
-    return { name: suite.name, body: { state, model: options.model, questions: buildQuestions([suite]) } }
+    return { name: suite.name, body: { state, model: options.model, questions } }
   })
 }

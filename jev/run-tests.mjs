@@ -9,11 +9,12 @@ const USD_PER_TOKEN = 0.042 / 1e6
 const ARG_OPTIONS = {
   src: { type: 'string', default: REPO_DIR },
   files: { type: 'string', default: 'all' },
-  context: { type: 'string', default: 'none' },
+  context: { type: 'string', default: 'notes' },
   label: { type: 'string', default: 'baseline' },
-  tests: { type: 'string', default: 'tests.md' },
+  tests: { type: 'string', default: 'behavior-tests.md' },
   model: { type: 'string', default: 'jev-latest' },
   dry: { type: 'boolean', default: false },
+  'relevant-files': { type: 'string', default: 'false' },
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -77,7 +78,8 @@ const printSummary = (answers, results) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const main = async () => {
-  const { values: options } = parseArgs({ options: ARG_OPTIONS })
+  const { values } = parseArgs({ options: ARG_OPTIONS })
+  const options = { ...values, relevantFiles: values['relevant-files'] !== 'false' }
   const suites = readTests(options.tests)
   const requests = buildRequests(suites, options)
 
