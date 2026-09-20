@@ -298,3 +298,75 @@ Why it resists: probe `alt-1` scores the pieces well (snapshots.tsv survives a l
 ## One thing worth knowing about the question form
 
 In every probe, a direct question about a single fact scored well above the same fact routed through "Does the program in `files` behave as `behavior` describes?". For `reverted_by_hand_drops_out` the atomic questions scored 76 to 96% while the statement scored 51 to 60% in the same request. The indirection through `behavior` costs something on its own, which matches the earlier finding that placing the statement in the state scored about 10 points higher than embedding it in the question.
+
+## Third pass (`x-` runs): tests under 75 after the context work
+
+Baseline is the pair `c-final-1` and `c-final-2` (mean 80% and 81%, 58/59 and 59/59). Scope: the nine tests whose mean over that pair is under 75. Same rules as the first pass, at most two rewrites per test in this pass, and context changes allowed under the outside-world rule. The context stayed at its `c-final` state throughout; the one context attempt is in `context-notes-log.md`.
+
+### The `relevant_files` property
+
+`--relevant-files false` (new flag in `run-tests.mjs`, default true) drops the `relevant_files` list from every question's instructions. Two runs, `x-nofiles-1` and `x-nofiles-2`: x-nofiles-1 81% 59/59, x-nofiles-2 81% 59/59 against c-final-1 80% 58/59, c-final-2 81% 59/59. Mean delta +0.4. Largest moves: workspace.outside_binary_is_skipped 67 → 81 (+15); view.reverted_by_hand_drops_out 76 → 84 (+8); workspace.outside_file_created_has_no_before_image 68 → 74 (+6); and the other way running.a_look_leaves_the_turn_armed 76 → 67 (-9); running.running_turn_with_no_changes_falls_back 75 → 67 (-7); view.move_renders_as_rename 85 → 79 (-6). By pair means, 9 tests sit under 75 with the property and 12 without. The effect is within run-to-run variation and does not change the picture, so the pass stayed on the default setting with the property on, and the finals below use it.
+
+### workspace.outside_binary_is_skipped — kept (67 → 89, 89, 90, 91)
+
+Old: A binary file outside every repository is skipped rather than counted, so the diff's file count matches what it renders.
+
+New (x-01 onwards): A file outside every repository that a tool named, whose contents hold a NUL byte within the first 8000 bytes before or after the turn, is left out of the diff. A text file changed in the same turn is listed.
+
+Why: the consequence clause about the title count describes the editor, not the code, and "skipped rather than counted" was a contrast. The rewrite states the same NUL rule that lifted `binary_skipped` in the first pass. Four runs at 89 to 91 against a test that had swung between 61 and 82.
+
+### workspace.outside_file_created_has_no_before_image — kept, second attempt (68 → 79, 77, 79)
+
+Old: When an Edit or Write tool names a path outside every repository that does not exist yet and the turn then creates the file, the file is listed in the diff and no before-image is written for it.
+
+First (x-01, 69): A path outside every repository that an Edit or Write tool names before the file exists is added to the touch list without a copy. Once the turn has created the file, it is listed in the diff and has no before-image.
+
+Second, kept (x-03 onwards): When an Edit or Write tool names a path outside every repository that does not exist yet, nothing is copied aside for it. When the turn then creates the file, it is listed in the diff as an added file, with no before-image.
+
+Why: naming the touch list did nothing; saying what happens at naming time (nothing is copied aside) and what the file is listed as (an added file) did. Three runs at 77 to 79, a confirmed +10.
+
+### running.interrupted_turn_stops_growing — kept, second attempt (65 → 75, 70, 76)
+
+Old: Once an interrupted turn has been finished by looking at it, later edits made by hand do not join its diff.
+
+First (x-01, 60): When the transcript shows the turn was interrupted, the first look publishes the manifest and removes the armed-turn files. A later look then finds nothing armed and opens that same manifest, so a file edited by hand between the two looks is not among its changes.
+
+Second, kept (x-03 onwards): Once a look has published an interrupted turn, the turn is no longer armed, so a later look opens the same published manifest: a file the turn did not change is absent from it even if it was edited by hand after the first look.
+
+Why: the old claim overclaims slightly, since a hand edit to a file the turn did change does show on the diff's live right side; scoping the absence to files the turn did not change is what the code guarantees. Three runs of 75, 70 and 76 against 66 and 64: two of three at +10 or more and a mean of +9. Kept on that and on being the more precise statement; a strict reading of the threshold would call it marginal.
+
+### running.ended_turn_is_never_collected_again — reverted (72 → 64, 71)
+
+Old, in force again: A turn that ended is a record of what it did. Files edited by hand afterwards do not appear in its diff.
+
+First (x-01, 64): After a turn has ended, asking for the diff finds nothing armed, so nothing is collected again: the published manifest opens as it was written, under the title Last turn changes, and a file edited by hand after the turn ended is not among its changes.
+
+Second (x-03, 71): After a turn has ended, asking for the diff opens the published manifest without collecting again, so a file the turn did not change is absent from the diff even if it was edited by hand after the turn ended.
+
+Why it resists: the same scoping that helped the interrupted sibling did nothing here; the plain original stays best of three at 70 to 74.
+
+### capture.empty_file_created — reverted (65 → 63, 61)
+
+Old, in force again: Creating an empty file lists the file in the diff and writes no before-image for it.
+
+First (x-03, 63): A file the turn created empty is listed as a change in the diff like any other created file, and no before-image is written for it.
+
+Second (x-04, 61): A file the turn created empty is recorded as a change: its before contents are missing from the snapshot tree, so addChange records the change and writes no before-image for it.
+
+Why it resists: probe `efc-base` put the weakest part at "the created empty file is listed" (62%), and neither anchoring to the general rule nor naming the mechanism moved it. Its scores in this pass ran 61 to 68 under every wording.
+
+### Not attempted
+
+`capture.empty_file_deleted` (52), `capture.same_size_edit_a_second_later` (55) and `view.emptied_and_deleted_empty_both_render` (70) exhausted two rewrites each in the first pass on hop limits the probes explained, and `running.running_turn_with_no_changes_falls_back` (74.5) swings between 66 and 75 with nothing aimed at it.
+
+### Result
+
+| test | c-final mean | x-final mean | cf1 cf2 nf1 nf2 x01 x02 x03 x04 x05 xf1 xf2 |
+| --- | --- | --- | --- |
+| workspace.outside_binary_is_skipped | 67 | 92 | 61 72 80 82 89 92 89 90 91 92 91 |
+| workspace.outside_file_created_has_no_before_image | 68 | 80 | 63 73 74 74 69 65 79 77 79 79 80 |
+| running.interrupted_turn_stops_growing | 65 | 73 | 66 64 66 68 60 65 75 70 76 71 74 |
+| running.ended_turn_is_never_collected_again | 72 | 74 | 70 73 78 75 64 67 71 74 71 76 72 |
+| capture.empty_file_created | 65 | 61 | 66 64 69 64 62 68 63 61 67 59 63 |
+
+Finals: x-final-1 81% 59/59, x-final-2 81% 59/59 against c-final-1 80% 58/59, c-final-2 81% 59/59. Mean delta +0.8; tests under 75 by pair mean 9 → 7, under 70 7 → 3. Largest moves against the c-final pair: workspace.outside_binary_is_skipped 67 → 92 (+25); workspace.outside_file_created_has_no_before_image 68 → 80 (+12); running.interrupted_turn_stops_growing 65 → 73 (+7); downward retention.advert_survives_a_turn 84 → 77 (-7); running.running_turn_is_brought_up_to_date 77 → 72 (-6).

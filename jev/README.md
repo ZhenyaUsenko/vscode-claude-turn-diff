@@ -40,7 +40,7 @@ node jev/run-commits.mjs --limit 3
 node jev/ask.mjs jev/smoke.json
 ```
 
-`--files all` sends every source file in one request and points each question at its suite's files. `--files focused` sends one request per suite holding only that suite's files. `--context` is `none`, `notes` for `context-notes.md`, or `technical` for `TECHNICAL.md` verbatim. `compare.mjs` takes two labels and reads the latest logs carrying each.
+`--files all` sends every source file in one request and points each question at its suite's files. `--relevant-files false` drops that `relevant_files` list from every question's instructions, so the question names no files at all. `--files focused` sends one request per suite holding only that suite's files. `--context` is `none`, `notes` for `context-notes.md`, or `technical` for `TECHNICAL.md` verbatim. `compare.mjs` takes two labels and reads the latest logs carrying each.
 
 ## Results so far
 

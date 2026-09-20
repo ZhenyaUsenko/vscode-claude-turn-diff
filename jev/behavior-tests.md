@@ -11,13 +11,13 @@ behavior: A file that a turn changed and then changed back to its original conte
 behavior: Creating an empty file lists the file in the diff and writes no before-image for it.
 
 ## empty_file_deleted
-behavior: Deleting a file that was empty is recorded as a deletion, and a zero-byte before-image is kept for it. Without that image the deletion would read as a creation.
+behavior: Deleting an empty file is recorded as a deletion, and a zero-byte before-image is kept for it.
 
 ## binary_skipped
-behavior: A file whose contents hold a NUL byte within the first 8000 bytes, either before or after the turn, is left out of the diff. A text file changed in the same turn is listed.
+behavior: Binary files that changed during a turn are left out of the diff. Text files changed in the same turn are still listed.
 
 ## untracked_over_size_cap
-behavior: An untracked file larger than MAX_UNTRACKED_BYTES, one megabyte, is left out of both snapshots, so rewriting it during the turn lists nothing for it. A tracked file is staged whatever its size.
+behavior: An untracked file larger than one megabyte, is left out of both snapshots, so rewriting it during the turn lists nothing for it. A tracked file is staged whatever its size.
 
 ## same_size_edit_a_second_later
 behavior: An edit that keeps a file the same size, made within the same second the file was last committed, is still detected even when the turn's end is not checked until a second or more later. Git's stat cache is not allowed to hide it.
@@ -59,7 +59,7 @@ behavior: When a later turn ends and publishes, the beforeImages directory is cl
 behavior: server.json, the window's advert in the project directory, survives a turn that ends and publishes a diff. Ending a turn removes the armed-turn files and rewrites the manifest and the before-images, and touches nothing else in the project directory.
 
 ## no_change_leaves_previous_diff
-behavior: A turn that changes nothing publishes nothing and leaves the previous turn's diff and before-images untouched.
+behavior: A turn that changes nothing does not publish anything and leaves the previous turn's diff and before-images untouched.
 
 ## new_prompt_discards_abandoned_turn
 behavior: When a new prompt arrives while an earlier turn was left armed and never ended, the earlier turn's state is discarded. The new turn measures against the files as they are now, not against the stale baseline.
@@ -83,7 +83,7 @@ behavior: Each time the diff of a running turn is asked for, it is collected afr
 behavior: When the transcript shows the user interrupted the turn, asking for the diff publishes the turn's changes as a finished turn: the manifest is written with running false, the diff opens under the title Last turn changes, and the armed-turn files are removed.
 
 ## interrupted_turn_stops_growing
-behavior: Once an interrupted turn has been finished by looking at it, later edits made by hand do not join its diff.
+behavior: Once an interrupted turn has been finished by opening its diff, later edits made by hand do not join its diff.
 
 ## ended_turn_is_never_collected_again
 behavior: A turn that ended is a record of what it did. Files edited by hand afterwards do not appear in its diff.
@@ -182,10 +182,10 @@ behavior: A turn touching two repositories in a multi-root workspace produces on
 behavior: A file outside every repository that a tool named before writing is captured, and appears in the diff alongside the repository changes.
 
 ## outside_file_created_has_no_before_image
-behavior: When an Edit or Write tool names a path outside every repository that does not exist yet and the turn then creates the file, the file is listed in the diff and no before-image is written for it.
+behavior: When an Edit or Write tool names a path outside every repository that does not exist yet, nothing is copied aside for it. When the turn then creates the file, it is listed in the diff as an added file, with no before-image.
 
 ## outside_binary_is_skipped
-behavior: A binary file outside every repository is skipped rather than counted, so the diff's file count matches what it renders.
+behavior: A binary file outside every repository that a tool named is left out of the diff. A text file changed in the same turn is listed.
 
 ## outside_file_is_watched_once
 behavior: The first arm naming a file outside the workspace creates one file system watcher on that file's directory and name. A later arm naming the same file creates no second watcher, an arm naming a file inside the workspace creates none, and ending the turn disposes the watchers.

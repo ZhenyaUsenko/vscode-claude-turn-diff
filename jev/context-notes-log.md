@@ -123,3 +123,11 @@ Against the `w-final` pair the final notes are worth +0.1 on the mean: `retentio
 Outside-world facts moved the low scorers very little. The tests still under 70 (`empty_file_deleted`, `same_size_edit`, `interrupted_turn_stops_growing`, `emptied_and_deleted` at 70, `empty_file_created`, `new_prompt_discards` and `outside_binary` on their bad days) fail on hops through the code, not on missing knowledge: the probes show Jev already holding the relevant git and runtime facts at 90% and above, and the wording notes showed the same limit from the other side. Adding facts that describe what a value is (an empty buffer is truthy, a size-0 blob prints an empty body) can push a claim the wrong way when the statement is about something being absent. Removing sections is more informative than adding sentences: each of `claude_code` and `vscode` carries two or three tests by 12 to 27 points, `git` carries none by 10, and the harness section cost one test 10 points by describing the project.
 
 The one flip in the final pair is capture.empty_file_deleted (45 and 59), which sits on the 50% line whatever the notes say.
+
+## Third pass: one attempt during the wording follow-up (`x-02-ctx-ad`)
+
+Tried on the `c-final` notes while `behavior-tests.md` held the `x-01` wording, and compared against `x-01-words` so that only the context differs.
+
+### git: name-status prints A and D for an empty file like any other — not kept
+
+Added to the name-status sentence: "A path present only in the second tree is printed with status A and one present only in the first with status D, whatever the file's size, so an empty file that was added or deleted is listed like any other." Targets: `capture.empty_file_created` 62 → 68, `capture.empty_file_deleted` 63 → 52, `view.emptied_and_deleted_empty_both_render` 72 → 65. Elsewhere `install.foreign_hooks_are_ignored` 88 → 69 and `workspace.outside_file_is_watched_once` 87 → 71. Mean 81% → 80%. Reverted; the notes end this pass unchanged from `c-final`.
