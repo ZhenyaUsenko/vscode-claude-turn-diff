@@ -1,4 +1,4 @@
-import { REPO_DIR } from './paths.mjs'
+import { REPO_DIR } from '../../lib/paths.mjs'
 import { execFileSync } from 'node:child_process'
 
 const MODEL = 'jev-latest'

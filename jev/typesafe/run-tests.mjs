@@ -1,6 +1,6 @@
+import { REPO_DIR } from '../lib/paths.mjs'
+import { buildRequests, readTests } from '../lib/tests.mjs'
 import { sendRequest } from './lib/client.mjs'
-import { REPO_DIR } from './lib/paths.mjs'
-import { buildRequests, readTests } from './lib/tests.mjs'
 import { parseArgs } from 'node:util'
 
 const PASS_THRESHOLD = 0.5
