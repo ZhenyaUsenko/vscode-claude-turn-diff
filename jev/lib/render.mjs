@@ -14,7 +14,7 @@ const getLanguage = (key) => LANGUAGE_BY_KEY[key.split('.').pop()] ?? ''
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const fence = (text, language) => {
+export const fence = (text, language) => {
   const longestRun = Math.max(2, ...(text.match(/`+/g) ?? []).map((run) => run.length))
   const marker = '`'.repeat(longestRun + 1)
 

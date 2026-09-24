@@ -1,5 +1,5 @@
-import { LOGS_DIR } from './paths.mjs'
-import { renderLog } from './render.mjs'
+import { LOGS_DIR } from '../../lib/paths.mjs'
+import { renderLog } from '../../lib/render.mjs'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 

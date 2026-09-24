@@ -1,7 +1,7 @@
+import { REPO_DIR } from '../lib/paths.mjs'
+import { formatAnswer } from '../lib/render.mjs'
+import { buildQuestion, readContext, readSourceFiles, readTests, SOURCE_FILES } from '../lib/tests.mjs'
 import { sendRequest } from './lib/client.mjs'
-import { REPO_DIR } from './lib/paths.mjs'
-import { formatAnswer } from './lib/render.mjs'
-import { buildQuestion, readContext, readSourceFiles, readTests, SOURCE_FILES } from './lib/tests.mjs'
 import { parseArgs } from 'node:util'
 
 const ARG_OPTIONS = {

@@ -1,4 +1,4 @@
-import { LOGS_DIR } from './paths.mjs'
+import { LOGS_DIR } from '../../lib/paths.mjs'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 

@@ -1,4 +1,4 @@
-import { JEV_DIR, REPO_DIR } from './paths.mjs'
+import { REPO_DIR, TESTS_DIR } from './paths.mjs'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -40,20 +40,53 @@ export const SOURCE_FILES = [
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+const SUITE_HEADING = /^# ([a-z][a-z0-9_]*)$/
+
+const TEST_HEADING = /^## ([a-z][a-z0-9_]*)$/
+
+const KEYED_LINE = /^(behavior|scenario|expected|notes):\s*(.*)$/
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const startSuite = (parsed, name) => {
+  parsed.suite = { name, files: [], tests: [] }
+  parsed.test = null
+  parsed.key = null
+
+  parsed.suites.push(parsed.suite)
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const startTest = (parsed, name) => {
+  parsed.test = { id: `${parsed.suite.name}.${name}` }
+  parsed.key = null
+
+  parsed.suite.tests.push(parsed.test)
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const addBehaviorLine = (parsed, line) => {
+  const { behavior } = parsed.test
+
+  parsed.test.behavior = behavior ? `${behavior}\n\n${line.trim()}` : line.trim()
+  parsed.key = 'behavior'
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 const parseTestLine = (line, parsed) => {
-  const keyMatch = line.match(/^(behavior|scenario|expected|notes):\s*(.*)$/)
+  const suiteMatch = line.match(SUITE_HEADING)
+  const testMatch = parsed.suite && line.match(TEST_HEADING)
+  const keyMatch = parsed.test && line.match(KEYED_LINE)
 
-  if (line.startsWith('# ')) {
-    parsed.suite = { name: line.slice(2), files: [], tests: [] }
-    parsed.test = null
-    parsed.key = null
-
-    parsed.suites.push(parsed.suite)
-  } else if (line.startsWith('## ')) {
-    parsed.test = { id: `${parsed.suite.name}.${line.slice(3)}` }
-    parsed.key = null
-
-    parsed.suite.tests.push(parsed.test)
+  if (suiteMatch) {
+    startSuite(parsed, suiteMatch[1])
+  } else if (!parsed.suite) {
+    parsed.introLines.push(line)
+  } else if (testMatch) {
+    startTest(parsed, testMatch[1])
   } else if (line.startsWith('files:')) {
     parsed.suite.files = line.slice(6).trim().split(/\s+/)
   } else if (keyMatch) {
@@ -63,36 +96,19 @@ const parseTestLine = (line, parsed) => {
     parsed.key = null
   } else if (parsed.key) {
     parsed.test[parsed.key] += ` ${line.trim()}`
+  } else if (parsed.test) {
+    addBehaviorLine(parsed, line)
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const parseTests = (markdown) => {
-  const parsed = { suites: [], suite: null, test: null, key: null }
+  const parsed = { introLines: [], suites: [], suite: null, test: null, key: null }
 
   for (const line of markdown.split('\n')) parseTestLine(line.trimEnd(), parsed)
 
-  return parsed.suites
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-const parseNotes = (markdown) => {
-  let section
-
-  const notes = {}
-
-  for (const line of markdown.split('\n')) {
-    if (line.startsWith('# ')) {
-      section = line.slice(2)
-      notes[section] = []
-    } else if (line.trim()) {
-      notes[section].push(line.trim())
-    }
-  }
-
-  return notes
+  return { intro: parsed.introLines.join('\n').trim(), suites: parsed.suites }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -101,7 +117,7 @@ export const readContext = (mode) => {
   if (mode === 'none') return undefined
   if (mode === 'technical') return { technical_notes: readFileSync(join(REPO_DIR, 'TECHNICAL.md'), 'utf8') }
 
-  return parseNotes(readFileSync(join(JEV_DIR, 'context-notes.md'), 'utf8'))
+  return readFileSync(join(TESTS_DIR, 'context-notes.md'), 'utf8')
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -114,7 +130,7 @@ const stripSeparators = (contents) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const readSourceFile = (srcDir, path) => stripSeparators(readFileSync(join(srcDir, path), 'utf8'))
+export const readSourceFile = (srcDir, path) => stripSeparators(readFileSync(join(srcDir, path), 'utf8'))
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -147,7 +163,9 @@ const buildQuestions = (suites, relevantFiles) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const readTests = (testsFile) => parseTests(readFileSync(join(JEV_DIR, testsFile), 'utf8'))
+export const readTestFile = (testsFile) => parseTests(readFileSync(join(TESTS_DIR, testsFile), 'utf8'))
+
+export const readTests = (testsFile) => readTestFile(testsFile).suites
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
