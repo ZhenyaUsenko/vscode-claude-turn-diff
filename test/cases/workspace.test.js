@@ -1,6 +1,6 @@
 import { readManifest } from '../../src/store/manifest.js'
 import { getBeforeImagesDir, getManifestFile, getProjectKey } from '../../src/store/paths.js'
-import { outputFile } from '../../src/utils/files.js'
+import { outputFile, readFile } from '../../src/utils/files.js'
 import { check } from '../utils/checks.js'
 import { commitAll, createRepo } from '../utils/fixtures.js'
 import { HOME } from '../utils/home.js'
@@ -72,6 +72,24 @@ check('a file created outside every repository is captured with no before-image'
 
   assert.deepStrictEqual(readChangedFileNames(repoDir), ['f.txt', 'notes.md'])
   assert.ok(!existsSync(join(getBeforeImagesDir(getProjectKey(repoDir)), createdChange.beforeFile)), reason)
+})
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+check('a file outside every repository that a tool names but never creates publishes nothing', async () => {
+  const repoDir = seedRepo()
+  const manifestFile = getManifestFile(getProjectKey(repoDir))
+  const neverCreatedFile = join(HOME, 'never-created', 'notes.md')
+
+  await runTurn(repoDir, 'chat', [repoDir], () => outputFile(join(repoDir, 'f.txt'), 'two\n'))
+
+  const publishedManifestContents = readFile(manifestFile, 'utf8')
+
+  await runTurn(repoDir, 'chat', [repoDir], () => {}, { touchedFiles: [neverCreatedFile] })
+
+  const reason = 'a write that was refused or failed leaves neither side to show, so the last diff must stay'
+
+  assert.strictEqual(readFile(manifestFile, 'utf8'), publishedManifestContents, reason)
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
