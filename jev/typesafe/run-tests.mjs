@@ -1,5 +1,5 @@
 import { REPO_DIR } from '../lib/paths.mjs'
-import { buildRequests, readTests } from '../lib/tests.mjs'
+import { buildRequests, readTests, toQuestionKey } from '../lib/tests.mjs'
 import { sendRequest } from './lib/client.mjs'
 import { parseArgs } from 'node:util'
 
@@ -8,13 +8,10 @@ const USD_PER_TOKEN = 0.042 / 1e6
 
 const ARG_OPTIONS = {
   src: { type: 'string', default: REPO_DIR },
-  files: { type: 'string', default: 'all' },
   context: { type: 'string', default: 'notes' },
   label: { type: 'string', default: 'baseline' },
-  tests: { type: 'string', default: 'behavior-tests.md' },
   model: { type: 'string', default: 'jev-latest' },
   dry: { type: 'boolean', default: false },
-  'relevant-files': { type: 'string', default: 'false' },
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -47,13 +44,13 @@ const printDryRun = (requests) => {
 
 const printAnswers = (suites, answers) => {
   for (const suite of suites) {
-    const nouls = suite.tests.map((test) => answers[test.id].noul)
+    const nouls = suite.tests.map((test) => answers[toQuestionKey(test.id)].noul)
     const passCount = nouls.filter((noul) => noul >= PASS_THRESHOLD).length
 
     console.log(`--- ${suite.name}: ${passCount}/${suite.tests.length} pass, mean ${formatPercent(getMean(nouls))}`)
 
     for (const test of suite.tests) {
-      const noul = answers[test.id].noul
+      const noul = answers[toQuestionKey(test.id)].noul
 
       console.log(`  ${noul >= PASS_THRESHOLD ? 'pass' : 'FAIL'}  ${formatPercent(noul)}  ${test.id}`)
     }
@@ -78,9 +75,8 @@ const printSummary = (answers, results) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const main = async () => {
-  const { values } = parseArgs({ options: ARG_OPTIONS })
-  const options = { ...values, relevantFiles: values['relevant-files'] !== 'false' }
-  const suites = readTests(options.tests)
+  const { values: options } = parseArgs({ options: ARG_OPTIONS })
+  const suites = readTests('behavior-tests.md')
   const requests = buildRequests(suites, options)
 
   if (options.dry) return void printDryRun(requests)

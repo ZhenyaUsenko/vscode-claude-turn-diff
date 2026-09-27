@@ -1,0 +1,13 @@
+sameContents drops its size comparison, which was also what kept it from reading a missing file, so rendering a turn that created a file throws
+
+--- a/src/utils/files.js
++++ b/src/utils/files.js
+@@ -67,8 +67,6 @@
+ ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+ 
+ export const sameContents = (left, right) => {
+-  if (+getFileSize(left) !== +getFileSize(right)) return false
+-
+   return readFile(left).equals(readFile(right))
+ }
+ 

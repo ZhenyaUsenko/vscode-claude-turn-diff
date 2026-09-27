@@ -1,0 +1,13 @@
+publishArmedTurn reads the prompt id where it needs the session id, so it never finds the transcript and treats every turn it is asked for as still running
+
+--- a/src/turn/index.js
++++ b/src/turn/index.js
+@@ -75,7 +75,7 @@
+ export const publishArmedTurn = async (project) => {
+   if (!existsSync(getSnapshotsFile(project))) return
+ 
+-  const sessionId = readFile(getSessionIdFile(project), 'utf8')
++  const sessionId = readFile(getPromptIdFile(project), 'utf8')
+ 
+   await endTurn({ project, ended: isTurnOver(project, sessionId) })
+ }

@@ -1,0 +1,20 @@
+extension.js imports and calls startHookServer, but server.js still exports the function as startServer
+
+--- a/src/extension.js
++++ b/src/extension.js
+@@ -1,5 +1,5 @@
+ import { installHookScript, promptToRegisterHooks, removeHooks, setUpHooks } from './install/hooks.js'
+-import { startServer } from './server.js'
++import { startHookServer } from './server.js'
+ import { disposeOutsideWatchers } from './utils/watch.js'
+ import { registerBeforeImageProvider, showLastTurn } from './view.js'
+ import { commands, window, workspace } from 'vscode'
+@@ -13,7 +13,7 @@
+ 
+   const onPublish = () => showLastTurn().catch((error) => logError(`could not open the diff: ${error.stack}`))
+ 
+-  const server = startServer(logError, onPublish)
++  const server = startHookServer(logError, onPublish)
+ 
+   context.subscriptions.push(
+     outputChannel,

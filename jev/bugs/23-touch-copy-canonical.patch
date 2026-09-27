@@ -1,0 +1,20 @@
+captureTouchedFile stores the copy of an outside file under its canonical path, while the touch list and collectOutsideChanges use the path the tool named, so behind a symlinked path the file loses its before-image
+
+--- a/src/turn/capture.js
++++ b/src/turn/capture.js
+@@ -1,5 +1,5 @@
+ import { getSnapshotsFile, getTouchCopiesDir, getTouchListFile } from '../store/paths.js'
+-import { readLines } from '../utils/files.js'
++import { canonicalize, readLines } from '../utils/files.js'
+ import { listRepos, snapshotTree } from '../utils/git.js'
+ import { appendFileSync, copyFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
+ import { dirname, join } from 'node:path'
+@@ -29,7 +29,7 @@
+   if (alreadySeenFiles.includes(targetFile)) return
+ 
+   if (existsSync(targetFile)) {
+-    const copiedFile = join(getTouchCopiesDir(project), targetFile)
++    const copiedFile = join(getTouchCopiesDir(project), canonicalize(targetFile))
+ 
+     mkdirSync(dirname(copiedFile), { recursive: true })
+     copyFileSync(targetFile, copiedFile)

@@ -1,0 +1,13 @@
+beginTurn clears the armed turn on every prompt-submitted event, even one with the same prompt id
+
+--- a/src/turn/index.js
++++ b/src/turn/index.js
+@@ -15,8 +15,6 @@
+ const beginTurn = ({ project, payload }) => {
+   mkdirSync(getProjectDir(project), { recursive: true })
+ 
+-  if (payload.prompt_id === readFile(getPromptIdFile(project), 'utf8')) return
+-
+   for (const armedTurnPath of getArmedTurnPaths(project)) removeRecursive(armedTurnPath)
+ }
+ 

@@ -1,0 +1,13 @@
+hooksMatchSpec compares every group on an event with the spec, so another tool's hook on the same event makes the extension's hooks count as unregistered
+
+--- a/src/install/settings.js
++++ b/src/install/settings.js
+@@ -29,7 +29,7 @@
+ 
+ export const hooksMatchSpec = (settings) => {
+   return Object.entries(HOOK_SPEC).every(([event, groups]) => {
+-    const ourGroups = settings.hooks?.[event]?.filter((group) => group.hooks?.some(isOurHook)) ?? []
++    const ourGroups = settings.hooks?.[event] ?? []
+ 
+     return JSON.stringify(ourGroups) === JSON.stringify(groups)
+   })

@@ -46,7 +46,7 @@ const STAT_CACHE_PHRASE_QUESTION = (
 )
 
 export const probe = {
-  test: 'capture.same_size_edit_a_second_later',
+  test: 'Capture: A same-size edit is seen a second later',
   questions: {
     original_via_state: noul('Does the program in `files` behave as `statement` describes?'),
     accuracy: score(ACCURACY_QUESTION, ACCURACY_LEVELS),

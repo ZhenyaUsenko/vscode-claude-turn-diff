@@ -1,13 +1,11 @@
-import { stubState } from './vscode-stub.mjs'
+import { createContext, stubState } from '../suite/vscode/stub.mjs'
+import './vscode-register.mjs'
 import assert from 'node:assert'
 import { execFileSync } from 'node:child_process'
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
-import { registerHooks } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-
-const STUB_URL = new URL('./vscode-stub.mjs', import.meta.url).href
 
 const SETTLE_MS = 60
 
@@ -34,24 +32,6 @@ const readDeclaredCommands = (codeDir) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const createContext = (codeDir) => {
-  const storedValues = new Map()
-  const get = (key) => storedValues.get(key)
-  const update = async (key, value) => storedValues.set(key, value)
-
-  return { subscriptions: [], extensionPath: codeDir, globalState: { get, update } }
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-const resolveVscode = (specifier, context, nextResolve) => {
-  if (specifier !== 'vscode') return nextResolve(specifier, context)
-
-  return { url: STUB_URL, shortCircuit: true }
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 const activateExtension = async (codeDir) => {
   const context = createContext(codeDir)
 
@@ -64,8 +44,10 @@ const activateExtension = async (codeDir) => {
 
     await new Promise((resolve) => setTimeout(resolve, SETTLE_MS))
 
-    for (const subscription of context.subscriptions) subscription.dispose()
+    return [...stubState.registeredCommands.keys()]
   } finally {
+    for (const subscription of context.subscriptions) subscription.dispose()
+
     rmSync(process.env.HOME, { recursive: true, force: true })
   }
 }
@@ -79,12 +61,11 @@ const main = async () => {
 
   listSourceFiles(codeDir).forEach(checkSyntax)
   execFileSync('bash', ['-n', join(codeDir, 'hooks', 'turn-diff.sh')], { stdio: 'pipe' })
-  registerHooks({ resolve: resolveVscode })
 
-  await activateExtension(codeDir)
+  const registeredCommands = await activateExtension(codeDir)
 
   assert.deepStrictEqual(stubState.loggedErrors, [], 'activation logged no errors')
-  assert.deepStrictEqual(stubState.registeredCommands.toSorted(), declaredCommands, commandsReason)
+  assert.deepStrictEqual(registeredCommands.toSorted(), declaredCommands, commandsReason)
 }
 
 main()

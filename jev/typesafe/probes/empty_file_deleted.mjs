@@ -56,7 +56,7 @@ const RENDER_DELETED_QUESTION = (
 )
 
 export const probe = {
-  test: 'capture.empty_file_deleted',
+  test: 'Capture: A deleted empty file keeps an empty before-image',
   questions: {
     original_via_state: noul('Does the program in `files` behave as `statement` describes?'),
     accuracy: score(ACCURACY_QUESTION, ACCURACY_LEVELS),

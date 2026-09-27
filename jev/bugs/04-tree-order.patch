@@ -1,0 +1,13 @@
+compareFilesInTreeOrder puts files before folders
+
+--- a/src/utils/files.js
++++ b/src/utils/files.js
+@@ -119,7 +119,7 @@
+     const leftIsDir = index < left.length - 1
+     const rightIsDir = index < right.length - 1
+ 
+-    if (leftIsDir !== rightIsDir) return leftIsDir ? -1 : 1
++    if (leftIsDir !== rightIsDir) return leftIsDir ? 1 : -1
+ 
+     return NAME_COLLATOR.compare(left[index], right[index])
+   }

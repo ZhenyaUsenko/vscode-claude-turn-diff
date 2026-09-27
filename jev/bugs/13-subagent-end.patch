@@ -1,0 +1,13 @@
+endTurn no longer ignores end events that carry an agent_id
+
+--- a/src/turn/index.js
++++ b/src/turn/index.js
+@@ -51,8 +51,6 @@
+ ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+ 
+ export const endTurn = async ({ project, payload, ended = true }) => {
+-  if (payload?.agent_id) return { published: false }
+-
+   if (ended) disposeOutsideWatchers()
+ 
+   if (!existsSync(getSnapshotsFile(project))) return { published: false }

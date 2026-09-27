@@ -1,8 +1,9 @@
 import { fence } from './render.mjs'
 
 const APPROACH_LABELS = {
-  closed: 'closed: may only run the prompt command and read the prompt file',
+  closed: 'closed: the prompt holds the notes, source and tests, and there are no tools',
   open: 'open: may use any tool, under rules',
+  suite: 'suite: writes and runs a test suite in a prepared workspace',
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -34,7 +35,9 @@ const formatCli = (cli) => {
 
   const usage = `5h window ${cli.fiveHourUtilization}, ${cli.permissionDenials.length} permission denials`
 
-  return `$${cli.costUsd?.toFixed(2)} reported, ${cli.numTurns} turns, ${usage}`
+  const cost = cli.costUsd == null ? 'no cost reported' : `$${cli.costUsd.toFixed(2)} reported`
+
+  return `${cost}, ${cli.numTurns} turns, ${usage}`
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

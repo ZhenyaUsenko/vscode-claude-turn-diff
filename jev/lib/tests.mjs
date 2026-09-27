@@ -2,20 +2,11 @@ import { REPO_DIR, TESTS_DIR } from './paths.mjs'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-const QUESTIONS = {
-  behavior: 'Does the program in `files` behave as `behavior` describes?',
-  scenario: 'Does the program in `files` produce `expected` when `scenario` happens?',
-}
+const QUESTION = 'Does the program in `files` behave as `behavior` describes?'
 
 const CRITERIA = {
-  behavior: {
-    true: 'The code as written behaves this way',
-    false: 'The code as written does not behave this way',
-  },
-  scenario: {
-    true: 'The code as written produces `expected`',
-    false: 'The code as written does not produce `expected`',
-  },
+  true: 'The code as written behaves this way',
+  false: 'The code as written does not behave this way',
 }
 
 export const SOURCE_FILES = [
@@ -40,29 +31,36 @@ export const SOURCE_FILES = [
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const SUITE_HEADING = /^# ([a-z][a-z0-9_]*)$/
+const TEST_LINE = /^`([A-Z][A-Za-z]*): ([^`]+)` (.+)$/
 
-const TEST_HEADING = /^## ([a-z][a-z0-9_]*)$/
-
-const KEYED_LINE = /^(behavior|scenario|expected|notes):\s*(.*)$/
+const HEADING = /^#{1,6} /
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const startSuite = (parsed, name) => {
-  parsed.suite = { name, files: [], tests: [] }
-  parsed.test = null
-  parsed.key = null
+const findSuite = (parsed, area) => {
+  const existing = parsed.suites.find((suite) => suite.area === area)
 
-  parsed.suites.push(parsed.suite)
+  if (existing) return existing
+
+  const suite = { name: area.toLowerCase(), area, tests: [] }
+
+  parsed.suites.push(suite)
+
+  return suite
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const startTest = (parsed, name) => {
-  parsed.test = { id: `${parsed.suite.name}.${name}` }
-  parsed.key = null
+const startTest = (parsed, [, area, name, text]) => {
+  const suite = findSuite(parsed, area)
+  const id = `${area}: ${name}`
 
-  parsed.suite.tests.push(parsed.test)
+  if (suite.tests.some((test) => test.id === id)) throw new Error(`duplicate test id: ${id}`)
+
+  parsed.test = { id, behavior: text.trim() }
+  parsed.inParagraph = true
+
+  suite.tests.push(parsed.test)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -70,32 +68,26 @@ const startTest = (parsed, name) => {
 const addBehaviorLine = (parsed, line) => {
   const { behavior } = parsed.test
 
-  parsed.test.behavior = behavior ? `${behavior}\n\n${line.trim()}` : line.trim()
-  parsed.key = 'behavior'
+  if (parsed.inParagraph) {
+    parsed.test.behavior = `${behavior} ${line.trim()}`
+  } else {
+    parsed.test.behavior = `${behavior}\n\n${line.trim()}`
+  }
+
+  parsed.inParagraph = true
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const parseTestLine = (line, parsed) => {
-  const suiteMatch = line.match(SUITE_HEADING)
-  const testMatch = parsed.suite && line.match(TEST_HEADING)
-  const keyMatch = parsed.test && line.match(KEYED_LINE)
+  const testMatch = line.match(TEST_LINE)
 
-  if (suiteMatch) {
-    startSuite(parsed, suiteMatch[1])
-  } else if (!parsed.suite) {
-    parsed.introLines.push(line)
-  } else if (testMatch) {
-    startTest(parsed, testMatch[1])
-  } else if (line.startsWith('files:')) {
-    parsed.suite.files = line.slice(6).trim().split(/\s+/)
-  } else if (keyMatch) {
-    parsed.key = keyMatch[1]
-    parsed.test[parsed.key] = keyMatch[2]
+  if (testMatch) {
+    startTest(parsed, testMatch)
+  } else if (HEADING.test(line)) {
+    parsed.test = null
   } else if (!line) {
-    parsed.key = null
-  } else if (parsed.key) {
-    parsed.test[parsed.key] += ` ${line.trim()}`
+    parsed.inParagraph = false
   } else if (parsed.test) {
     addBehaviorLine(parsed, line)
   }
@@ -104,11 +96,14 @@ const parseTestLine = (line, parsed) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const parseTests = (markdown) => {
-  const parsed = { introLines: [], suites: [], suite: null, test: null, key: null }
+  const lines = markdown.split('\n').map((line) => line.trimEnd())
+  const areas = new Set(lines.map((line) => line.match(TEST_LINE)?.[1]).filter(Boolean))
+  const introEnd = lines.findIndex((line) => line.startsWith('## ') && areas.has(line.slice(3)))
+  const parsed = { suites: [], test: null, inParagraph: false }
 
-  for (const line of markdown.split('\n')) parseTestLine(line.trimEnd(), parsed)
+  for (const line of lines.slice(introEnd)) parseTestLine(line, parsed)
 
-  return { intro: parsed.introLines.join('\n').trim(), suites: parsed.suites }
+  return { intro: lines.slice(0, introEnd).join('\n').trim(), suites: parsed.suites }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -116,6 +111,7 @@ const parseTests = (markdown) => {
 export const readContext = (mode) => {
   if (mode === 'none') return undefined
   if (mode === 'technical') return { technical_notes: readFileSync(join(REPO_DIR, 'TECHNICAL.md'), 'utf8') }
+  if (mode === 'suite') return readFileSync(join(TESTS_DIR, 'context-notes-suite.md'), 'utf8')
 
   return readFileSync(join(TESTS_DIR, 'context-notes.md'), 'utf8')
 }
@@ -140,25 +136,12 @@ export const readSourceFiles = (srcDir, paths) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const buildQuestion = (test, files) => {
-  const kind = test.behavior ? 'behavior' : 'scenario'
-  const instructions = { behavior: test.behavior, scenario: test.scenario, expected: test.expected, notes: test.notes }
-
-  if (files) instructions.relevant_files = files
-
-  instructions.question = QUESTIONS[kind]
-
-  return { type: 'noul', instructions, criteria: CRITERIA[kind] }
-}
+export const toQuestionKey = (id) => id.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const buildQuestions = (suites, relevantFiles) => {
-  const entries = suites.flatMap((suite) => {
-    return suite.tests.map((test) => [test.id, buildQuestion(test, relevantFiles ? suite.files : undefined)])
-  })
-
-  return Object.fromEntries(entries)
+export const buildQuestion = (test) => {
+  return { type: 'noul', instructions: { behavior: test.behavior, question: QUESTION }, criteria: CRITERIA }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -170,19 +153,9 @@ export const readTests = (testsFile) => readTestFile(testsFile).suites
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const buildRequests = (suites, options) => {
-  const context = readContext(options.context)
+  const state = { context: readContext(options.context), files: readSourceFiles(options.src, SOURCE_FILES) }
+  const tests = suites.flatMap((suite) => suite.tests)
+  const questions = Object.fromEntries(tests.map((test) => [toQuestionKey(test.id), buildQuestion(test)]))
 
-  if (options.files === 'all') {
-    const state = { context, files: readSourceFiles(options.src, SOURCE_FILES) }
-    const questions = buildQuestions(suites, options.relevantFiles)
-
-    return [{ name: 'all', body: { state, model: options.model, questions } }]
-  }
-
-  return suites.map((suite) => {
-    const state = { context, files: readSourceFiles(options.src, suite.files) }
-    const questions = buildQuestions([suite], options.relevantFiles)
-
-    return { name: suite.name, body: { state, model: options.model, questions } }
-  })
+  return [{ name: 'all', body: { state, model: options.model, questions } }]
 }

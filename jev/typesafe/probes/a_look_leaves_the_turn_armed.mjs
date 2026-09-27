@@ -57,7 +57,7 @@ const TRANSCRIPT_DECIDES_QUESTION = (
 )
 
 export const probe = {
-  test: 'running.a_look_leaves_the_turn_armed',
+  test: 'Running: A look leaves the turn armed',
   questions: {
     original_via_state: noul('Does the program in `files` behave as `statement` describes?'),
     accuracy: score(ACCURACY_QUESTION, ACCURACY_LEVELS),

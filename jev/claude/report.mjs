@@ -4,8 +4,9 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const GROUP_ORDER = [
-  'subagent-closed', 'subagent-open', 'cli-high', 'cli-xhigh', 'cli-fable-high', 'cli-opus46-high', 'cli-open-high',
-  'cli-max-split', 'cli-open-tools-high', 'cli-open-suite-high', 'cli-open-suite-medium',
+  'subagent-closed', 'subagent-open', 'cli-high', 'cli-inline-high', 'cli-xhigh', 'cli-fable-high',
+  'cli-opus46-high', 'cli-open-high', 'cli-max-split', 'cli-open-tools-high', 'cli-open-suite-high',
+  'cli-open-suite-medium',
 ]
 
 const SKIPPED_GROUPS = ['probe']
@@ -68,7 +69,9 @@ const mergeCli = (clis) => {
   const speed = [...new Set(clis.map((cli) => cli.speed))].join(', ')
   const utilization = clis.map((cli) => cli.fiveHourUtilization).filter((value) => value != null)
 
-  return { speed, costUsd: getSum(clis.map((cli) => cli.costUsd ?? 0)), fiveHourUtilization: utilization }
+  const costs = clis.map((cli) => cli.costUsd).filter((cost) => cost != null)
+
+  return { speed, costUsd: costs.length ? getSum(costs) : undefined, fiveHourUtilization: utilization }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -149,7 +152,10 @@ const summarizeCli = (units) => {
   const [low, high] = [Math.min(...usage), Math.max(...usage)].map((value) => Math.round(value * 100))
   const speed = [...new Set(clis.map((cli) => cli.speed))].join(', ')
 
-  return { cost: `$${getSum(clis.map((cli) => cli.costUsd)).toFixed(2)}`, fiveHour: `${low}% to ${high}%`, speed }
+  const costs = clis.map((cli) => cli.costUsd).filter((cost) => cost != null)
+  const cost = costs.length ? `$${getSum(costs).toFixed(2)}` : '-'
+
+  return { cost, fiveHour: `${low}% to ${high}%`, speed }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

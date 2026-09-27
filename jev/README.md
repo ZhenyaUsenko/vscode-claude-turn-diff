@@ -8,7 +8,10 @@ The extension's test suite rewritten as plain-language behavior statements, judg
 | --- | --- |
 | `tests/` | The text tests and the background notes, shared by both judges. |
 | `claude/` | The scripts that run the tests through Claude and analyze the results. |
-| `lib/` | The shared code: paths, the test parser, the prompt builder, bugs, scoring and recording. |
+| `codex/` | `run-codex.mjs`, which runs the same tests through the Codex CLI. |
+| `suite/` | What a suite run's workspace gets besides the code and tests: `vscode/`, a working stub of the VS Code API with helpers to drive and inspect it, packaged as the `vscode` module. It is copied to the workspace's `node_modules/vscode/`, so every `vscode` import there loads it without flags. The load check uses the same stub. |
+| `bugs/` | The bug library: one patch per bug, numbered in the order runs and reports list them, with a one-paragraph description above the diff. |
+| `lib/` | The shared code: paths, the test parser, the prompt builder, applying bugs, scoring and recording. |
 | `reports/` | One report per Claude experiment, numbered in the order they ran. |
 | `repro/` | `ghost-change.mjs`, a reproduction of a real bug the text tests found. Run it with `node --import ./test/setup.js jev/repro/ghost-change.mjs`. |
 | `typesafe/` | Everything from the Jev experiments: scripts, their own `lib/`, probes, the TypeSafe docs and the wording notes. |
@@ -19,35 +22,47 @@ The extension's test suite rewritten as plain-language behavior statements, judg
 
 | Path | What it is |
 | --- | --- |
-| `tests/behavior-tests.md` | The checks as statements of behavior: a short introduction and a list of terms, then one `# area` heading per test file and one `## name` heading per test, with the statement as plain text under it. |
+| `tests/behavior-tests.md` | The checks as statements of behavior: a short introduction and a list of terms, then one `## Area` heading per test file. Each test is one paragraph that starts with its id in backticks, the area and a short name, for example `Capture: A move is one change`. Agents reply with the same ids in backticks. The area is the real test file, whose checks follow the same order, which is how real results map onto the tests. |
 | `tests/context-notes.md` | Background about Claude Code hooks and transcripts, VS Code and git, in Markdown. Describes the outside world only, never the extension. |
-| `tests/scenario-tests.md` | The first phrasing, used only with Jev: one `# suite` per original test file, a `files:` line naming the source files the suite depends on, then `## test` entries with `scenario:`, `expected:` and an optional `notes:` line. Same ids as the behavior tests. |
+| `tests/context-notes-suite.md` | The same background for suite runs, plus git's 50% rename threshold, which test writers need to build a moved-and-edited fixture. Kept out of the shared notes because judges who only read the code took it as an exception to `capture.move_is_one_change`. |
 
 ## Judging the tests with Claude
 
-Each test run is a fresh Claude session that receives short instructions and one command. The command writes a Markdown file holding the background notes, the full source under test and the tests; the session reads it and answers `pass <id>` or `fail <id>: <why>` for every test.
+Each test run is a fresh session, Claude Code or Codex, that answers `pass <id>` or `fail <id>: <why>` for every test. The prompt goes to the CLI through stdin. Two methods:
+
+- **Closed**: the session gets the instructions as its system prompt and, as its prompt, one Markdown document holding the background notes, the full source under test and the tests. It has no tools and answers in one request.
+- **Suite**: the runner prepares a workspace holding `tests.md` (the suite runs' background notes and the tests), `code/` (the extension), `node_modules/vscode/` (the stub from `suite/`) and an empty `scratch/`. The session reads everything, writes and runs a test suite, and gives each verdict from it. Nothing in the workspace points at this repository.
 
 The instructions are agent definitions in `.claude/agents/`:
 
-- `text-tests-closed.md`: may only run the command and read the file it writes.
+- `text-tests-closed.md`: the closed method, for both CLIs: judge the document the prompt holds, with no tools.
 - `text-tests-open.md`: may use any tool when reading is not enough, but must work only on its copy of the code and its scratch directory, must not read the real test suite or anything else in the repository, must run the code with `HOME` pointed at its scratch directory, and must keep git from reaching this repository with `GIT_CEILING_DIRECTORIES`.
 - `text-tests-open-tools.md`: the open set, with tool use encouraged wherever it makes a verdict more correct or quicker to reach.
 - `text-tests-open-suite.md`: the open set, required to write a test suite covering every test and give each verdict from its results.
+- `text-tests-open-suite-guided.md`: the same, plus guidance on driving a turn in order, avoiding hung test processes and fixing everything before rerunning.
+- `text-tests-suite.md`: the suite method: the workspace, the stub's API and its one-window scope, how to drive a turn and keep test processes from hanging, and the rules, including a new `HOME` and new test repositories for every run, and what git needs in a test repository.
+- `text-tests-suite-codex.md`: the suite method for Codex, which also gives the script that reads every file in one call.
+
+The open sets were earlier experiments; the suite method replaces them.
 
 | Path | What it is |
 | --- | --- |
-| `claude/build-prompt.mjs` | Writes the Markdown file a run reads: `tests/context-notes.md`, every source file with separator lines removed, and `tests/behavior-tests.md`. `--src <dir>` picks the code, `--out <file>` the output, `--group <name>` keeps only one group's tests. |
+| `claude/build-prompt.mjs` | Writes the test document to a file: `tests/context-notes.md`, every source file with separator lines removed, and `tests/behavior-tests.md`. Closed runs get the same document as their prompt; open runs run this script as their command. `--src <dir>` picks the code, `--out <file>` the output, `--group <name>` keeps only one group's tests. |
 | `claude/run-real.mjs` | Runs the real test suite against clean code and against each bug, plus the load check, and saves which tests fail to `runs/real/<bug>.json`. When the load check fails, every test counts as failed. |
-| `claude/make-run.mjs` | Creates `runs/rNN/` with a copy of `package.json`, `src` and `hooks` and applies the bug. `--approach closed|open --bugs clean,bug-a,... --groups all|a,b`. |
-| `claude/run-cli.mjs` | Runs existing runs through headless Claude Code, with an agent definition's instructions as the whole system prompt, no user settings (so no CLAUDE.md, hooks or MCP servers), a bare environment and a working directory outside the repository. Closed runs get only `Bash` and `Read`, with `Bash` allowed only for the prompt command. Open runs get a temporary workspace holding a copy of the code, a scratch folder and the prompt file, and their scratch folder is copied back into `runs/`. `--model`, `--effort`, `--batch <label>`, `--agent <definition>` (default: the run's approach), `--concurrency`, `--stop-at <five-hour share>`, `--timeout-minutes`, `--cache-ttl` (default `5m`), `--fast`. It records each run as it finishes. |
+| `claude/make-run.mjs` | Creates `runs/rNN/` with a copy of `package.json`, `src` and `hooks` and applies the bug. `--approach closed|open|suite --bugs clean,bug-a,... --groups all|a,b`. |
+| `claude/run-cli.mjs` | Runs existing runs through headless Claude Code, with an agent definition's instructions as the whole system prompt, no user settings (so no CLAUDE.md, hooks or MCP servers), a bare environment and a working directory outside the repository. Closed runs get no tools and the document as their prompt, which leaves a few hundred tokens of Claude Code's own: a billing header, one SDK line, the environment and your account email (report 15). Open runs get a temporary workspace holding a copy of the code, a scratch folder and the prompt file, and their scratch folder is copied back into `runs/`. `--model`, `--effort`, `--batch <label>`, `--agent <definition>` (default: the run's approach), `--concurrency`, `--stop-at <five-hour share>`, `--timeout-minutes`, `--cache-ttl` (default `5m`), `--fast`. It records each run as it finishes. |
 | `claude/record-run.mjs` | Records a run by hand: finds its transcript, parses its answers, compares them with the real suite, checks its tool calls against the rules, and writes `runs/rNN.json` and a `logs/*-claude-*.md` rendering. `--run rNN --agent <agent id>` for a subagent, `--transcript` and `--stream` for a CLI session. |
 | `claude/record-pending.mjs` | Waits for CLI sessions that outlived their runner, then records them. |
 | `claude/report.mjs` | Prints the comparison tables over every recorded run, with medians per batch. Uncached input is the input not read from cache, cache writes included. Final context is the conversation's size at its last request, final answer included. |
 | `claude/analyze-open.mjs [batch]` | Summarizes how each open run worked: tool calls, scripts written to its scratch directory and their length, whether it built a vscode stub, and how many tests it says it checked by running code. |
 | `claude/analyze-time.mjs <batch>` | Splits each run of a batch into thinking, writing code, writing the final verdicts and tools running, from the timestamps in its transcript, with the output tokens of each. |
 | `claude/analyze-speed.mjs` | Measures subagent start delays and output speed against how many ran at once. |
-| `lib/bugs.mjs` | The bugs used in the experiments, each a set of exact search-and-replace edits applied to a copy of the code. |
-| `lib/load-check.mjs`, `lib/vscode-stub.mjs` | The load check: every source file parses, the hook script passes `bash -n`, and the extension activates against the stub with `HOME` in a temporary folder, logging no errors and registering every command `package.json` declares. |
+| `lib/bugs.mjs` | Lists the bugs in `bugs/` and applies one to a copy of the code with `patch -p1 --fuzz=0`, so a patch that no longer matches the code fails instead of landing somewhere else. A bug's name is its file name without the number, and its description is the paragraph above the diff. |
+| `lib/load-check.mjs` | The load check: every source file parses, the hook script passes `bash -n`, and the extension activates against `suite/vscode/stub.mjs`, loaded for `vscode` imports by `lib/vscode-register.mjs`, with `HOME` in a temporary folder, logging no errors and registering every command `package.json` declares. |
+| `lib/suite-workspace.mjs` | Prepares a suite run's workspace. |
+| `claude/watch.mjs --runs <ids>` | Follows running sessions, Codex or Claude Code, and prints one line per notable event: each tool call with the thinking time before it, test failures, runs over 15 seconds, the agent's own messages, idle warnings and the recorded result. Built to feed Claude Code's Monitor tool. |
+| `codex/run-codex.mjs` | Runs existing runs through `codex exec` with a temporary Codex home that links only your `auth.json` (so no `AGENTS.md`), the `workspace-write` sandbox with network on for open and suite runs, and the instructions file by approach, `text-tests-closed`, `text-tests-open` or `text-tests-suite-codex`, unless `--agent` names another: at the top of the prompt, or for closed runs in place of Codex's own instructions. Codex cuts tool output at 10k tokens twice: in the command tool, raised per call by the script in the Codex suite instructions, and again when the result is handed to the model, raised here by `-c tool_output_token_limit=25000`. The session log records the output before that second cut, so it can show more than the model saw. Closed runs are lean and read-only: our instructions replace Codex's own through `model_instructions_file`; a copy of the model catalog clears `multi_agent_version`, `tool_mode`, `apply_patch_tool_type` and `experimental_supported_tools`; `--disable` turns off the features that add tools or notes; and `-c` drops the skills listing and the permissions, environment, apps and collaboration-mode blocks. That leaves about 330 tokens besides the document, against about 13,900 with the defaults. `--fast` asks for the fast service tier, which on GPT-6-Astra costs about twice the window per token. `--summary detailed` records reasoning summaries in the session log; the reasoning itself only comes back encrypted, and Astra's summaries are headings. `--model`, `--effort`, `--batch`, `--agent`, `--concurrency`, `--stop-at` against the Codex five-hour window. |
+| `lib/codex.mjs` | Turns a Codex session log and event stream into the same run record as a Claude run. |
 | `lib/stream.mjs`, `lib/transcript.mjs`, `lib/score.mjs`, `lib/record.mjs` | Read a CLI session's output stream and transcript, score the answers and check the rules, and record the run. |
 
 ### Running
@@ -73,6 +88,14 @@ node jev/claude/analyze-time.mjs cli-high
 | `reports/07-full-suite.md` | Open runs required to write and run a full test suite, and where their time went. |
 | `reports/08-full-suite-medium.md` | The same at medium effort. |
 | `reports/09-opus-4-6.md` | Closed runs on Opus 4.6. |
+| `reports/10-codex-astra.md` | Closed runs on GPT-6-Astra through Codex. |
+| `reports/11-codex-luna.md` | Split full-suite pilots on GPT-6-Luna through Codex: the sandbox and harness traps, guided instructions, GPT-5.6-Luna, and a ready-made stub. |
+| `reports/12-suite-workspace.md` | The suite method's prepared workspace, and the setup frictions found by watching three GPT-6-Luna pilots, with their fixes. |
+| `reports/13-inline-and-lean.md` | The closed method with the document as the prompt and no tools, what each CLI adds to the context and how to cut it, and Codex fast mode, on GPT-6-Astra. |
+| `reports/14-codex-context.md` | What Codex sends in its first request, captured from the wire and grouped: tools, its own instructions, skills, multi-agent notes and plugins, and what the lean settings leave. |
+| `reports/15-claude-code-context.md` | What Claude Code sends in its first request in its defaults, the closed runs and the inline runs, captured from the wire and grouped. |
+| `reports/16-inline-high.md` | The first full inline batch: Opus 5.5 at high effort, against the closed batches at high and extra-high effort. |
+| `reports/17-bug-library.md` | The bug library as patches, 11 new bugs, and full closed batches on Opus 5.5 at extra high and GPT-6-Astra at high. |
 
 ## Jev
 
@@ -96,18 +119,17 @@ node jev/claude/analyze-time.mjs cli-high
 Every script reads `TYPESAFE_API_KEY` from the environment.
 
 ```sh
-node jev/typesafe/run-tests.mjs --tests scenario-tests.md --label all-notes --files all --context notes
-node jev/typesafe/run-tests.mjs --label behavior-1 --files all --context notes
-node jev/typesafe/run-tests.mjs --label mutant-x --src <copy of the code> --files all --context notes
+node jev/typesafe/run-tests.mjs --label behavior-1 --context notes
+node jev/typesafe/run-tests.mjs --label mutant-x --src <copy of the code> --context notes
 node jev/typesafe/compare.mjs all-notes mutant-x
 node jev/typesafe/spread.mjs var-1 var-2 var-3 var-4 var-5
 node jev/typesafe/run-probe.mjs --probe every_changed_file --label ecf-1
-node jev/typesafe/run-tests.mjs --dry --files focused --context notes
+node jev/typesafe/run-tests.mjs --dry --context notes
 node jev/typesafe/run-commits.mjs --limit 3
 node jev/typesafe/ask.mjs jev/typesafe/smoke.json
 ```
 
-`--tests` names a file in `tests/`, `behavior-tests.md` by default. `--files all` sends every source file in one request and points each question at its suite's files. `--relevant-files false` drops that `relevant_files` list from every question's instructions, so the question names no files at all. `--files focused` sends one request per suite holding only that suite's files. `--context` is `none`, `notes` for `tests/context-notes.md`, or `technical` for `TECHNICAL.md` verbatim. `compare.mjs` takes two labels and reads the latest logs carrying each.
+Every request sends all the source files and one question per behavior test. `--context` is `none`, `notes` for `tests/context-notes.md`, or `technical` for `TECHNICAL.md` verbatim. `compare.mjs` takes two labels and reads the latest logs carrying each.
 
 ### Jev results
 

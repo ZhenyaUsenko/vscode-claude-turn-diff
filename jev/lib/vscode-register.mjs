@@ -1,0 +1,15 @@
+import { registerHooks } from 'node:module'
+
+const STUB_URL = new URL('../suite/vscode/stub.mjs', import.meta.url).href
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const resolveVscode = (specifier, context, nextResolve) => {
+  if (specifier !== 'vscode') return nextResolve(specifier, context)
+
+  return { url: STUB_URL, shortCircuit: true }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+registerHooks({ resolve: resolveVscode })

@@ -1,0 +1,13 @@
+addChange writes a before-image only when the old contents are non-empty
+
+--- a/src/turn/collect.js
++++ b/src/turn/collect.js
+@@ -23,7 +23,7 @@
+ 
+   if (isBinary(beforeContents) || isBinary(afterContents)) return
+ 
+-  if (beforeContents != null) collector.images.push({ beforeFile, beforeContents })
++  if (beforeContents?.length) collector.images.push({ beforeFile, beforeContents })
+ 
+   collector.changes.push({ beforeFile, afterFile })
+ }

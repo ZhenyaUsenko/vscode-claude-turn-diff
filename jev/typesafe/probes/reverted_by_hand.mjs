@@ -41,7 +41,7 @@ const MANIFEST_UNCHANGED_QUESTION = (
 )
 
 export const probe = {
-  test: 'view.reverted_by_hand_drops_out',
+  test: 'View: A file reverted by hand drops out',
   questions: {
     original_via_state: noul('Does the program in `files` behave as `statement` describes?'),
     accuracy: score(ACCURACY_QUESTION, ACCURACY_LEVELS),
