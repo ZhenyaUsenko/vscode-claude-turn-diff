@@ -1,0 +1,12 @@
+watchFilesOutsideWorkspace no longer skips files it already watches, so every edit of an outside file adds another watcher
+
+--- a/src/utils/watch.js
++++ b/src/utils/watch.js
+@@ -12,7 +12,6 @@
+   const canonicalWorkspaceDirs = workspaceDirs.map(canonicalize)
+ 
+   for (const targetFile of targetFiles) {
+-    if (outsideWatchers.has(targetFile)) continue
+     if (canonicalWorkspaceDirs.some((workspaceDir) => isUnder(canonicalize(targetFile), workspaceDir))) continue
+ 
+     const dirUri = Uri.file(dirname(targetFile))

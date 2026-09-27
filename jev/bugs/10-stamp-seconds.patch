@@ -1,0 +1,13 @@
+the manifest stamp uses whole seconds instead of milliseconds
+
+--- a/src/store/manifest.js
++++ b/src/store/manifest.js
+@@ -10,7 +10,7 @@
+ ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+ 
+ export const publishManifest = (project, changes, params) => {
+-  const manifestBody = { ts: `${Date.now()}-${process.pid}`, changes, running: params.running }
++  const manifestBody = { ts: `${Math.floor(Date.now() / 1000)}-${process.pid}`, changes, running: params.running }
+ 
+   replaceFile(getManifestFile(project), JSON.stringify(manifestBody))
+ }

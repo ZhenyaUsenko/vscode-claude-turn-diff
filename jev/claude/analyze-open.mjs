@@ -52,7 +52,7 @@ const main = () => {
   const batch = process.argv[2]
   const names = readdirSync(RUNS_DIR).filter((name) => /^r\d+\.json$/.test(name)).sort()
   const records = names.map((name) => readJson(join(RUNS_DIR, name)))
-  const openRecords = records.filter((record) => record.approach === 'open' && record.score)
+  const openRecords = records.filter((record) => ['open', 'suite'].includes(record.approach) && record.score)
   const rows = openRecords.filter((record) => !batch || record.batch === batch).map(summarizeRun)
   const columns = ['run', 'tools', 'reads', 'nodeRuns', 'scripts', 'lines', 'stub', 'ranIds', 'ceiling', 'minutes']
 

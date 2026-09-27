@@ -1,4 +1,5 @@
-import { BUGS } from './bugs.mjs'
+import { readBugSummary } from './bugs.mjs'
+import { parseCodexRun } from './codex.mjs'
 import { LOGS_DIR, REAL_DIR, RUNS_DIR } from './paths.mjs'
 import { renderRun } from './render-run.mjs'
 import { checkCompliance, parseVerdicts, scoreRun } from './score.mjs'
@@ -25,24 +26,35 @@ const formatStamp = (date) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const buildRecord = (run, source) => {
+const parseClaudeRun = (run, source) => {
   const transcriptFile = source.transcriptFile ?? findTranscriptFile(source.agentId)
+  const keptTranscriptFile = join(RUNS_DIR, run.id, 'transcript.jsonl')
 
   if (!transcriptFile) throw new Error(`no transcript for run ${run.id}`)
 
-  const keptTranscriptFile = join(RUNS_DIR, run.id, 'transcript.jsonl')
   const transcript = parseTranscript(transcriptFile)
-  const suites = readTests('behavior-tests.md').filter((suite) => !run.group || suite.name === run.group)
-  const testIds = suites.flatMap((suite) => suite.tests.map((test) => test.id))
-  const { verdicts, ranIds } = parseVerdicts(transcript.finalText)
-  const real = readJson(join(REAL_DIR, `${run.bug}.json`))
-  const score = scoreRun(testIds, verdicts, real)
-  const compliance = checkCompliance(run, transcript.toolCalls)
   const cli = source.streamFile ? parseStream(source.streamFile) : undefined
 
   if (transcriptFile !== keptTranscriptFile) copyFileSync(transcriptFile, keptTranscriptFile)
 
-  const summary = BUGS[run.bug]?.summary ?? 'no bug, the code as it is in the repository'
+  return { transcript, cli, keptTranscriptFile }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const parseRun = (run, source) => source.codex ? parseCodexRun(run, source.codex) : parseClaudeRun(run, source)
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const buildRecord = (run, source) => {
+  const { transcript, cli, keptTranscriptFile } = parseRun(run, source)
+  const suites = readTests('behavior-tests.md').filter((suite) => !run.group || suite.name === run.group)
+  const testIds = suites.flatMap((suite) => suite.tests.map((test) => test.id))
+  const { verdicts, ranIds } = parseVerdicts(transcript.finalText, testIds)
+  const real = readJson(join(REAL_DIR, `${run.bug}.json`))
+  const score = scoreRun(testIds, verdicts, real)
+  const compliance = checkCompliance(run, transcript.toolCalls)
+  const summary = readBugSummary(run.bug)
   const recorded = { summary, agentId: source.agentId, recordedAt: new Date().toISOString(), keptTranscriptFile }
 
   const judged = { verdicts, ranIds, real, score, compliance, testIds }
@@ -56,7 +68,8 @@ export const recordRun = (runId, source) => {
   const run = readJson(join(RUNS_DIR, `${runId}.json`))
   const record = buildRecord(run, source)
   const stamp = formatStamp(new Date(record.recordedAt))
-  const logName = `${stamp}-claude-${record.id}-${record.batch ?? record.approach}-${record.bug}.md`
+  const mechanism = record.mechanism === 'codex' ? 'codex' : 'claude'
+  const logName = `${stamp}-${mechanism}-${record.id}-${record.batch ?? record.approach}-${record.bug}.md`
 
   writeFileSync(join(RUNS_DIR, `${run.id}.json`), JSON.stringify(record, null, 2))
   mkdirSync(LOGS_DIR, { recursive: true })

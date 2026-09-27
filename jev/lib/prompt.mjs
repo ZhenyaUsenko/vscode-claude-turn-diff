@@ -12,7 +12,14 @@ const HEADER = [
   '# Behavior test run',
   '',
   'Background describes the tools the extension works with, Source holds the full code under test, and Tests lists ' +
-  'the behaviors to judge, each under its id.',
+  'the behaviors to judge, each starting with its id.',
+].join('\n')
+
+const TESTS_HEADER = [
+  '# Behavior tests',
+  '',
+  'Background describes the tools the extension works with, and Tests lists the behaviors to check, each starting ' +
+  'with its id.',
 ].join('\n')
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -24,7 +31,7 @@ const renderSourceFile = (srcDir, path) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const renderSource = (srcDir) => {
-  const note = `The code under test, read from \`${srcDir}\`. Separator comment lines are left out.`
+  const note = 'The code under test. Separator comment lines are left out.'
 
   return ['# Source', note, ...PROMPT_FILES.map((path) => renderSourceFile(srcDir, path))].join('\n\n')
 }
@@ -32,9 +39,9 @@ const renderSource = (srcDir) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const renderSuite = (suite) => {
-  const tests = suite.tests.map((test) => `### ${test.id}\n\n${test.behavior}`)
+  const tests = suite.tests.map((test) => `\`${test.id}\` ${test.behavior}`)
 
-  return [`## ${suite.name}`, ...tests].join('\n\n')
+  return [`## ${suite.area}`, ...tests].join('\n\n')
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -46,6 +53,14 @@ const renderTests = (testsFile, group) => {
   if (!selected.length) throw new Error(`no test group ${group}`)
 
   return ['# Tests', intro.replace(TITLE_LINE, ''), ...selected.map(renderSuite)].join('\n\n')
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const buildTestsDocument = (testsFile, group) => {
+  const sections = [TESTS_HEADER, readContext('suite').trim(), renderTests(testsFile, group)]
+
+  return `${sections.join('\n\n')}\n`
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

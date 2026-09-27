@@ -1,0 +1,16 @@
+the hook script derives the project key from $PWD instead of the transcript path
+
+--- a/hooks/turn-diff.sh
++++ b/hooks/turn-diff.sh
+@@ -10,10 +10,7 @@
+ 
+ [ -n "$payload" ] || exit 0
+ 
+-PROJECT=${payload#*\"transcript_path\":\"}
+-PROJECT=${PROJECT%%\"*}
+-PROJECT=${PROJECT%/*}
+-PROJECT=${PROJECT##*/}
++PROJECT=${PWD//[^a-zA-Z0-9]/-}
+ 
+ ADVERT="$HOME/.claude/turn-diff/$PROJECT/server.json"
+ 

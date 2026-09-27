@@ -46,7 +46,7 @@ const IMAGE_CONDITION_QUESTION = (
 )
 
 export const probe = {
-  test: 'capture.empty_file_created',
+  test: 'Capture: A created empty file is listed with no before-image',
   questions: {
     original_via_state: noul('Does the program in `files` behave as `statement` describes?'),
     accuracy: score(ACCURACY_QUESTION, ACCURACY_LEVELS),

@@ -1,11 +1,13 @@
 import { JEV_DIR, REPO_DIR, RUNS_DIR } from '../lib/paths.mjs'
+import { buildPrompt } from '../lib/prompt.mjs'
 import { formatSummary, recordRun } from '../lib/record.mjs'
+import { prepareSuiteWorkspace } from '../lib/suite-workspace.mjs'
 import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { closeSync, copyFileSync, cpSync, mkdirSync, mkdtempSync, openSync, readFileSync } from 'node:fs'
 import { realpathSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { parseArgs } from 'node:util'
 
 const BUILD_PROMPT_FILE = join(JEV_DIR, 'claude', 'build-prompt.mjs')
@@ -48,12 +50,21 @@ const readInstructions = (agent) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+const prepareClosedLayout = (run, runDir) => {
+  writeFileSync(run.promptFile, buildPrompt(run.codeDir, 'behavior-tests.md', run.group))
+
+  return { codeDir: run.codeDir, promptFile: run.promptFile, runDir }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 const prepareLayout = (run, rootDir) => {
   const runDir = join(RUNS_DIR, run.id)
   const codeDir = join(rootDir, 'code')
   const scratchDir = join(rootDir, 'scratch')
 
-  if (run.approach === 'closed') return { codeDir: run.codeDir, promptFile: run.promptFile, runDir }
+  if (run.approach === 'closed') return prepareClosedLayout(run, runDir)
+  if (run.approach === 'suite') return { ...prepareSuiteWorkspace(run, rootDir), runDir }
 
   cpSync(run.codeDir, codeDir, { recursive: true })
   mkdirSync(scratchDir, { recursive: true })
@@ -63,24 +74,23 @@ const prepareLayout = (run, rootDir) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const buildPromptText = (run, layout) => {
+const buildPromptText = (run, rootDir, layout) => {
   const group = run.group ? ` --group ${run.group}` : ''
   const command = `node ${BUILD_PROMPT_FILE} --src ${layout.codeDir} --out ${layout.promptFile}${group}`
   const scratch = layout.scratchDir ? `\n\nScratch directory: ${layout.scratchDir}` : ''
+
+  if (run.approach === 'closed') return readFileSync(layout.promptFile, 'utf8')
+  if (run.approach === 'suite') return `Workspace: ${rootDir}`
 
   return `Command:\n\n${command}${scratch}`
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const buildToolArgs = (run, layout) => {
-  const buildPromptPattern = `Bash(node ${BUILD_PROMPT_FILE}:*)`
+const buildToolArgs = (run) => {
+  if (run.approach === 'closed') return ['--tools', '']
 
-  if (run.approach === 'open') {
-    return ['--tools', OPEN_TOOLS, '--allowedTools', 'Bash', '--permission-mode', 'acceptEdits']
-  }
-
-  return ['--tools', 'Bash,Read', '--allowedTools', buildPromptPattern, '--add-dir', layout.runDir]
+  return ['--tools', OPEN_TOOLS, '--allowedTools', 'Bash', '--permission-mode', 'acceptEdits']
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -89,11 +99,11 @@ const buildArgs = (options, launch) => {
   const settings = options.fast ? { disableAllHooks: true, fastMode: true } : { disableAllHooks: true }
 
   return [
-    '-p', launch.prompt,
+    '-p',
     '--model', options.model,
     '--effort', options.effort,
     '--system-prompt', launch.instructions,
-    ...buildToolArgs(launch.run, launch.layout),
+    ...buildToolArgs(launch.run),
     '--setting-sources', 'project',
     '--strict-mcp-config',
     '--settings', JSON.stringify(settings),
@@ -112,16 +122,17 @@ const prepareRun = (runId, options) => {
   const sessionId = randomUUID()
   const rootDir = mkdtempSync(join(tmpdir(), `text-tests-${run.id}-`))
   const layout = prepareLayout(run, rootDir)
-  const prompt = buildPromptText(run, layout)
+  const prompt = buildPromptText(run, rootDir, layout)
   const args = buildArgs(options, { run, instructions, sessionId, layout, prompt })
-  const message = `System prompt:\n\n${instructions}\n\nPrompt:\n\n${prompt}`
+  const shownPrompt = run.approach === 'closed' ? ' the contents of prompt.md' : `\n\n${prompt}`
+  const message = `System prompt:\n\n${instructions}\n\nPrompt:${shownPrompt}`
   const { effort, fast, model } = options
   const cliLaunch = { sessionId, cwd: rootDir, layout, agent, effort, fast, model, cacheTtl: options['cache-ttl'] }
 
   Object.assign(run, { batch: options.batch, mechanism: 'cli', message, cliLaunch })
   writeJson(join(RUNS_DIR, `${run.id}.json`), run)
 
-  return { run, args, cwd: rootDir, sessionId, layout }
+  return { run, args, cwd: rootDir, sessionId, layout, prompt }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -134,8 +145,10 @@ const launchRun = (prepared, options) => {
   const { USER, PATH } = process.env
   const system = { HOME: homedir(), USER, PATH, TMPDIR: tmpdir(), LANG: 'en_US.UTF-8' }
   const env = { ...system, CLAUDE_CODE_PROMPT_CACHE_TTL: options['cache-ttl'] }
-  const child = spawn(options.claude, args, { cwd, env, stdio: ['ignore', streamFd, stderrFd] })
+  const child = spawn(options.claude, args, { cwd, env, stdio: ['pipe', streamFd, stderrFd] })
   const timer = setTimeout(() => child.kill('SIGTERM'), Number(options['timeout-minutes']) * 60000)
+
+  child.stdin.end(prepared.prompt)
 
   return new Promise((resolve) => {
     child.on('close', (exitCode, signal) => {
@@ -156,7 +169,7 @@ const keepOpenArtifacts = ({ run, layout }) => {
   const runFile = join(RUNS_DIR, `${run.id}.json`)
   const kept = readJson(runFile)
   const keptScratchDir = join(RUNS_DIR, run.id, 'scratch')
-  const keptPromptFile = join(RUNS_DIR, run.id, 'prompt.md')
+  const keptPromptFile = join(RUNS_DIR, run.id, basename(layout.promptFile))
 
   cpSync(layout.scratchDir, keptScratchDir, { recursive: true, force: true })
   copyFileSync(layout.promptFile, keptPromptFile)
@@ -167,7 +180,7 @@ const keepOpenArtifacts = ({ run, layout }) => {
 
 const recordLaunched = (launched, state) => {
   try {
-    if (launched.run.approach === 'open') keepOpenArtifacts(launched)
+    if (launched.run.approach !== 'closed') keepOpenArtifacts(launched)
 
     const source = { transcriptFile: launched.transcriptFile, streamFile: launched.streamFile }
     const record = recordRun(launched.run.id, source)

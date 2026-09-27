@@ -1,0 +1,13 @@
+endTurn disarms the turn after a look as well as at its end, so the rest of a running turn goes uncaptured
+
+--- a/src/turn/index.js
++++ b/src/turn/index.js
+@@ -59,7 +59,7 @@
+ 
+   const { changes, images } = await collectChanges(project)
+ 
+-  if (ended) for (const armedTurnPath of getArmedTurnPaths(project)) removeRecursive(armedTurnPath)
++  for (const armedTurnPath of getArmedTurnPaths(project)) removeRecursive(armedTurnPath)
+ 
+   if (!changes.length) return { published: false }
+ 

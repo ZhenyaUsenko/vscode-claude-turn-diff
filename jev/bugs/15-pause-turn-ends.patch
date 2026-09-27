@@ -1,0 +1,13 @@
+isTurnOver counts an assistant entry that stopped with pause_turn as the end of the turn, so looking at a paused turn finishes it off
+
+--- a/src/store/transcript.js
++++ b/src/store/transcript.js
+@@ -9,7 +9,7 @@
+ 
+ const SPOKEN_TYPES = ['user', 'assistant']
+ 
+-const TERMINAL_STOP_REASONS = ['end_turn', 'stop_sequence', 'max_tokens', 'refusal']
++const TERMINAL_STOP_REASONS = ['end_turn', 'stop_sequence', 'max_tokens', 'refusal', 'pause_turn']
+ 
+ ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+ 

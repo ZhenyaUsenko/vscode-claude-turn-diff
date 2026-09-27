@@ -93,7 +93,7 @@ const UNCHANGED_REWRITE_LISTED_QUESTION = (
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const probe = {
-  test: 'capture.every_changed_file',
+  test: 'Capture: Every changed file is listed',
   questions: {
     original_via_state: noul('Does the program in `files` behave as `statement` describes?'),
     accuracy: score(ACCURACY_QUESTION, ACCURACY_LEVELS),

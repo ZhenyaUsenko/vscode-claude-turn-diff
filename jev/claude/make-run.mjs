@@ -7,7 +7,9 @@ import { parseArgs } from 'node:util'
 
 const COPIED_PATHS = ['package.json', 'src', 'hooks']
 
-const APPROACHES = ['closed', 'open']
+const APPROACHES = ['closed', 'open', 'suite']
+
+const SELF_CONTAINED_APPROACHES = ['closed', 'suite']
 
 const AGENTS_DIR = join(REPO_DIR, '.claude', 'agents')
 
@@ -36,6 +38,8 @@ const readInstructions = (approach) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const buildAgentMessage = (run) => {
+  if (SELF_CONTAINED_APPROACHES.includes(run.approach)) return readInstructions(run.approach)
+
   const group = run.group ? ` --group ${run.group}` : ''
   const command = `node ${BUILD_PROMPT_FILE} --src ${run.codeDir} --out ${run.promptFile}${group}`
   const parts = [readInstructions(run.approach), `Command:\n\n${command}`]

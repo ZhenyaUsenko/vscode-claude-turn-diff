@@ -1,0 +1,13 @@
+getResources puts the before side on the after path, so a moved file's two sides share one path and its before-image is looked up under the new path
+
+--- a/src/view.js
++++ b/src/view.js
+@@ -36,7 +36,7 @@
+ 
+     if (beforeFile === afterFile && sameContents(beforeImageFile, afterFile)) continue
+ 
+-    const beforeUri = beforeImageExists ? Uri.file(beforeFile).with(beforeUriParams) : undefined
++    const beforeUri = beforeImageExists ? Uri.file(afterFile).with(beforeUriParams) : undefined
+     const afterUri = afterFileExists ? Uri.file(afterFile) : undefined
+ 
+     resources.push([afterUri ?? Uri.file(beforeFile), beforeUri, afterUri])

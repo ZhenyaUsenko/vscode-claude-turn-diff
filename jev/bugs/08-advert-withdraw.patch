@@ -1,0 +1,13 @@
+withdrawAdvert removes the advert file without checking it still holds this window's advert
+
+--- a/src/server.js
++++ b/src/server.js
+@@ -63,7 +63,7 @@
+ 
+   if (!writtenFile) return
+ 
+-  if (readFile(writtenFile, 'utf8') === writtenContents) removeFile(writtenFile)
++  removeFile(writtenFile)
+ 
+   advertState.writtenFile = null
+   advertState.writtenContents = null

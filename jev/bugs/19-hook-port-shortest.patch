@@ -1,0 +1,13 @@
+the hook script trims the port with the shortest-suffix expansion, so the port keeps everything up to the advert's last character and the connection to the window never opens
+
+--- a/hooks/turn-diff.sh
++++ b/hooks/turn-diff.sh
+@@ -21,7 +21,7 @@
+ 
+ raw=$(<"$ADVERT")
+ port=${raw#*\"port\":}
+-port=${port%%[!0-9]*}
++port=${port%[!0-9]*}
+ token=${raw#*\"token\":\"}
+ token=${token%%\"*}
+ 
