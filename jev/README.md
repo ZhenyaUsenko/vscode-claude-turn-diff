@@ -22,7 +22,7 @@ The extension's test suite rewritten as plain-language behavior statements, judg
 
 | Path | What it is |
 | --- | --- |
-| `tests/behavior-tests.md` | The checks as statements of behavior: a short introduction and a list of terms, then one `## Area` heading per test file. Each test is one paragraph that starts with its id in backticks, the area and a short name, for example `Capture: A move is one change`. Agents reply with the same ids in backticks. The area is the real test file, whose checks follow the same order, which is how real results map onto the tests. |
+| `tests/behavior-tests.md` | The checks as statements of behavior: a short introduction and a list of terms, then one `## Area` heading per test file. Each test is a `####` heading holding its id in backticks, the area and a short name, for example `Capture: A move is one change`, with its statement on the lines below. Agents reply with the same ids in backticks. The area is the real test file, whose checks follow the same order, which is how real results map onto the tests. |
 | `tests/context-notes.md` | Background about Claude Code hooks and transcripts, VS Code and git, in Markdown. Describes the outside world only, never the extension. |
 | `tests/context-notes-suite.md` | The same background for suite runs, plus git's 50% rename threshold, which test writers need to build a moved-and-edited fixture. Kept out of the shared notes because judges who only read the code took it as an exception to `capture.move_is_one_change`. |
 
@@ -67,13 +67,7 @@ The open sets were earlier experiments; the suite method replaces them.
 
 ### Running
 
-```sh
-node jev/claude/run-real.mjs
-node jev/claude/make-run.mjs --approach closed --bugs clean,tree-order
-node jev/claude/run-cli.mjs --runs r33,r34 --batch cli-high --effort high
-node jev/claude/report.mjs
-node jev/claude/analyze-time.mjs cli-high
-```
+[commands.md](commands.md) has the commands for each method, from creating runs to reading the results, and for adding a bug.
 
 ## Reports
 
