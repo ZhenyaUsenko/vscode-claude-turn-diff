@@ -12,14 +12,14 @@ const HEADER = [
   '# Behavior test run',
   '',
   'Background describes the tools the extension works with, Source holds the full code under test, and Tests lists ' +
-  'the behaviors to judge, each starting with its id.',
+  'the behaviors to judge, each under a heading with its id.',
 ].join('\n')
 
 const TESTS_HEADER = [
   '# Behavior tests',
   '',
-  'Background describes the tools the extension works with, and Tests lists the behaviors to check, each starting ' +
-  'with its id.',
+  'Background describes the tools the extension works with, and Tests lists the behaviors to check, each under a ' +
+  'heading with its id.',
 ].join('\n')
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -39,7 +39,7 @@ const renderSource = (srcDir) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const renderSuite = (suite) => {
-  const tests = suite.tests.map((test) => `\`${test.id}\` ${test.behavior}`)
+  const tests = suite.tests.map((test) => `#### \`${test.id}\`\n${test.behavior}`)
 
   return [`## ${suite.area}`, ...tests].join('\n\n')
 }

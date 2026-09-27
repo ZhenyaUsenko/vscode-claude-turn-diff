@@ -31,7 +31,7 @@ export const SOURCE_FILES = [
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const TEST_LINE = /^`([A-Z][A-Za-z]*): ([^`]+)` (.+)$/
+const TEST_HEADING = /^#### `([A-Z][A-Za-z]*): ([^`]+)`$/
 
 const HEADING = /^#{1,6} /
 
@@ -51,14 +51,14 @@ const findSuite = (parsed, area) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const startTest = (parsed, [, area, name, text]) => {
+const startTest = (parsed, [, area, name]) => {
   const suite = findSuite(parsed, area)
   const id = `${area}: ${name}`
 
   if (suite.tests.some((test) => test.id === id)) throw new Error(`duplicate test id: ${id}`)
 
-  parsed.test = { id, behavior: text.trim() }
-  parsed.inParagraph = true
+  parsed.test = { id }
+  parsed.inParagraph = false
 
   suite.tests.push(parsed.test)
 }
@@ -71,7 +71,7 @@ const addBehaviorLine = (parsed, line) => {
   if (parsed.inParagraph) {
     parsed.test.behavior = `${behavior} ${line.trim()}`
   } else {
-    parsed.test.behavior = `${behavior}\n\n${line.trim()}`
+    parsed.test.behavior = behavior ? `${behavior}\n\n${line.trim()}` : line.trim()
   }
 
   parsed.inParagraph = true
@@ -80,7 +80,7 @@ const addBehaviorLine = (parsed, line) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const parseTestLine = (line, parsed) => {
-  const testMatch = line.match(TEST_LINE)
+  const testMatch = line.match(TEST_HEADING)
 
   if (testMatch) {
     startTest(parsed, testMatch)
@@ -97,7 +97,7 @@ const parseTestLine = (line, parsed) => {
 
 const parseTests = (markdown) => {
   const lines = markdown.split('\n').map((line) => line.trimEnd())
-  const areas = new Set(lines.map((line) => line.match(TEST_LINE)?.[1]).filter(Boolean))
+  const areas = new Set(lines.map((line) => line.match(TEST_HEADING)?.[1]).filter(Boolean))
   const introEnd = lines.findIndex((line) => line.startsWith('## ') && areas.has(line.slice(3)))
   const parsed = { suites: [], test: null, inParagraph: false }
 

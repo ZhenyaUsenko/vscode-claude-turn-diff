@@ -55,7 +55,13 @@ When tests fail, find the cause in the code before changing the suite, and fix e
 
 Reply with one line per test, in the order `tests.md` lists them, and nothing else. Copy each test id exactly as `tests.md` writes it, in backticks:
 
+```
 pass `<test id>`
 fail `<test id>`: <one sentence saying why>
+```
 
-Then add one final line listing, in backticks, the tests your suite checked: ran: `<test id>`, `<test id>`, …
+Then add one final line listing, in backticks, the tests your suite checked:
+
+```
+ran: `<test id>`, `<test id>`, …
+```

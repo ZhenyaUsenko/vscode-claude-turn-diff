@@ -13,5 +13,7 @@ If the extension has a syntax error, or would crash while loading or activating,
 
 Reply with one line per test, in the order the document lists them, and nothing else. Copy each test id exactly as the document writes it, in backticks:
 
+```
 pass `<test id>`
 fail `<test id>`: <one sentence saying why>
+```
