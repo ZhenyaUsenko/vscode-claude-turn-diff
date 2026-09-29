@@ -24,6 +24,10 @@ Claude Code writes files straight to disk, so its edits never pass through VS Co
 
 - **A look at work in progress.** Ask for the diff while Claude is still working and you get what the turn has changed so far, brought up to date each time you ask.
 
+- **Background agents are waited for.** If Claude stops while subagents it started are still working, the turn stays open until they finish, so their edits and what Claude does with their reports land in one diff. A prompt you send in the meantime joins the same turn.
+
+- **Closing the window mid-turn loses nothing.** When you reopen it, Claude Code picks the turn back up, and everything it did before and after lands in one diff.
+
 ## Requirements
 
 - [Claude Code for VS Code](https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code), 2.1.196 or newer
@@ -76,17 +80,17 @@ Prefer to do it by hand? Run **Turn Diff: Register hooks in Claude settings** fr
 
 | Hook | Runs | Does |
 |---|---|---|
-| `UserPromptSubmit` | you hit enter | clears anything an interrupted turn left. No git. |
+| `UserPromptSubmit` | you hit enter | clears what an interrupted turn, or another chat's turn, left armed. Otherwise the turn carries on. No git. |
 | `PreToolUse` | first write-capable tool of the turn | snapshots every git repo in the workspace to dangling tree objects |
 | `PreToolUse` | every `Edit`/`Write` naming a path | if that path is outside all those repos, copies the file aside |
-| `Stop` | Claude finishes | diffs and opens the editor |
-| `StopFailure` | the turn dies on an API error | the same, so the work still gets a diff |
+| `Stop` | Claude finishes | diffs and opens the editor, unless subagents it started are still working, in which case it waits for them |
+| `StopFailure` | the turn dies on an API error | opens the changes so far and keeps the turn open, so what you continue with lands in the same diff |
 
 Snapshots use a throwaway copy of `.git/index`, so your real index and staging area are never touched.
 
-Asking for the diff mid-turn compares that same snapshot with the files as they are now, without ending the turn. It is a look at the work in progress, not a checkpoint of it. If the turn turns out to be over already, asking finishes it off, and you get an ordinary last-turn diff.
+Asking for the diff mid-turn compares that same snapshot with the files as they are now, without ending the turn. It is a look at the work in progress, not a checkpoint of it. If you interrupted the turn, asking finishes it off, and you get an ordinary last-turn diff.
 
-The hook is a small bash script. It finds the window serving this project through a file under `~/.claude/turn-diff/` and hands the payload to the extension over a loopback socket, so the capture runs inside the extension. A `PreToolUse` call costs a few milliseconds, and a turn that writes nothing never runs git. If no window serves the project, the hook exits without doing anything, since nothing could show the result.
+The hook is a small bash script. It finds the window serving this project through a file under `~/.claude/turn-diff/` and hands the payload to the extension over a loopback socket, so the capture runs inside the extension. A `PreToolUse` call costs a few milliseconds, and a turn that calls no write-capable tool never runs git. If no window serves the project, the hook exits without doing anything, since nothing could show the result.
 
 Two mechanisms, because neither is enough alone: **tree snapshots** catch anything happening inside a git worktree, however it happened, but cannot see outside a repo; **per-file capture** catches paths outside every repo, but only when a tool names them.
 
@@ -108,9 +112,11 @@ A diff you already have open keeps working after a later turn replaces it, becau
 
 - Binary files are not shown. The multi-file diff editor resolves both sides through VS Code's text model service, so a binary entry cannot render, and there is no image diff to fall back on.
 
-- A turn you interrupt opens no diff by itself, because Claude Code runs no `Stop` hook for it. Run **Turn Diff: Show last turn changes** to finish it off and get its diff. Do that before your next message, which discards the turn's baseline. The same recovers a turn that ended while the window was closed or reloading.
+- A turn you interrupt opens no diff by itself, because Claude Code runs no `Stop` hook for it. Run **Turn Diff: Show last turn changes** to finish it off and get its diff. Do that before your next message, which discards the turn's baseline.
 
-- A turn that dies outright, with the window killed, a crash, or the connection lost mid-reply, leaves nothing to tell it apart from one still working, so it cannot be recovered this way.
+- A turn whose end never reached the extension, because the window was closed or reloading just as it finished, looks the same as one still working. Asking for the diff shows it as changes so far, and your next prompt in that chat carries it on, so its work lands in that prompt's diff. A crash or a connection lost mid-reply ends the same way.
+
+- A prompt in another chat starts from its own baseline, so whatever a turn in the previous chat left open is not shown.
 
 - One window serves a project at a time, whichever you last focused. VS Code will not open the same folder twice, so two windows on one project take some arranging. If you manage it, the diff opens by itself only in the window that was focused when the turn ended. The other can still show it from the palette.
 

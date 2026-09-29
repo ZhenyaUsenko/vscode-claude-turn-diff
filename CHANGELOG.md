@@ -4,6 +4,14 @@
 
 - The diff of a finished turn now opens as a regular tab, where it used to be a preview. The next turn's diff, or a file you click once in the explorer, no longer takes its place, so it stays until you close it. A look at a turn still running remains a preview, and the finished diff replaces it.
 
+- A turn whose main agent stops while subagents or workflows it started in the background are still working now waits for them. No diff opens until the main agent stops with nothing left running, so the agents' edits and what the main agent does with their reports land in one diff. A prompt you send in the meantime joins the same turn. Edits an agent made after the main agent had stopped used to appear in no diff at all.
+
+- A turn cut short by an API error now opens as "Changes so far" and stays open. Whatever you continue with after the error lands in the same diff, which opens as usual once the turn finishes.
+
+- A turn whose end never reached the extension, because the window was closed or reloading just as it finished, is no longer finished off when you ask for its diff. It shows as changes so far, and your next prompt in that chat carries it on. The extension cannot tell such a turn from one still waiting for its agents, so asking for the diff now finishes a turn off only when you interrupted it.
+
+- Fixed: closing the window while Claude was working left everything the turn had done so far out of its diff. Claude Code picks such a turn back up when the window reopens, and the prompt it resumes with was taken for a new turn.
+
 - Fixed: a background subagent failing on an API error, such as a usage limit, ended the diff of the turn it was running in. The diff opened while the turn was still going, and whatever the turn did afterwards landed in a separate, later diff. Several subagents failing together opened a diff each. Claude Code reports a failed subagent through the same `StopFailure` hook as the main agent, and the two are now told apart.
 
 - Fixed: a turn whose only change was a file outside every repository that Claude tried to create but never did, because you refused the write or it failed, replaced the previous turn's diff with an empty one. Nothing opened, but the last diff was gone, and a look at a running turn showed nothing instead of the last finished turn.

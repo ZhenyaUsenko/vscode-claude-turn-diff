@@ -1,8 +1,6 @@
 import { publishManifest, removeManifest } from '../store/manifest.js'
-import {
-  getArmedTurnPaths, getProjectDir, getPromptIdFile, getSessionIdFile, getSnapshotsFile,
-} from '../store/paths.js'
-import { isTurnOver } from '../store/transcript.js'
+import { getArmedTurnPaths, getProjectDir, getSessionIdFile, getSnapshotsFile } from '../store/paths.js'
+import { isTurnInterrupted } from '../store/transcript.js'
 import { canonicalize, isUnder, readFile, readLines, removeRecursive } from '../utils/files.js'
 import { disposeOutsideWatchers, watchFilesOutsideWorkspace } from '../utils/watch.js'
 import { captureTouchedFile, snapshotWorkspace } from './capture.js'
@@ -12,10 +10,14 @@ import { isAbsolute } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const beginTurn = ({ project, payload }) => {
+const AGENT_TASK_TYPES = ['subagent', 'workflow']
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const beginTurn = ({ project, sessionId }) => {
   mkdirSync(getProjectDir(project), { recursive: true })
 
-  if (payload.prompt_id === readFile(getPromptIdFile(project), 'utf8')) return
+  if (sessionId === readFile(getSessionIdFile(project), 'utf8') && !isTurnInterrupted(project, sessionId)) return
 
   for (const armedTurnPath of getArmedTurnPaths(project)) removeRecursive(armedTurnPath)
 }
@@ -26,6 +28,7 @@ const armTurn = async ({ project, sessionId, payload, workspaceDirs }) => {
   let snapshots
 
   const toolPath = payload.tool_input?.file_path || payload.tool_input?.notebook_path
+
   const targetFile = toolPath && isAbsolute(toolPath) ? toolPath : null
 
   const snapshotsFile = getSnapshotsFile(project)
@@ -38,7 +41,6 @@ const armTurn = async ({ project, sessionId, payload, workspaceDirs }) => {
     snapshots = readLines(snapshotsFile).map((line) => line.split('\t'))
   } else {
     writeFileSync(getSessionIdFile(project), sessionId)
-    writeFileSync(getPromptIdFile(project), payload.prompt_id)
 
     snapshots = await snapshotWorkspace(project, workspaceDirs)
   }
@@ -53,19 +55,23 @@ const armTurn = async ({ project, sessionId, payload, workspaceDirs }) => {
 export const endTurn = async ({ project, payload, ended = true }) => {
   if (payload?.agent_id) return { published: false }
 
-  if (ended) disposeOutsideWatchers()
+  const waitsForAgents = payload?.background_tasks?.some((task) => AGENT_TASK_TYPES.includes(task.type))
 
-  if (!existsSync(getSnapshotsFile(project))) return { published: false }
+  const endsTurn = ended && !waitsForAgents && payload?.hook_event_name !== 'StopFailure'
+
+  if (endsTurn) disposeOutsideWatchers()
+
+  if (waitsForAgents || !existsSync(getSnapshotsFile(project))) return { published: false }
 
   const { changes, images } = await collectChanges(project)
 
-  if (ended) for (const armedTurnPath of getArmedTurnPaths(project)) removeRecursive(armedTurnPath)
+  if (endsTurn) for (const armedTurnPath of getArmedTurnPaths(project)) removeRecursive(armedTurnPath)
 
   if (!changes.length) return { published: false }
 
   removeManifest(project)
   writeBeforeImages(project, images)
-  publishManifest(project, changes, { running: !ended })
+  publishManifest(project, changes, { running: !endsTurn })
 
   return { published: true }
 }
@@ -77,7 +83,7 @@ export const publishArmedTurn = async (project) => {
 
   const sessionId = readFile(getSessionIdFile(project), 'utf8')
 
-  await endTurn({ project, ended: isTurnOver(project, sessionId) })
+  await endTurn({ project, ended: isTurnInterrupted(project, sessionId) })
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

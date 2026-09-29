@@ -14,18 +14,17 @@ Claude Code runs four hooks, all pointing at one script:
 
 The script hands each payload to the VS Code window serving the project, and the extension does the work:
 
-- `begin` clears the state a turn that never ended left behind.
+- `begin` clears whatever a turn left armed, unless that turn belongs to the same chat and was not interrupted.
 
 - `arm` snapshots every git repository in the workspace the first time it runs in a turn, and copies aside any file a tool names outside those repositories.
 
-- `end` snapshots again, works out what changed, writes the before-images and the manifest, and opens the diff.
+- `end` snapshots again, works out what changed, writes the before-images and the manifest, and opens the diff. While background agents are still working it does nothing, and after an API error it publishes the turn as still running.
 
 All of a project's state sits in `~/.claude/turn-diff/<project>/`:
 
 ```
 server.json      which window serves the project
 sessionId.txt    the chat the armed turn belongs to
-promptId.txt     the prompt the armed turn belongs to
 snapshots.tsv    one row per repository: repoDir, gitDir, before tree
 touchList.txt    files outside every repository that a tool named
 touchCopies/     copies of those files as they were
@@ -33,7 +32,7 @@ beforeImages/    the published before-images
 manifest.json    the published diff
 ```
 
-The four files after the advert plus `touchCopies/` are the armed state. They exist while a turn is running and are cleared when it ends. The last two are the published turn.
+The three files after the advert plus `touchCopies/` are the armed state. They exist while a turn is running and are cleared when it ends. The last two are the published turn.
 
 ## The hook is a thin client
 
@@ -80,15 +79,15 @@ The repository snapshot happens once per turn. Later `arm` calls fall through to
 
 ### What the first arm records
 
-The `arm` that takes the snapshot also writes `sessionId.txt` and `promptId.txt`. Nothing else in the project directory says which chat or which prompt the armed turn belongs to, and both are needed later: the session id locates the transcript, and the prompt id tells a new prompt from one injected into the running turn. Writing them on the cold path keeps them off the per-tool path.
+The `arm` that takes the snapshot also writes `sessionId.txt`. Nothing else in the project directory says which chat the armed turn belongs to, and it is needed twice later: it locates the transcript, and it tells a prompt in the same chat from one in another. Writing it on the cold path keeps it off the per-tool path.
 
 ### A prompt is not always a new turn
 
-`begin` runs on `UserPromptSubmit`, and Claude Code raises that event for more than a prompt you type. A message queued while it works, a background command finishing, or any other notification is handed to the running turn through the same event. Each arrives with the running turn's `prompt_id`, and the tool calls that follow keep that id. A genuine prompt carries a fresh one.
+`begin` runs on `UserPromptSubmit`, and Claude Code raises that event for more than a prompt you type. A message queued while it works and a background command finishing are handed to the running turn through it. A background agent's report wakes a main agent that stopped to wait for it. And a turn cut off by closing the window is resumed when the window reopens, with a hidden prompt Claude Code writes itself, "Continue from where you left off." (`isMeta`). Clearing the armed state on any of these re-took the baseline at the next `arm`, and everything the turn had done before that point was missing from its diff.
 
-So `begin` clears the armed state only when its prompt id differs from the one in `promptId.txt`. Clearing on every `UserPromptSubmit` re-took the baseline at the next `arm`, and everything the turn had done before that point was missing from its diff. A turn that started a rebuilt server in the background and kept editing lost every edit made before the command finished, and showed only the files it touched afterwards.
+So `begin` keeps what the same chat left armed, and clears it in two cases only: the prompt comes from another chat, which starts from its own baseline since the old one may be hours old, or the transcript shows you interrupted the last turn. The prompt id cannot make this call. A queued message keeps the running turn's id, but a resumed turn and an agent's report each arrive with a new one, exactly as a prompt of yours does.
 
-`prompt_id` is a common hook field from Claude Code 2.1.196 on. It is absent only before a session's first prompt, which no hook of ours runs before. A `source` field naming who injected the prompt is rolling out too, but it may be absent for now, and it would not tell a queued message of yours from a new prompt anyway.
+The price is a turn whose `Stop` never reached the extension, because the window was closed or reloading just as it finished, or the hook timed out. Nothing tells it apart from a turn waiting for its agents, so your next prompt in that chat carries it on, and its work lands in that prompt's diff.
 
 ## Snapshots
 
@@ -101,6 +100,16 @@ The copy must keep the source's mtime. Git decides whether an index entry needs 
 Untracked files over `MAX_UNTRACKED_BYTES` are excluded from both snapshots, so they cancel out and never appear. Tracked files are never size-filtered: git only re-hashes those whose stat info changed, whereas untracked files are hashed from scratch on every snapshot.
 
 ## Ending a turn
+
+### A stop is not always the end of a turn
+
+`end` runs on `Stop` and `StopFailure`, and neither always means the work is done.
+
+A main agent can stop while subagents or workflows it started in the background are still working. Since Claude Code 2.1.145 the `Stop` payload lists the session's in-flight background work in `background_tasks`, each entry with a `type`. While that list holds a `subagent` or a `workflow`, `end` does nothing: the armed state and the watchers stay, and nothing is published. Other types do not hold the turn: a `shell` may be a server that never finishes, a `monitor` never does, a `cloud session` edits nothing local, and a `teammate` can stay alive idle. Launching an agent arms nothing, so the agents' own first tool call takes the baseline, before any of their edits.
+
+Every background agent reports back when it ends, whether it completed, failed or was killed, and the report wakes the main agent as a new prompt, which `begin` lets carry the turn on. So a held turn always gets another `Stop` after its last agent finishes. That is where it is published, together with whatever the main agent did with the reports. `SubagentStop` is not registered for that reason: publishing when the last agent finishes would split that follow-up into a diff of its own. Only a session that goes away while its agents run leaves no report behind, and its turn is carried on by your next prompt in that chat.
+
+`StopFailure` carries no `background_tasks`, and the work usually goes on once you retry. So `end` publishes the turn as still running, which opens "Changes so far", and keeps it armed. What you continue with lands in the same diff.
 
 ### Collecting
 
@@ -144,29 +153,25 @@ There is no sweep and nothing ages out. A turn's state is replaced by the next t
 
 ## Finishing a turn on demand
 
-A manifest only exists once a turn has ended, and a turn can end without `end` ever running. Claude Code runs no `Stop` hook on a turn you interrupt. A turn that ends cleanly reaches nothing if the window was closed or reloading at that moment, if the hook timed out, or if `end` threw. In each case the snapshot is stranded, and the next `begin` discards the work unseen.
+A turn you interrupt is never published by a hook. Claude Code runs no `Stop` hook for it, and your next prompt in that chat discards its baseline.
 
-So asking for the diff runs `end` over anything still armed before it renders. `endTurn` publishes whatever the armed turn has done so far, and tears the turn down, clearing the armed state and releasing its watchers, only when the transcript says the turn is over. A running turn keeps its baseline, so the rest of it is still captured and its real `Stop` publishes again on top.
+So asking for the diff publishes anything still armed before it renders. `endTurn` publishes whatever the armed turn has done so far, and finishes the turn, clearing the armed state and releasing its watchers, only when the transcript shows you interrupted it. Anything else still armed counts as running: a turn mid-work, one waiting for its agents, one cut short by an API error, and one whose `Stop` never reached the extension. A running turn keeps its baseline, so the rest of it is still captured and its real `Stop` publishes again on top.
 
-Everything else follows. A running turn is collected afresh every time it is asked for, because nothing remembers the last look. A turn that is over was collected when it was torn down, so its diff stops growing there, and files you touch by hand afterwards cannot wander into it. A turn that ended normally cleared `snapshots.tsv`, so there is nothing armed to collect. A running turn that has changed nothing publishes nothing, which leaves the previous turn and its title alone.
+Everything else follows. A running turn is collected afresh every time it is asked for, because nothing remembers the last look. An interrupted turn was collected when it was finished off, so its diff stops growing there, and files you touch by hand afterwards cannot wander into it. A turn that ended normally cleared `snapshots.tsv`, so there is nothing armed to collect. A running turn that has changed nothing publishes nothing, which leaves the previous turn and its title alone.
 
 Only an explicit request takes this path. Rendering after `end` does not collect again, since the armed state is gone by then. A turn is published by the hook that ends it or by someone asking to see it, and by nothing else.
 
-### Reading the end of a turn from the transcript
+### Reading an interrupt from the transcript
 
-The last 64 KB of the transcript is scanned backwards to the last `user` or `assistant` entry, and that entry decides. Real transcripts grouped by `promptId`, which only user entries carry and which marks the prompt boundary, show that every turn ends in one of two ways:
+`begin` and the look both ask one question of the transcript: did you interrupt the last turn? The last 64 KB is scanned backwards to the last `user` or `assistant` entry, and the answer is yes when that is a user entry starting with `[Request interrupted by user`, one of the two markers Claude Code writes on Esc. Claude Code counts its own interruptions by testing for the same prefix.
 
-- An assistant entry whose `stop_reason` is terminal. This is an Anthropic API field, not a Claude Code internal. `tool_use` is the mid-turn case: stopping to call a tool is how a turn continues.
+The transcript is not asked whether a turn ended in general. A turn waiting for its agents ends in `end_turn` exactly as a finished one does, and a turn cut short by an API error ends in an assistant entry whose `stop_reason` is `stop_sequence`, so reading an ending off the transcript would finish both off halfway. An interrupt is the one ending it shows for certain.
 
-- A user entry starting with `[Request interrupted by user`, one of the two markers Claude Code writes on Esc. Claude Code counts its own interruptions by testing for the same prefix.
+Scanning backwards rather than reading the last line matters twice. The interrupt marker is not last: `queue-operation`, `last-prompt` and `file-history-snapshot` land after it. And a rejected tool records the same `toolDenialKind` an interrupt does while the turn carries on, so a later assistant entry is found first. Sidechain entries are skipped, or a subagent's transcript would hide the main chain's ending.
 
-Terminal reasons are an allowlist, not "anything but `tool_use`". `pause_turn` exists in the API and means carry on, so a reason we have not seen must read as running.
+Anything unreadable means not interrupted. Wrongly finishing a running turn would clear its baseline and leave the real `Stop` with nothing to publish; wrongly keeping one only carries it into the next prompt.
 
-Scanning backwards rather than reading the last line matters twice. The interrupt marker is not last: `queue-operation`, `last-prompt` and `file-history-snapshot` land after it. And a rejected tool records the same `toolDenialKind` an interrupt does while the turn carries on, so a later assistant entry is found first and the turn reads as running. Sidechain entries are skipped, or a running subagent would hide the main chain's ending.
-
-Anything unreadable means not over. Wrongly finishing a running turn would clear its baseline and leave the real `Stop` with nothing to publish; wrongly leaving one alone only means it is collected again next time. A turn whose final entry is larger than the 64 KB window reads as running, which is what such an entry almost always means.
-
-What this cannot see is a turn that died without writing anything: the window killed, a crash, the connection dropping mid-stream. No assistant entry is ever written with a missing `stop_reason`, so such a turn leaves the same trace as one still thinking, and only elapsed time separates them. Those are cleared by the next `begin`.
+Closing the window mid-turn writes nothing. Claude Code records the result of a tool call that finishes as the window goes and then stops, with no interrupt marker and no entry saying the turn was cut off. When the window reopens, Claude Code resumes the turn itself with its hidden "Continue from where you left off." prompt, and that turn lands in one diff. A crash or a connection dropping mid-reply leaves the same trace as a turn still working, so the next prompt in that chat carries it on.
 
 ## Rendering
 
@@ -214,7 +219,7 @@ The advert is written to a temporary file and renamed into place, like the manif
 
 `hooksMatchSpec` compares our hooks against `HOOK_SPEC` exactly rather than checking that something of ours is present. Changing a matcher, a timeout or a command has to re-prompt, or everyone keeps running whatever they registered first.
 
-`end` is registered for `StopFailure` as well as `Stop`. A turn cut short by an API error never reaches `Stop`, and its snapshot would sit unclaimed until the next prompt discarded it.
+`end` is registered for `StopFailure` as well as `Stop`. A turn cut short by an API error never reaches `Stop`. `end` publishes it as still running and keeps it armed, as described under "A stop is not always the end of a turn".
 
 A subagent shares the main chat's session, so its hooks arrive under the same project and look like the turn's own. Its tool calls run `arm`, which is right: what a subagent edits is part of the turn. Its ending is another matter. A subagent that finishes raises `SubagentStop`, which is not registered, but one that dies on an API error raises the same `StopFailure` the main agent does. Every payload from inside a subagent carries an `agent_id`, and the main agent's never does, so `end` ignores an event that has one. Taking it for the end of the turn published the diff while the turn was still running and cleared its baseline, once per failed subagent. Several background agents hitting a usage limit within a minute opened a diff each, and each held only what had changed since the one before.
 
@@ -244,6 +249,6 @@ Verbs follow the return type: `read*` gives contents, `get*` gives an attribute 
 
 Nothing outside `utils/files.js` calls an fs read that can throw, so callers branch on a value instead of wrapping every read. A failure is `undefined` for a single value and `[]` for a list.
 
-Names we do not own are left alone: the file system provider's method names, `fsPath`, `extensionPath` and `workspace.workspaceFolders` from VS Code, and `file_path`, `notebook_path`, `transcript_path`, `session_id` and `prompt_id` from the hook payload.
+Names we do not own are left alone: the file system provider's method names, `fsPath`, `extensionPath` and `workspace.workspaceFolders` from VS Code, and `file_path`, `notebook_path`, `transcript_path`, `session_id`, `agent_id`, `hook_event_name` and `background_tasks` from the hook payload.
 
 Everything else is imported by name, builtins with the `node:` prefix, and nothing is imported as a module namespace. Each file then declares exactly what it touches, which is what makes sweeping for unused imports worth doing. `assert` in the tests is the one default import left, because a bare `strictEqual(...)` says too little about where it came from. A name is aliased only where the bare one loses its meaning at the use site: `sep as PATH_SEPARATOR` and `relative as getRelativePath`.

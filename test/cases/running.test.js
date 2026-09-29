@@ -5,7 +5,7 @@ import { outputFile } from '../../src/utils/files.js'
 import { check } from '../utils/checks.js'
 import { commitAll, createRepo } from '../utils/fixtures.js'
 import { getRenderedFileNames, render } from '../utils/render.js'
-import { interruptTurn, recordAssistantReply, runTurn, startTurn } from '../utils/turn.js'
+import { interruptTurn, recordApiError, recordAssistantReply, runTurn, startTurn } from '../utils/turn.js'
 import { resetStub, stubState } from '../utils/vscode-stub.js'
 import assert from 'node:assert'
 import { existsSync } from 'node:fs'
@@ -130,31 +130,12 @@ check('a running turn that has changed nothing falls back to the last finished t
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-check('a turn whose Stop hook never arrived is published when it is asked for', async () => {
-  const repoDir = seedRepo()
-  const project = getProjectKey(repoDir)
+check('asked for, a turn is finished off only when it was interrupted', async () => {
+  const reason = 'a turn waiting for its agents, or whose Stop never arrived, ends in end_turn as a finished one does'
 
-  await startTurn(repoDir, 'chat', [repoDir])
-
-  outputFile(join(repoDir, 'f.txt'), 'two\n')
-  recordAssistantReply(repoDir, 'chat', 'end_turn')
-
-  const diffData = await render([repoDir])
-  const reason = 'the turn ended but nothing told us, as when the window was closed as it finished'
-
-  assert.strictEqual(diffData.title, 'Last turn changes')
-  assert.deepStrictEqual(getRenderedFileNames(diffData), ['f.txt'])
-  assert.strictEqual(readManifest(project).changes.length, 1, reason)
-})
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-check('a turn that paused rather than ended is still running', async () => {
-  const pausedReason = 'stopping to call a tool is how a turn continues, not how it ends'
-  const unknownReason = 'only a reason known to end a turn may end one, or a new one would read as the end'
-
-  for (const [stopReason, reason] of [['tool_use', pausedReason], ['pause_turn', unknownReason]]) {
+  for (const stopReason of ['tool_use', 'end_turn']) {
     const repoDir = seedRepo()
+    const project = getProjectKey(repoDir)
 
     await startTurn(repoDir, 'chat', [repoDir])
 
@@ -165,7 +146,28 @@ check('a turn that paused rather than ended is still running', async () => {
 
     assert.strictEqual(diffData.title, 'Changes so far', reason)
     assert.deepStrictEqual(getRenderedFileNames(diffData), ['f.txt'])
+    assert.ok(existsSync(getSnapshotsFile(project)), 'and it stays armed for whatever comes next')
   }
+})
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+check('a turn cut short by an API error counts as running when asked for', async () => {
+  const repoDir = seedRepo()
+  const project = getProjectKey(repoDir)
+
+  await startTurn(repoDir, 'chat', [repoDir])
+
+  outputFile(join(repoDir, 'f.txt'), 'two\n')
+  recordApiError(repoDir, 'chat')
+
+  await handleTurn('end', project, { session_id: 'chat', hook_event_name: 'StopFailure' }, [repoDir])
+
+  const diffData = await render([repoDir])
+  const reason = 'the work usually goes on once you retry, so asking must not finish the turn off'
+
+  assert.strictEqual(diffData.title, 'Changes so far', reason)
+  assert.ok(existsSync(getSnapshotsFile(project)), 'and it stays armed for what comes after the retry')
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

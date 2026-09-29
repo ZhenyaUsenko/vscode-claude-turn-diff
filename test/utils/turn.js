@@ -2,7 +2,7 @@ import { readManifest } from '../../src/store/manifest.js'
 import { getProjectKey, getTranscriptFile } from '../../src/store/paths.js'
 import { handleTurn } from '../../src/turn/index.js'
 import { outputFile, removeFile } from '../../src/utils/files.js'
-import { appendFileSync } from 'node:fs'
+import { appendFileSync, existsSync } from 'node:fs'
 import { basename } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -11,8 +11,14 @@ let promptCounter = 0
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+export const RUNNING_SUBAGENT = { id: 'task-1', type: 'subagent', status: 'running', description: 'a background agent' }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 export const registerChat = (dir, sessionId) => {
-  outputFile(getTranscriptFile(getProjectKey(dir), sessionId), '')
+  const transcriptFile = getTranscriptFile(getProjectKey(dir), sessionId)
+
+  if (!existsSync(transcriptFile)) outputFile(transcriptFile, '')
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -42,12 +48,22 @@ export const interruptTurn = (dir, sessionId) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const recordAssistantReply = (dir, sessionId, stopReason) => {
+const createReply = (stopReason) => {
   const content = [{ type: 'text', text: 'a reply' }]
 
-  const reply = { type: 'assistant', message: { role: 'assistant', content, stop_reason: stopReason } }
+  return { type: 'assistant', message: { role: 'assistant', content, stop_reason: stopReason } }
+}
 
-  appendTranscript(dir, sessionId, [reply])
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const recordAssistantReply = (dir, sessionId, stopReason) => {
+  appendTranscript(dir, sessionId, [createReply(stopReason)])
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const recordApiError = (dir, sessionId) => {
+  appendTranscript(dir, sessionId, [{ ...createReply('stop_sequence'), isApiErrorMessage: true }])
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
