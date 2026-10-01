@@ -199,11 +199,13 @@ Firing `onDidChange` at registration is the tempting fix for a restored editor t
 
 ## Watching files outside the workspace
 
-VS Code only watches what is inside the workspace, so its in-memory copy of a file outside it lags behind disk until the window is refocused. Claude Code opens the document to show its own inline diff and then writes to disk directly, so the editor keeps the pre-edit text. That is exactly what the before-image holds, and the diff renders as no change at all.
+VS Code only watches what is inside the workspace, so its in-memory copy of a file outside it lags behind disk until the window is refocused or the file is opened in an editor. VS Code makes that copy when Claude Code's `Read` reads the file, seconds before the `Edit` that follows, and Claude Code then writes to disk directly. The copy keeps the pre-edit text, which is exactly what the before-image holds, and the diff renders as no change at all.
 
-Registering a `FileSystemWatcher` on such a path makes the file service report the write, which is what makes the editor reload. It has to happen in `arm`, before the tool writes. Doing it at render time is too late for the first edit of each file.
+Registering a `FileSystemWatcher` on such a path makes the file service report the write, which is what makes the editor reload. It is registered in `arm`, before the tool writes, and it still loses a race: `createFileSystemWatcher` returns at once while the watch starts a few processes away, and Claude Code writes within milliseconds of the hook replying. A write that lands before the watch is live is never reported. So a second after the watcher is created, the file's own access and modification times are written back onto it. Nothing about the file changes, but the watcher, live by then, reports it, and the copy reloads. A write slow enough to come after that nudge, such as one waiting on a permission prompt, lands after the watch is live and is reported itself. Holding the reply in `arm` until the watch is live would work too, but it delays every first edit of an outside file by a guessed amount.
 
-Watchers are released when a turn ends, and only then. A look at a running turn publishes without tearing the turn down, so the files it is still editing stay watched.
+VS Code watches the file's directory, not the file, so a live watcher keeps every file in that directory fresh.
+
+Watchers are released a couple of seconds after a turn ends, so a nudge from its last edit still has a watcher to report it. Only the watchers the turn had are released; a turn starting in the meantime keeps its own. A look at a running turn publishes without ending the turn, so the files it is still editing stay watched.
 
 ## Advertising
 

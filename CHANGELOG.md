@@ -12,6 +12,8 @@
 
 - Fixed: closing the window while Claude was working left everything the turn had done so far out of its diff. Claude Code picks such a turn back up when the window reopens, and the prompt it resumes with was taken for a new turn.
 
+- Fixed: a file outside the workspace could still show its old contents on both sides of the diff. The watcher that makes VS Code reload such a file takes a moment to start, and an edit landing in that moment went unreported. The file is now nudged a second later, once its watcher is live.
+
 - Fixed: a background subagent failing on an API error, such as a usage limit, ended the diff of the turn it was running in. The diff opened while the turn was still going, and whatever the turn did afterwards landed in a separate, later diff. Several subagents failing together opened a diff each. Claude Code reports a failed subagent through the same `StopFailure` hook as the main agent, and the two are now told apart.
 
 - Fixed: a turn whose only change was a file outside every repository that Claude tried to create but never did, because you refused the write or it failed, replaced the previous turn's diff with an empty one. Nothing opened, but the last diff was gone, and a look at a running turn showed nothing instead of the last finished turn.

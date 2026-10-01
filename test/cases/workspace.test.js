@@ -1,13 +1,15 @@
 import { readManifest } from '../../src/store/manifest.js'
 import { getBeforeImagesDir, getManifestFile, getProjectKey } from '../../src/store/paths.js'
+import { handleTurn } from '../../src/turn/index.js'
 import { outputFile, readFile } from '../../src/utils/files.js'
+import { NUDGE_DELAY, RELEASE_DELAY } from '../../src/utils/watch.js'
 import { check } from '../utils/checks.js'
 import { commitAll, createRepo } from '../utils/fixtures.js'
 import { HOME } from '../utils/home.js'
-import { readChangedFileNames, runTurn } from '../utils/turn.js'
+import { readChangedFileNames, runTurn, startTurn, wait } from '../utils/turn.js'
 import { resetStub, stubState } from '../utils/vscode-stub.js'
 import assert from 'node:assert'
-import { existsSync } from 'node:fs'
+import { existsSync, statSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -134,7 +136,55 @@ check('arming a file outside the workspace watches it, once', async () => {
 
   assert.strictEqual(stubState.watchers.length, 1, 'the in-workspace file needs no watcher')
   assert.strictEqual(watcher.pattern.base.fsPath, dirname(outsideFile))
-  assert.ok(watcher.disposed, 'the turn releases its watchers when it ends')
+})
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+check('a file outside the workspace is nudged a moment after it is first armed', async () => {
+  const repoDir = seedRepo()
+  const outsideFile = join(HOME, 'nudged', 'notes.md')
+
+  outputFile(outsideFile, 'before\n')
+  resetStub([repoDir])
+
+  const { ctimeMs, mtimeMs } = statSync(outsideFile)
+
+  await startTurn(repoDir, 'chat', [repoDir], { touchedFiles: [outsideFile] })
+  await wait(NUDGE_DELAY + 100)
+
+  const nudgedStats = statSync(outsideFile)
+  const reason = 'a write landing before its watcher is live goes unreported, so the file is touched again once it is'
+
+  assert.ok(nudgedStats.ctimeMs > ctimeMs, reason)
+  assert.ok(Math.abs(nudgedStats.mtimeMs - mtimeMs) < 0.001, 'without moving its modification time')
+
+  await handleTurn('end', getProjectKey(repoDir), { session_id: 'chat' }, [repoDir])
+})
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+check('a turn releases its watchers a moment after it ends, and only its own', async () => {
+  const repoDir = seedRepo()
+  const outsideFile = join(HOME, 'released', 'notes.md')
+
+  outputFile(outsideFile, 'before\n')
+  resetStub([repoDir])
+
+  await runTurn(repoDir, 'chat', [repoDir], () => {}, { touchedFiles: [outsideFile] })
+
+  const [finishedTurnWatcher] = stubState.watchers
+
+  assert.ok(!finishedTurnWatcher.disposed, 'a nudge from the last edit may still be on its way when the turn ends')
+
+  await startTurn(repoDir, 'chat', [repoDir], { touchedFiles: [outsideFile] })
+  await wait(RELEASE_DELAY + 100)
+
+  const [, runningTurnWatcher] = stubState.watchers
+
+  assert.ok(finishedTurnWatcher.disposed, 'it is released a moment later')
+  assert.ok(!runningTurnWatcher.disposed, 'and the next turn keeps the watcher it made for the same file')
+
+  await handleTurn('end', getProjectKey(repoDir), { session_id: 'chat' }, [repoDir])
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

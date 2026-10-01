@@ -1,6 +1,6 @@
 import {
   closeSync, fstatSync, mkdirSync, openSync, readFileSync,
-  readSync, realpathSync, renameSync, rmSync, statSync, writeFileSync,
+  readSync, realpathSync, renameSync, rmSync, statSync, utimesSync, writeFileSync,
 } from 'node:fs'
 import { basename, dirname, join, sep as PATH_SEPARATOR } from 'node:path'
 
@@ -82,6 +82,18 @@ export const canonicalize = (targetPath) => {
   const realParent = getRealPath(dirname(targetPath))
 
   return realParent ? join(realParent, basename(targetPath)) : targetPath
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const nudgeFile = (file) => {
+  try {
+    const { atimeMs, mtimeMs } = statSync(file)
+
+    utimesSync(file, atimeMs / 1000, mtimeMs / 1000)
+  } catch {
+    return
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

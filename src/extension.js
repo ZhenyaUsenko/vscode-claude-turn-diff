@@ -1,6 +1,6 @@
 import { installHookScript, promptToRegisterHooks, removeHooks, setUpHooks } from './install/hooks.js'
 import { startServer } from './server.js'
-import { disposeOutsideWatchers } from './utils/watch.js'
+import { releaseOutsideWatchers } from './utils/watch.js'
 import { registerBeforeImageProvider, showLastTurn } from './view.js'
 import { commands, window, workspace } from 'vscode'
 
@@ -18,7 +18,7 @@ export const activate = (context) => {
   context.subscriptions.push(
     outputChannel,
     server,
-    { dispose: disposeOutsideWatchers },
+    { dispose: releaseOutsideWatchers },
     registerBeforeImageProvider(),
     window.onDidChangeWindowState((windowState) => { if (windowState.focused) server.readvertise() }),
     workspace.onDidChangeWorkspaceFolders(() => server.readvertise()),

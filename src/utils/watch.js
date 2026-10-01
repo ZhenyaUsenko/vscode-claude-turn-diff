@@ -1,6 +1,12 @@
-import { isUnder, canonicalize } from './files.js'
+import { canonicalize, isUnder, nudgeFile } from './files.js'
 import { basename, dirname } from 'node:path'
 import { RelativePattern, Uri, workspace } from 'vscode'
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const NUDGE_DELAY = 1000
+
+export const RELEASE_DELAY = 2000
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -19,12 +25,17 @@ export const watchFilesOutsideWorkspace = (targetFiles, workspaceDirs) => {
     const pattern = new RelativePattern(dirUri, basename(targetFile))
 
     outsideWatchers.set(targetFile, workspace.createFileSystemWatcher(pattern))
+
+    setTimeout(() => nudgeFile(targetFile), NUDGE_DELAY)
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const disposeOutsideWatchers = () => {
-  outsideWatchers.forEach((watcher) => watcher.dispose())
+export const releaseOutsideWatchers = () => {
+  const releasedWatchers = [...outsideWatchers.values()]
+
   outsideWatchers.clear()
+
+  setTimeout(() => releasedWatchers.forEach((watcher) => watcher.dispose()), RELEASE_DELAY)
 }

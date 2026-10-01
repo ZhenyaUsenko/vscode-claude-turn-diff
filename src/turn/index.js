@@ -2,7 +2,7 @@ import { publishManifest, removeManifest } from '../store/manifest.js'
 import { getArmedTurnPaths, getProjectDir, getSessionIdFile, getSnapshotsFile } from '../store/paths.js'
 import { isTurnInterrupted } from '../store/transcript.js'
 import { canonicalize, isUnder, readFile, readLines, removeRecursive } from '../utils/files.js'
-import { disposeOutsideWatchers, watchFilesOutsideWorkspace } from '../utils/watch.js'
+import { releaseOutsideWatchers, watchFilesOutsideWorkspace } from '../utils/watch.js'
 import { captureTouchedFile, snapshotWorkspace } from './capture.js'
 import { collectChanges, writeBeforeImages } from './collect.js'
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
@@ -59,7 +59,7 @@ export const endTurn = async ({ project, payload, ended = true }) => {
 
   const endsTurn = ended && !waitsForAgents && payload?.hook_event_name !== 'StopFailure'
 
-  if (endsTurn) disposeOutsideWatchers()
+  if (endsTurn) releaseOutsideWatchers()
 
   if (waitsForAgents || !existsSync(getSnapshotsFile(project))) return { published: false }
 

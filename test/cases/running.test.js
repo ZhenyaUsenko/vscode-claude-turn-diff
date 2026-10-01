@@ -2,10 +2,11 @@ import { readManifest } from '../../src/store/manifest.js'
 import { handleTurn } from '../../src/turn/index.js'
 import { getProjectKey, getSnapshotsFile } from '../../src/store/paths.js'
 import { outputFile } from '../../src/utils/files.js'
+import { RELEASE_DELAY } from '../../src/utils/watch.js'
 import { check } from '../utils/checks.js'
 import { commitAll, createRepo } from '../utils/fixtures.js'
 import { getRenderedFileNames, render } from '../utils/render.js'
-import { interruptTurn, recordApiError, recordAssistantReply, runTurn, startTurn } from '../utils/turn.js'
+import { interruptTurn, recordApiError, recordAssistantReply, runTurn, startTurn, wait } from '../utils/turn.js'
 import { resetStub, stubState } from '../utils/vscode-stub.js'
 import assert from 'node:assert'
 import { existsSync } from 'node:fs'
@@ -210,12 +211,11 @@ check('looking at a running turn keeps watching the files outside the workspace'
   outputFile(outsideFile, 'after\n')
 
   await render([repoDir])
+  await wait(RELEASE_DELAY + 100)
 
   assert.ok(!watcher.disposed, 'the turn is still going, and its later edits still need reporting')
 
   await handleTurn('end', project, { session_id: 'chat' }, [repoDir])
-
-  assert.ok(watcher.disposed, 'the turn is over now')
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
