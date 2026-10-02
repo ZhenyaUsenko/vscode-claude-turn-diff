@@ -143,20 +143,22 @@ Edit the files under `$WORK/b`, then:
 
 ## 7. What a run sees
 
-The closed document for a run's code, or for the clean code of one group, printed to the terminal:
+A closed run keeps the document it judged as its `prompt.md`:
 
 ```sh
-node jev/claude/build-prompt.mjs --src jev/runs/r417/code | less
+less jev/runs/r417/prompt.md
 ```
+
+The closed document for the clean code of one group, or for any copy of the code with `--src <dir>`, printed to the terminal:
 
 ```sh
 node jev/claude/build-prompt.mjs --group capture | less
 ```
 
-Whether a copy of the code parses and activates, which is what the crash rule is scored against. It prints nothing when the code loads, and the error when it doesn't:
+Whether a copy of the code parses and activates, which is what the crash rule is scored against. It prints nothing when the code loads, and the error when it doesn't. A run's `code/` is there until a closed run is recorded, and stays with open and suite runs:
 
 ```sh
-node jev/lib/load-check.mjs jev/runs/r417/code
+node jev/lib/load-check.mjs jev/runs/r404/code
 ```
 
 The Jev commands are in the README.

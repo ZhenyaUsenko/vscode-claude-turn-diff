@@ -76,7 +76,7 @@ Tests are grouped by area. Each test is a heading holding its id in backticks, m
 
 - A new turn discards the armed state
 
-- A propmt submitted in the running turn leaves the baseline untouched
+- A prompt submitted in the running turn leaves the baseline untouched
 
 - A subagent raising an API error is ignored
 

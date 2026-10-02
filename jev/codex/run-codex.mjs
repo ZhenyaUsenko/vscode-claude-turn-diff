@@ -2,6 +2,7 @@ import { findRolloutFile } from '../lib/codex.mjs'
 import { JEV_DIR, REPO_DIR, RUNS_DIR } from '../lib/paths.mjs'
 import { buildPrompt } from '../lib/prompt.mjs'
 import { formatSummary, recordRun } from '../lib/record.mjs'
+import { keepAgentFiles, removeRunCode } from '../lib/run-files.mjs'
 import { prepareSuiteWorkspace } from '../lib/suite-workspace.mjs'
 import { spawn } from 'node:child_process'
 import { closeSync, copyFileSync, cpSync, lstatSync, mkdirSync, mkdtempSync, openSync, readdirSync } from 'node:fs'
@@ -261,7 +262,7 @@ const keepArtifacts = ({ run, layout }) => {
   const keptScratchDir = layout.scratchDir && join(RUNS_DIR, run.id, 'scratch')
   const keptPromptFile = join(RUNS_DIR, run.id, basename(layout.promptFile))
 
-  if (keptScratchDir) cpSync(layout.scratchDir, keptScratchDir, { recursive: true, force: true })
+  if (keptScratchDir) keepAgentFiles(layout.scratchDir, keptScratchDir)
 
   copyFileSync(layout.promptFile, keptPromptFile)
   writeJson(runFile, { ...kept, scratchDir: keptScratchDir, promptFile: keptPromptFile, codeDir: layout.codeDir })
@@ -276,6 +277,8 @@ const recordLaunched = (launched, state, settings) => {
     const rolloutFile = findRolloutFile(settings.codexHome, readThreadId(launched.eventsFile))
     const record = recordRun(launched.run.id, { codex: { rolloutFile, eventsFile: launched.eventsFile } })
     const usage = record.cli.fiveHourUtilization
+
+    if (launched.run.approach === 'closed') removeRunCode(launched.run.id)
 
     console.log(`${formatSummary(record)} (exit ${launched.exitCode}, codex 5h ${usage})`)
 
