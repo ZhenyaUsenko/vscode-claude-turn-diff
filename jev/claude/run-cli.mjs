@@ -1,6 +1,7 @@
 import { JEV_DIR, REPO_DIR, RUNS_DIR } from '../lib/paths.mjs'
 import { buildPrompt } from '../lib/prompt.mjs'
 import { formatSummary, recordRun } from '../lib/record.mjs'
+import { keepAgentFiles, removeRunCode } from '../lib/run-files.mjs'
 import { prepareSuiteWorkspace } from '../lib/suite-workspace.mjs'
 import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
@@ -171,7 +172,7 @@ const keepOpenArtifacts = ({ run, layout }) => {
   const keptScratchDir = join(RUNS_DIR, run.id, 'scratch')
   const keptPromptFile = join(RUNS_DIR, run.id, basename(layout.promptFile))
 
-  cpSync(layout.scratchDir, keptScratchDir, { recursive: true, force: true })
+  keepAgentFiles(layout.scratchDir, keptScratchDir)
   copyFileSync(layout.promptFile, keptPromptFile)
   writeJson(runFile, { ...kept, scratchDir: keptScratchDir, promptFile: keptPromptFile, codeDir: layout.codeDir })
 }
@@ -186,6 +187,8 @@ const recordLaunched = (launched, state) => {
     const record = recordRun(launched.run.id, source)
     const { cli } = record
     const extras = `exit ${launched.exitCode}, ${cli.speed}, $${cli.costUsd?.toFixed(2)}, 5h ${cli.fiveHourUtilization}`
+
+    if (launched.run.approach === 'closed') removeRunCode(launched.run.id)
 
     console.log(`${formatSummary(record)} (${extras})`)
 
