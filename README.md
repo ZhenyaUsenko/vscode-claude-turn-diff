@@ -112,6 +112,8 @@ A diff you already have open keeps working after a later turn replaces it, becau
 
 - Binary files are not shown. The multi-file diff editor resolves both sides through VS Code's text model service, so a binary entry cannot render, and there is no image diff to fall back on.
 
+- Files over 50 MB are not shown either. They are not read at all, and the rest of the turn's changes are listed as usual.
+
 - A turn you interrupt opens no diff by itself, because Claude Code runs no `Stop` hook for it. Run **Turn Diff: Show last turn changes** to finish it off and get its diff. Do that before your next message, which discards the turn's baseline.
 
 - A turn whose end never reached the extension, because the window was closed or reloading just as it finished, looks the same as one still working. Asking for the diff shows it as changes so far, and your next prompt in that chat carries it on, so its work lands in that prompt's diff. A crash or a connection lost mid-reply ends the same way.

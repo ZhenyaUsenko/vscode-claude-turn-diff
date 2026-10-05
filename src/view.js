@@ -24,7 +24,7 @@ const getResources = (project, manifest) => {
 
   if (!manifest || !existsSync(beforeImagesDir)) return resources
 
-  const beforeUriParams = { scheme: SCHEME, query: manifest.ts }
+  const beforeUriParams = { scheme: SCHEME, query: manifest.id }
 
   for (const { beforeFile, afterFile } of manifest.changes) {
     const beforeImageFile = join(beforeImagesDir, beforeFile)
@@ -70,7 +70,7 @@ export const showLastTurn = async (params) => {
 const readBeforeImage = (uri, getImageData) => {
   const project = getCurrentProject()
 
-  if (readManifest(project)?.ts !== uri.query) throw FileSystemError.FileNotFound(uri)
+  if (readManifest(project)?.id !== uri.query) throw FileSystemError.FileNotFound(uri)
 
   const imageData = getImageData(join(getBeforeImagesDir(project), uri.fsPath))
 

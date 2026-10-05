@@ -97,7 +97,7 @@ Each snapshot gets its own temporary directory for the copy. A look at a running
 
 The copy must keep the source's mtime. Git decides whether an index entry needs its content re-read by comparing the entry's mtime with the index file's own. A copy with a fresh timestamp makes every entry look safely older, so git trusts its cached stat data. The symptom was an edit that left a file the same size, made in the same second as the last commit, going unreported, and only when the snapshot happened a second or more later. That is why it showed up as a flaky test.
 
-Untracked files over `MAX_UNTRACKED_BYTES` are excluded from both snapshots, so they cancel out and never appear. Tracked files are never size-filtered: git only re-hashes those whose stat info changed, whereas untracked files are hashed from scratch on every snapshot.
+Untracked files over `MAX_UNTRACKED_BYTES` are excluded from both snapshots, so they cancel out and never appear. The rest reach `git add` on stdin rather than as arguments. A command line holds about 1 MB on macOS, so as arguments a repository with some twenty thousand untracked files would make every `arm` fail with `E2BIG`, and its turns would get no diff at all. They are read as literal paths, so a name containing `*`, `?` or `[` is not taken for a pattern. Tracked files are never size-filtered: git only re-hashes those whose stat info changed, whereas untracked files are hashed from scratch on every snapshot.
 
 ## Ending a turn
 
@@ -119,7 +119,9 @@ An entry whose contents are unchanged is dropped only when its two paths match a
 
 An entry with nothing on either side is dropped as well. `arm` records a path outside every repository before the tool runs, so that a file which does not exist yet can still show up as created. A write that is then refused or fails leaves that path with neither a before-image nor a file. Kept as an entry, it made a turn that changed nothing publish a diff with nothing in it, which replaced the previous turn's diff.
 
-A repository's before-images are read with one `git cat-file --batch`. Spawning git costs about 10 ms, so reading them one file at a time would make ending a turn scale with the number of files changed; fifty files would spend half a second on process startup alone. As it is, a turn spawns the same handful of git processes whatever it touched: nine, or up to eleven when there are untracked files to stage. Input is NUL-terminated (`-z`) so paths containing newlines survive, matching the `-z` used to list them.
+A repository's before-images are read with one `git cat-file --batch`, after one `git cat-file --batch-check` that prints only their sizes. Spawning git costs about 10 ms, so reading them one file at a time would make ending a turn scale with the number of files changed; fifty files would spend half a second on process startup alone. As it is, a turn spawns the same handful of git processes whatever it touched: ten, or up to twelve when there are untracked files to stage. Input is NUL-terminated (`-z`) so paths containing newlines survive, matching the `-z` used to list them.
+
+The sizes come first so that one large file cannot take the rest down with it. A file over `MAX_DIFF_BYTES` on either side is left out, like a binary, and its large side is never read. That is 50 MB, the default of VS Code's `diffEditor.maxFileSize`, above which the editor computes no diff anyway. No git command has a limit on its output. A limit would apply to a whole repository's before-images at once, so passing it would lose every change in that repository, silently.
 
 Binary files are skipped rather than listed. The multi-diff editor resolves both sides through the text model service, so a binary entry cannot render: it would be counted in the title and missing from the view. Both sides are sniffed for a NUL byte within `BINARY_SNIFF_BYTES`, git's own heuristic, at the one point every entry passes through. Detecting them per collector left the other collector blind: a binary outside every repository was counted in the title and then rendered as nothing.
 
@@ -139,13 +141,13 @@ clear and write beforeImages/
 rename the new manifest into place
 ```
 
-Without the removal first there is a window where a superseded tab's stamp still matches the old manifest while the bytes underneath have already been replaced, and it would be handed the new turn's before-image for the old turn's diff. Removing it costs nothing: nothing watches the file, and a read landing in that window finds no manifest rather than the wrong bytes.
+Without the removal first there is a window where a superseded tab's id still matches the old manifest while the bytes underneath have already been replaced, and it would be handed the new turn's before-image for the old turn's diff. Removing it costs nothing: nothing watches the file, and a read landing in that window finds no manifest rather than the wrong bytes.
 
 `beforeImages/` is recreated even when every change is an addition and nothing is written into it. Its absence means the images were reclaimed; a missing file inside it means there was no before. Without that, a reclaimed turn would render every modified file as newly created.
 
 The manifest is written to a temporary file and renamed into place. The rename is atomic, so a read landing mid-publish sees the old manifest or the new one, never half of one. The before-image provider reads it on every request.
 
-`running` on the manifest records what the turn was when it was published, so the editor's title describes the diff on screen rather than the state of the moment. Stamps are milliseconds: a look and the end of the same turn usually fall within one second, and at second granularity they would share a `ts`, so the finished diff would read as already rendered and never open.
+`running` on the manifest records what the turn was when it was published, so the editor's title describes the diff on screen rather than the state of the moment. The manifest's `id` is random. It is only ever compared for equality, in a before-image's URI and in the provider's check, so all it has to be is unique, including between a look and the end of the same turn, which can run at once.
 
 Nothing watches the manifest. The window that publishes is the window that renders. A turn reports `{ published: true }` back through the request it arrived on and the extension opens the diff, while the command publishes and renders in one go. That report is what keeps a turn that changed nothing from reopening the diff it left alone. Watching the file instead would decouple the two at the cost of waiting about 12 ms for an event carrying news the publisher already had. The server takes a callback rather than calling the renderer, so it stays a transport: it knows a turn published, not what anyone does about it.
 
@@ -185,7 +187,7 @@ The diff of a finished turn is kept as a regular tab. `vscode.changes` opens a p
 
 The multi-diff editor decides a file was renamed by comparing `originalUri.path !== modifiedUri.path`. Pointing `original` straight at the before-image on disk struck through every filename and stamped it `R`. The before side is served through a scheme that keeps the real path verbatim, so the two sides differ only where a file actually moved, which is exactly when a rename should show.
 
-The turn's stamp goes in the URI query, and the provider serves an image only while the stamp matches the published manifest. That gives every turn a distinct URI. Without it the URI would be the file's own path with the scheme swapped, identical every turn, and VS Code may serve the text model it cached for the previous turn, which renders as no change at all. Since every turn writes into the same `beforeImages/`, that comparison is also the only thing keeping a superseded tab off the new turn's contents.
+The manifest's id goes in the URI query, and the provider serves an image only while that id matches the published manifest. That gives every turn a distinct URI. Without it the URI would be the file's own path with the scheme swapped, identical every turn, and VS Code may serve the text model it cached for the previous turn, which renders as no change at all. Since every turn writes into the same `beforeImages/`, that comparison is also the only thing keeping a superseded tab off the new turn's contents.
 
 The provider answers from the manifest, not from anything a render left behind. VS Code restores the multi-diff editor across a restart, but the extension host that rendered it is gone, so a cache filled at render time no longer holds the before-images. Every left side came back empty while the `A`/`M`/`D` badges, restored with the editor, still looked right.
 
@@ -201,7 +203,7 @@ Firing `onDidChange` at registration is the tempting fix for a restored editor t
 
 VS Code only watches what is inside the workspace, so its in-memory copy of a file outside it lags behind disk until the window is refocused or the file is opened in an editor. VS Code makes that copy when Claude Code's `Read` reads the file, seconds before the `Edit` that follows, and Claude Code then writes to disk directly. The copy keeps the pre-edit text, which is exactly what the before-image holds, and the diff renders as no change at all.
 
-Registering a `FileSystemWatcher` on such a path makes the file service report the write, which is what makes the editor reload. It is registered in `arm`, before the tool writes, and it still loses a race: `createFileSystemWatcher` returns at once while the watch starts a few processes away, and Claude Code writes within milliseconds of the hook replying. A write that lands before the watch is live is never reported. So a second after the watcher is created, the file's own access and modification times are written back onto it. Nothing about the file changes, but the watcher, live by then, reports it, and the copy reloads. A write slow enough to come after that nudge, such as one waiting on a permission prompt, lands after the watch is live and is reported itself. Holding the reply in `arm` until the watch is live would work too, but it delays every first edit of an outside file by a guessed amount.
+Registering a `FileSystemWatcher` on such a path makes the file service report the write, which is what makes the editor reload. It is registered in `arm`, before the tool writes, and it still loses a race: `createFileSystemWatcher` returns at once while the watch starts a few processes away, and Claude Code writes within milliseconds of the hook replying. A write that lands before the watch is live is never reported. So a second after the watcher is created, the file's own access and modification times are written back onto it, exact to within the microsecond or so that `utimes` can represent. Its contents do not change, but the watcher, live by then, reports it, and the copy reloads. A write slow enough to come after that nudge, such as one waiting on a permission prompt, lands after the watch is live and is reported itself. Holding the reply in `arm` until the watch is live would work too, but it delays every first edit of an outside file by a guessed amount.
 
 VS Code watches the file's directory, not the file, so a live watcher keeps every file in that directory fresh.
 
@@ -219,7 +221,9 @@ The advert is written to a temporary file and renamed into place, like the manif
 
 ## Settings
 
-`hooksMatchSpec` compares our hooks against `HOOK_SPEC` exactly rather than checking that something of ours is present. Changing a matcher, a timeout or a command has to re-prompt, or everyone keeps running whatever they registered first.
+`hooksMatchSpec` compares the groups holding our hooks against `HOOK_SPEC` exactly rather than checking that something of ours is present. Changing a matcher, a timeout or a command has to re-prompt, or everyone keeps running whatever they registered first. It goes through every event in the file as well as the spec's, so a hook of ours left under an event a later version stopped registering re-prompts too, and registering again removes it.
+
+Removing our hooks takes out only our own entries and leaves the rest of each group in place. Claude Code's `/hooks` menu is read-only, so a command lands in one of our groups only when someone edits the file, by hand or by asking Claude, and removing whole groups would delete that command along with ours without a word. A shared group still fails the comparison above, so the invitation shows once. Registering again moves our entries into a group of their own and leaves theirs where it was.
 
 `end` is registered for `StopFailure` as well as `Stop`. A turn cut short by an API error never reaches `Stop`. `end` publishes it as still running and keeps it armed, as described under "A stop is not always the end of a turn".
 
@@ -248,6 +252,8 @@ The `Path`/`File` boundary carries real weight. Git reports repo-relative paths 
 Some words mean exactly one thing each. `change` is a manifest record, `snapshot` is a `snapshots.tsv` row, `blob` is git object content and never our own copy of a file, `image` is a published before-image. A repository root is a `repoDir`, never `repository`, `repo` or `root`. `workspaceDirs` holds our own path strings, never VS Code's `WorkspaceFolder` objects.
 
 Verbs follow the return type: `read*` gives contents, `get*` gives an attribute or a derived value, `list*` gives a collection. `readFile`, `getFileSize`, `listRepos`.
+
+`git` in `utils/git.js` is the one function named by a noun, so each call reads as the command it runs: `git(repoDir, 'write-tree')`.
 
 Nothing outside `utils/files.js` calls an fs read that can throw, so callers branch on a value instead of wrapping every read. A failure is `undefined` for a single value and `[]` for a list.
 

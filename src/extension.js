@@ -27,12 +27,7 @@ export const activate = (context) => {
     commands.registerCommand('claudeTurnDiff.uninstallHooks', removeHooks),
   )
 
-  try {
-    installHookScript(context)
-  } catch (error) {
-    logError(`could not install the hook script: ${error.message}`)
-  }
-
+  installHookScript(context)
   promptToRegisterHooks(context)
 }
 

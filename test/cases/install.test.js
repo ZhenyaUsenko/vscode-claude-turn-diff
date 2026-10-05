@@ -1,4 +1,4 @@
-import { hooksMatchSpec } from '../../src/install/settings.js'
+import { applyHookSpec, hooksMatchSpec, stripOurHooks } from '../../src/install/settings.js'
 import { HOOK_SPEC } from '../../src/install/spec.js'
 import { check } from '../utils/checks.js'
 import assert from 'node:assert'
@@ -47,6 +47,22 @@ check('an entry that no longer matches the spec does not', () => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+check('our hook under an event the spec no longer has does not', () => {
+  const withDroppedEvent = getRegisteredSettings()
+
+  withDroppedEvent.hooks.SessionStart = getRegisteredSettings().hooks.UserPromptSubmit
+
+  const reason = 'a later version may stop registering an event, and only registering again removes what is left'
+
+  assert.strictEqual(hooksMatchSpec(withDroppedEvent), false, reason)
+
+  applyHookSpec(withDroppedEvent)
+
+  assert.strictEqual(hooksMatchSpec(withDroppedEvent), true, 'registering again removes it')
+})
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 check('someone else\'s hooks on the same events are ignored', () => {
   const withForeignHooks = getRegisteredSettings()
 
@@ -54,4 +70,26 @@ check('someone else\'s hooks on the same events are ignored', () => {
   withForeignHooks.hooks.Lint = [{ hooks: [{ type: 'command', command: 'eslint' }] }]
 
   assert.strictEqual(hooksMatchSpec(withForeignHooks), true)
+})
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+check('removing or re-registering our hooks keeps someone else\'s hook in a shared group', () => {
+  const removed = getRegisteredSettings()
+  const reregistered = getRegisteredSettings()
+  const foreignHook = { type: 'command', command: 'prettier --write' }
+
+  removed.hooks.PreToolUse[0].hooks.push(foreignHook)
+  reregistered.hooks.PreToolUse[0].hooks.push(foreignHook)
+  reregistered.hooks.PreToolUse[0].hooks[0].timeout = 5
+
+  stripOurHooks(removed)
+  applyHookSpec(reregistered)
+
+  const sharedGroup = { hooks: [foreignHook], matcher: 'Edit|Write|MultiEdit|NotebookEdit|Bash' }
+  const writtenHooks = JSON.parse(JSON.stringify(removed.hooks))
+
+  assert.deepStrictEqual(writtenHooks, { PreToolUse: [sharedGroup] }, 'only our entry leaves the group')
+  assert.deepStrictEqual(reregistered.hooks.PreToolUse[0], sharedGroup, 'their entry stays where it was')
+  assert.strictEqual(hooksMatchSpec(reregistered), true, 'and ours is registered afresh')
 })

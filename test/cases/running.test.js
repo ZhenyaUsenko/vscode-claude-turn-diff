@@ -220,7 +220,7 @@ check('looking at a running turn keeps watching the files outside the workspace'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-check('a look and the end of the same turn are told apart within one second', async () => {
+check('a look and the end of the same turn publish under different ids', async () => {
   const repoDir = seedRepo()
   const project = getProjectKey(repoDir)
 
@@ -230,13 +230,13 @@ check('a look and the end of the same turn are told apart within one second', as
 
   await render([repoDir])
 
-  const lookedAt = readManifest(project).ts
+  const lookId = readManifest(project).id
 
   await handleTurn('end', project, { session_id: 'chat' }, [repoDir])
 
-  const reason = 'a repeated stamp reads as already rendered, so the finished diff would never open'
+  const reason = 'an id is only ever compared for equality, so no two publishes may share one'
 
-  assert.notStrictEqual(readManifest(project).ts, lookedAt, reason)
+  assert.notStrictEqual(readManifest(project).id, lookId, reason)
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

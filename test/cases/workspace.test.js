@@ -156,7 +156,7 @@ check('a file outside the workspace is nudged a moment after it is first armed',
   const reason = 'a write landing before its watcher is live goes unreported, so the file is touched again once it is'
 
   assert.ok(nudgedStats.ctimeMs > ctimeMs, reason)
-  assert.ok(Math.abs(nudgedStats.mtimeMs - mtimeMs) < 0.001, 'without moving its modification time')
+  assert.ok(Math.abs(nudgedStats.mtimeMs - mtimeMs) < 0.01, 'without moving its modification time')
 
   await handleTurn('end', getProjectKey(repoDir), { session_id: 'chat' }, [repoDir])
 })

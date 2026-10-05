@@ -104,10 +104,10 @@ check('a before-image resolves with no render to prime it, as after a restart', 
   resetStub([repoDir])
   registerBeforeImageProvider()
 
-  const { ts, changes } = readManifest(getProjectKey(repoDir))
+  const { id, changes } = readManifest(getProjectKey(repoDir))
   const { beforeFile } = changes[0]
 
-  const beforeUri = Uri.file(beforeFile).with({ scheme: 'claude-before', query: ts })
+  const beforeUri = Uri.file(beforeFile).with({ scheme: 'claude-before', query: id })
   const restartReason = 'a restored editor asks for its uri directly, so the provider cannot rely on a render'
 
   assert.strictEqual(readContents(beforeUri), 'before\n', restartReason)

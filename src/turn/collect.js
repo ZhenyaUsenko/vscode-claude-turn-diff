@@ -1,22 +1,20 @@
 import { getBeforeImagesDir, getSnapshotsFile, getTouchCopiesDir, getTouchListFile } from '../store/paths.js'
-import { compareFilesInTreeOrder, outputFile, readFile, readLines, removeRecursive } from '../utils/files.js'
-import { listChangedPaths, readBlobContents, snapshotTree } from '../utils/git.js'
+import {
+  compareFilesInTreeOrder, getFileSize, isBinary, outputFile, readFile, readLines, removeRecursive,
+} from '../utils/files.js'
+import { listChangedPaths, readBlobContents, readBlobSizes, snapshotTree } from '../utils/git.js'
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const BINARY_SNIFF_BYTES = 8000
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-const isBinary = (contents) => {
-  return contents?.subarray(0, BINARY_SNIFF_BYTES).includes(0) ?? false
-}
+const MAX_DIFF_BYTES = 50 * 1024 * 1024
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const addChange = (collector, beforeFile, afterFile, beforeContents) => {
+  if (getFileSize(afterFile) > MAX_DIFF_BYTES) return
+
   const afterContents = readFile(afterFile)
 
   if (beforeContents == null && afterContents == null) return
@@ -41,17 +39,20 @@ const collectRepoChanges = async (project, collector) => {
     if (!treeAfter || treeAfter === treeBefore) continue
 
     const changedPaths = await listChangedPaths(repoDir, treeBefore, treeAfter)
+    const beforeSizes = await readBlobSizes(repoDir, treeBefore, changedPaths)
 
-    changedPaths.sort((a, b) => compareFilesInTreeOrder(a.afterPath, b.afterPath))
+    if (!beforeSizes) continue
 
-    const beforePaths = changedPaths.map((changedPath) => changedPath.beforePath)
+    const candidatePaths = changedPaths.filter((_, i) => beforeSizes[i] <= MAX_DIFF_BYTES)
 
-    const blobContents = await readBlobContents(repoDir, treeBefore, beforePaths)
+    candidatePaths.sort((a, b) => compareFilesInTreeOrder(a.afterPath, b.afterPath))
+
+    const blobContents = await readBlobContents(repoDir, treeBefore, candidatePaths)
 
     if (!blobContents) continue
 
-    changedPaths.forEach(({ beforePath, afterPath }, index) => {
-      addChange(collector, join(repoDir, beforePath), join(repoDir, afterPath), blobContents[index])
+    candidatePaths.forEach(({ beforePath, afterPath }, i) => {
+      addChange(collector, join(repoDir, beforePath), join(repoDir, afterPath), blobContents[i])
     })
   }
 }
@@ -62,9 +63,11 @@ const collectOutsideChanges = (project, collector) => {
   const touchedFiles = readLines(getTouchListFile(project)).sort(compareFilesInTreeOrder)
 
   for (const touchedFile of touchedFiles) {
-    const beforeContents = readFile(join(getTouchCopiesDir(project), touchedFile))
+    const copiedFile = join(getTouchCopiesDir(project), touchedFile)
 
-    addChange(collector, touchedFile, touchedFile, beforeContents)
+    if (getFileSize(copiedFile) > MAX_DIFF_BYTES) continue
+
+    addChange(collector, touchedFile, touchedFile, readFile(copiedFile))
   }
 }
 
@@ -88,7 +91,5 @@ export const writeBeforeImages = (project, images) => {
   removeRecursive(beforeImagesDir)
   mkdirSync(beforeImagesDir, { recursive: true })
 
-  for (const { beforeFile, beforeContents } of images) {
-    outputFile(join(beforeImagesDir, beforeFile), beforeContents)
-  }
+  for (const image of images) outputFile(join(beforeImagesDir, image.beforeFile), image.beforeContents)
 }

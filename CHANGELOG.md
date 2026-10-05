@@ -18,6 +18,12 @@
 
 - Fixed: a turn whose only change was a file outside every repository that Claude tried to create but never did, because you refused the write or it failed, replaced the previous turn's diff with an empty one. Nothing opened, but the last diff was gone, and a look at a running turn showed nothing instead of the last finished turn.
 
+- Fixed: when the files a turn changed in one repository came to more than 64 MB before the turn, every change in that repository was left out of the diff. Now only a file over 50 MB is left out, the same way a binary is, since VS Code computes no diff above that size anyway. The rest are listed as usual.
+
+- Fixed: an untracked file with `*`, `?` or `[` in its name was read by git as a pattern, so it could pull in other files it matched, including gitignored ones, which then appeared in the diff whenever they changed.
+
+- Fixed: removing the hooks, or registering them again after an update, also deleted any other command that had been added to the same hook group as ours. Only our own entries are touched now.
+
 ## 0.2.0
 
 The capture logic moved out of the bash hook and into the extension, and each project now keeps its own diff, so several VS Code windows no longer overwrite each other's. You can look at a turn while it is still running. A turn that was interrupted, or that ended while the window was closed, can still be shown afterwards, and one cut short by an API error gets a diff too. Moved files show as renames, files are listed in the explorer's order, and several cases where the diff came out empty, stale or incomplete are fixed.

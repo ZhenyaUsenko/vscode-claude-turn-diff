@@ -132,6 +132,44 @@ check('untracked files over the size cap are excluded from both snapshots', asyn
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+check('a file too large to diff is left out, and the rest of its repository is still listed', async () => {
+  const repoDir = createRepo()
+  const hugeSize = 51 * 1024 * 1024
+
+  outputFile(join(repoDir, 'huge.txt'), 'x'.repeat(hugeSize))
+  outputFile(join(repoDir, 'small.txt'), 'one\n')
+  commitAll(repoDir)
+
+  await runTurn(repoDir, 'chat', [repoDir], () => {
+    outputFile(join(repoDir, 'huge.txt'), 'y'.repeat(hugeSize))
+    outputFile(join(repoDir, 'small.txt'), 'two\n')
+  })
+
+  const reason = 'one large file must not take the repository\'s other changes down with it'
+
+  assert.deepStrictEqual(readChangedFileNames(repoDir), ['small.txt'], reason)
+})
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+check('a turn is captured however many untracked files the repository holds', async () => {
+  const repoDir = createRepo()
+  const longDir = join(repoDir, 'a'.repeat(200), 'b'.repeat(200))
+
+  outputFile(join(repoDir, 'seed.txt'), 'one\n')
+  commitAll(repoDir)
+
+  for (let index = 0; index < 4000; index++) outputFile(join(longDir, `${'c'.repeat(140)}-${index}.txt`), 'x\n')
+
+  await runTurn(repoDir, 'chat', [repoDir], () => outputFile(join(repoDir, 'added.txt'), 'new\n'))
+
+  const reason = 'their paths together are longer than a command line allows, so they have to reach git another way'
+
+  assert.deepStrictEqual(readChangedFileNames(repoDir), ['added.txt'], reason)
+})
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 check('a same-size edit is still seen when the snapshot lands a second later', async () => {
   const repoDir = createRepo()
   const project = getProjectKey(repoDir)

@@ -6,34 +6,35 @@ import { join } from 'node:path'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const MAX_OUTPUT_BYTES = 64 * 1024 * 1024
-
 const MAX_UNTRACKED_BYTES = 1024 * 1024
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const run = (args, env) => {
+const git = (dir, command, { env, input, encoding = 'utf8' } = {}) => {
   return new Promise((resolve) => {
-    const options = { env: { ...process.env, ...env }, maxBuffer: MAX_OUTPUT_BYTES, encoding: 'buffer' }
+    const args = ['-C', dir, ...command.split(' ')]
 
-    execFile('git', args, options, (error, stdout) => resolve(error ? null : stdout))
+    const options = { env: { ...process.env, ...env }, maxBuffer: Infinity, encoding }
+
+    const childProcess = execFile('git', args, options, (error, stdout) => resolve(error ? null : stdout))
+
+    childProcess.stdin.on('error', () => {})
+    childProcess.stdin.end(input)
   })
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const runText = async (args, env) => {
-  const output = await run(args, env)
+const addUntrackedFiles = async (repoDir, { env }) => {
+  const output = await git(repoDir, 'ls-files -o --exclude-standard -z', { env })
 
-  return output?.toString('utf8').trim()
-}
+  const untrackedPaths = output?.split('\0').filter(Boolean) ?? []
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  const input = untrackedPaths.filter((path) => getFileSize(join(repoDir, path)) <= MAX_UNTRACKED_BYTES).join('\0')
 
-const runNullSeparated = async (args, env) => {
-  const output = await run(args, env)
+  if (!input) return
 
-  return output?.toString('utf8').split('\0').filter(Boolean) ?? []
+  await git(repoDir, '--literal-pathspecs add -f --pathspec-from-file=- --pathspec-file-nul', { env, input })
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -42,11 +43,11 @@ export const listRepos = async (workspaceDirs) => {
   const gitDirByRepoDir = new Map()
 
   for (const workspaceDir of workspaceDirs) {
-    const output = await runText(['-C', workspaceDir, 'rev-parse', '--show-toplevel', '--absolute-git-dir'])
+    const output = await git(workspaceDir, 'rev-parse --show-toplevel --absolute-git-dir')
 
     if (output == null) continue
 
-    const [repoDir, gitDir] = output.split('\n')
+    const [repoDir, gitDir] = output.trim().split('\n')
 
     gitDirByRepoDir.set(repoDir, gitDir)
   }
@@ -56,58 +57,82 @@ export const listRepos = async (workspaceDirs) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const copyPreservingMtime = (source, destination) => {
-  copyFileSync(source, destination)
-
-  const { atime, mtime } = statSync(source)
-
-  utimesSync(destination, atime, mtime)
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-const listSmallUntrackedFiles = async (repoDir, env) => {
-  const listingArgs = ['-C', repoDir, 'ls-files', '-o', '--exclude-standard', '-z']
-
-  const untrackedPaths = await runNullSeparated(listingArgs, env)
-
-  return untrackedPaths.filter((untrackedPath) => {
-    return getFileSize(join(repoDir, untrackedPath)) <= MAX_UNTRACKED_BYTES
-  })
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 export const snapshotTree = async (repoDir, gitDir) => {
   const scratchDir = mkdtempSync(join(tmpdir(), 'turn-diff-'))
-  const indexCopyFile = join(scratchDir, 'index')
 
-  try { copyPreservingMtime(join(gitDir, 'index'), indexCopyFile) } catch { return void removeRecursive(scratchDir) }
+  try {
+    const indexFile = join(gitDir, 'index')
+    const indexCopyFile = join(scratchDir, 'index')
 
-  const env = { GIT_INDEX_FILE: indexCopyFile }
+    const { atime, mtime } = statSync(indexFile)
 
-  await run(['-C', repoDir, 'add', '-u'], env)
+    copyFileSync(indexFile, indexCopyFile)
+    utimesSync(indexCopyFile, atime, mtime)
 
-  const untrackedPaths = await listSmallUntrackedFiles(repoDir, env)
+    await git(repoDir, 'add -u', { env: { GIT_INDEX_FILE: indexCopyFile } })
 
-  if (untrackedPaths.length) await run(['-C', repoDir, 'add', '-f', '--', ...untrackedPaths], env)
+    await addUntrackedFiles(repoDir, { env: { GIT_INDEX_FILE: indexCopyFile } })
 
-  const tree = await runText(['-C', repoDir, 'write-tree'], env)
+    const output = await git(repoDir, 'write-tree', { env: { GIT_INDEX_FILE: indexCopyFile } })
 
-  removeRecursive(scratchDir)
-
-  return tree
+    return output?.trim()
+  } catch {
+    return undefined
+  } finally {
+    removeRecursive(scratchDir)
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const splitBlobContents = (output, expectedCount) => {
+export const listChangedPaths = async (repoDir, treeBefore, treeAfter) => {
+  let offset = 0
+
+  const changedPaths = []
+
+  const output = await git(repoDir, `diff --name-status -z -M ${treeBefore} ${treeAfter}`)
+
+  const outputRecords = output?.split('\0').filter(Boolean) ?? []
+
+  while (offset < outputRecords.length) {
+    const afterOffset = outputRecords[offset].startsWith('R') ? 2 : 1
+
+    changedPaths.push({ beforePath: outputRecords[offset + 1], afterPath: outputRecords[offset + afterOffset] })
+
+    offset += afterOffset + 1
+  }
+
+  return changedPaths
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const readBlobSizes = async (repoDir, treeBefore, changedPaths) => {
+  const input = changedPaths.map((paths) => `${treeBefore}:${paths.beforePath}\0`).join('')
+
+  const output = await git(repoDir, 'cat-file --batch-check -z', { input })
+
+  const headers = output?.split('\n').slice(0, changedPaths.length)
+
+  return headers?.map((header) => header.endsWith(' missing') ? 0 : +header.slice(header.lastIndexOf(' ') + 1))
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const readBlobContents = async (repoDir, treeBefore, changedPaths) => {
   let offset = 0
 
   const blobContents = []
 
-  while (blobContents.length < expectedCount) {
+  const input = changedPaths.map((paths) => `${treeBefore}:${paths.beforePath}\0`).join('')
+
+  const output = await git(repoDir, 'cat-file --batch -z', { input, encoding: 'buffer' })
+
+  if (output == null) return undefined
+
+  while (blobContents.length < changedPaths.length) {
     const endOfHeader = output.indexOf(0x0a, offset)
+
     const header = output.toString('utf8', offset, endOfHeader)
 
     if (header.endsWith(' missing')) {
@@ -124,47 +149,4 @@ const splitBlobContents = (output, expectedCount) => {
   }
 
   return blobContents
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-const splitChangedPaths = (nameStatusRecords) => {
-  let offset = 0
-
-  const changedPaths = []
-
-  while (offset < nameStatusRecords.length) {
-    const renamed = nameStatusRecords[offset].startsWith('R') || nameStatusRecords[offset].startsWith('C')
-
-    const beforePath = nameStatusRecords[offset + 1]
-    const afterPath = renamed ? nameStatusRecords[offset + 2] : beforePath
-
-    changedPaths.push({ beforePath, afterPath })
-
-    offset += renamed ? 3 : 2
-  }
-
-  return changedPaths
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export const listChangedPaths = async (repoDir, treeBefore, treeAfter) => {
-  const diffArgs = ['-C', repoDir, 'diff', '--name-status', '-z', '-M', treeBefore, treeAfter]
-
-  return splitChangedPaths(await runNullSeparated(diffArgs))
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export const readBlobContents = (repoDir, tree, treePaths) => {
-  return new Promise((resolve) => {
-    const options = { maxBuffer: MAX_OUTPUT_BYTES, encoding: 'buffer' }
-
-    const resolveContents = (error, stdout) => resolve(error ? null : splitBlobContents(stdout, treePaths.length))
-
-    const child = execFile('git', ['-C', repoDir, 'cat-file', '--batch', '-z'], options, resolveContents)
-
-    child.stdin.end(treePaths.map((treePath) => `${tree}:${treePath}\0`).join(''))
-  })
 }

@@ -5,12 +5,6 @@ import { copyFileSync, existsSync } from 'node:fs'
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const isOurHook = (hook) => {
-  return typeof hook?.command === 'string' && hook.command.includes(HOOK_MARKER)
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 export const readSettings = () => {
   const settingsContents = readFile(SETTINGS_FILE, 'utf8')
 
@@ -28,29 +22,31 @@ export const writeSettings = (settings) => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const hooksMatchSpec = (settings) => {
-  return Object.entries(HOOK_SPEC).every(([event, groups]) => {
-    const ourGroups = settings.hooks?.[event]?.filter((group) => group.hooks?.some(isOurHook)) ?? []
+  for (const event in { ...settings.hooks, ...HOOK_SPEC }) {
+    const groups = settings.hooks?.[event]
 
-    return JSON.stringify(ourGroups) === JSON.stringify(groups)
-  })
+    const ourGroups = groups?.filter((group) => group.hooks.some((hook) => hook.command?.includes(HOOK_MARKER)))
+
+    if (JSON.stringify(ourGroups ?? []) !== JSON.stringify(HOOK_SPEC[event] ?? [])) return false
+  }
+
+  return true
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const stripOurHooks = (settings) => {
-  const hooks = settings.hooks
+  for (const event in settings.hooks) {
+    const groups = settings.hooks[event]
 
-  if (!hooks) return
+    const updatedGroups = groups.flatMap((group) => {
+      const otherHooks = group.hooks.filter((hook) => !hook.command?.includes(HOOK_MARKER))
 
-  for (const event of Object.keys(hooks)) {
-    if (!Array.isArray(hooks[event])) continue
+      return otherHooks.length ? [{ ...group, hooks: otherHooks }] : []
+    })
 
-    hooks[event] = hooks[event].filter((group) => !group.hooks?.some(isOurHook))
-
-    if (!hooks[event].length) delete hooks[event]
+    settings.hooks[event] = updatedGroups.length ? updatedGroups : undefined
   }
-
-  if (!Object.keys(hooks).length) delete settings.hooks
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -60,7 +56,9 @@ export const applyHookSpec = (settings) => {
 
   settings.hooks ??= {}
 
-  for (const [event, groups] of Object.entries(HOOK_SPEC)) {
-    settings.hooks[event] = settings.hooks[event]?.concat(groups) ?? [...groups]
+  for (const event in HOOK_SPEC) {
+    settings.hooks[event] ??= []
+
+    settings.hooks[event].push(...HOOK_SPEC[event])
   }
 }
