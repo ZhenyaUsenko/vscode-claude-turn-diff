@@ -54,6 +54,8 @@ Tests are grouped by area. Each test is a heading holding its id in backticks, m
 
 - Changes are listed in the same order the explorer's tree shows them
 
+- Outside changes are listed after repository changes
+
 - The order of a moved file is determined by its new path
 
 ## Install
@@ -102,75 +104,66 @@ Tests are grouped by area. Each test is a heading holding its id in backticks, m
 
 ## Server
 
-- Re-advertising in unchanged workspace leaves the advert untouched
+- A window adversises under the first project's folder
 
-- An emty window advertises under the home directory
+- An empty window advertises under the home directory
 
-- If an advert is removed, the window writes it again when it re-advertises
+- Moving to another project removes the old advert
 
-- Shutting down a server removes its advert
+- Moving to another project writes the new advert
+
+- Refocussing a window writes the advert if the current one is different or missing
+
+- Shutting down a server removes its own advert
+
+- Shutting down a server leaves a foreign advert untouched
 
 - The hook script takes the project name from the transcript path
 
 - When a diff is published, the window serving the project opens that diff exactly once
 
-
-
-
-
-
-- When a window re-advertises and neither its project nor its port has changed, the advert file is left untouched.
-
-- A window with no folder open advertises under the project of the home directory, which is where Claude Code files a chat started without a folder. When a folder is opened, the advert moves to that folder's project and the home advert is removed, so a window has one advert at a time.
-
-- If a window's advert is deleted, the window writes it again the next time it re-advertises.
-
-- Shutting a window's server down removes its advert.
-
-- The hook script works out the project from the transcript path in the hook payload, which names the directory the session started in. It never uses the current working directory, which follows every cd Claude runs.
-
-- When a turn ends through the hook script and publishes a diff, the window serving the project opens that diff exactly once.
-
-- When a window re-advertises, for example on regaining focus, and finds another window's advert for its project, it writes its own again, so the window in front is the one being served. When a window shuts its server down, it removes the advert only if the advert is still the one it wrote; an advert another window has written since is left alone.
-
-- When a window's first folder changes to a different project, its advert moves there and the old project is no longer served by it. Only the first folder decides the project, so adding a second folder after it changes nothing.
-
 ## View
 
-- A modified file shows its before-image on the left and the file on disk on the right, with both sides on the same path so the editor does not take it for a rename. An added file has no left side, and a deleted file has no right side.
+- A modified or deleted file shows its before-image on the left side of the diff
 
-- A before-image is addressed by a URI that carries the stamp of the diff it belongs to, so when two turns change the same file, its before-image has a different URI in each turn's diff.
+- A modified or added file shows the file on disk on the right side of the diff
 
-- The before-image provider serves the published diff: for a URI carrying the current stamp, reading returns the before-image's contents and stat reports its size. For any URI it cannot serve, including one without the current stamp, both throw FileNotFound instead of returning empty contents.
+- A deleted file shows nothing on the right side of the diff
 
-- A before-image can be served straight from the published diff even if the window never rendered that diff, as when VS Code restores a diff tab after a restart.
+- An added file shows nothing on the left side of the diff
 
-- An empty file the turn deleted and a file the turn emptied both appear in the diff. The deleted empty file's before-image is served as empty contents of size 0, not as missing, and the emptied file's before-image holds its old text.
+- Each diff addresses the same before-image path by a distinct URI
 
-- When the diff is opened, a file whose contents on disk are identical to its before-image, for example because the user reverted it by hand after the turn, is left out, while the turn's other changes are listed.
+- Before-image provider shows the real file size
 
-- A moved file appears as one entry named by its new path, with its two sides on its old and its new path, so the editor shows it as a rename.
+- Before-image provider throws an error for a URI it cannot find
 
-- Once a later turn has published its diff, a before-image URI from the earlier turn is refused with FileNotFound rather than served the later turn's contents.
+- Before-image provider answers each request from the published diff on disk
 
-- A turn that only added files still opens with those files listed, even though it wrote no before-images.
+- A before-image that exists and is empty is served
 
-- The diff of a finished turn becomes a regular tab right after it opens, so the next preview to open cannot replace it.
+- A before-image from an old diff is refused with an error
 
-- Only a finished turn's diff with at least one change is made a regular tab. An empty diff and a look at a running turn stay preview tabs, which the next look or the finished diff replaces.
+- A file restored to its original contents does not appear in the diff
+
+- The diff of a finished turn is opened as a persistent tab
+
+- Asking for a diff mid turn openes a preview tab
+
+- Asking for an empty diff openes a preview tab
 
 ## Workspace
 
-- A turn that changes files in two repositories of a multi-root workspace produces one diff listing the changes from both.
+- Changes from every workspace repository appear in the diff
 
-- An outside file that an editing tool names before changing it is captured, and appears in the diff alongside the repository changes.
+- An outside file named by an editing tool and changed appears in the diff
 
-- An outside file that an editing tool names before it exists, and that the turn then creates, appears in the diff as an added file, with no before-image.
+- Outside files are watched while the turn is running
 
-- A binary outside file that an editing tool named is left out of the diff, while a text file changed in the same turn is listed.
+- Only one watcher per file is created
 
-- When an editing tool first names a file outside the workspace, the extension starts watching that file, so VS Code notices Claude's writes to it. Naming the same file again adds no second watcher, files inside the workspace get no watcher, and the watchers are released when the turn ends.
+- The watchers are released when the turn ends
 
-- Each project has its own published diff and before-images: a turn in one project leaves another project's published diff intact.
+- Workspace repository files are not watched
 
-- Outside files are listed after the repository changes, and among themselves in tree order rather than in the order the tools named them.
+- Each project has its own published diff
