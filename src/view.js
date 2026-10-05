@@ -20,9 +20,9 @@ const RUNNING_TURN_TITLE = 'Changes so far'
 const getResources = (project, manifest) => {
   const resources = []
 
-  const beforeImagesDir = getBeforeImagesDir(project)
+  if (!manifest) return resources
 
-  if (!manifest || !existsSync(beforeImagesDir)) return resources
+  const beforeImagesDir = getBeforeImagesDir(project)
 
   const beforeUriParams = { scheme: SCHEME, query: manifest.id }
 

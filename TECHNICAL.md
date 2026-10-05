@@ -143,7 +143,7 @@ rename the new manifest into place
 
 Without the removal first there is a window where a superseded tab's id still matches the old manifest while the bytes underneath have already been replaced, and it would be handed the new turn's before-image for the old turn's diff. Removing it costs nothing: nothing watches the file, and a read landing in that window finds no manifest rather than the wrong bytes.
 
-`beforeImages/` is recreated even when every change is an addition and nothing is written into it. Its absence means the images were reclaimed; a missing file inside it means there was no before. Without that, a reclaimed turn would render every modified file as newly created.
+`beforeImages/` is created even when every change is an addition and nothing goes into it. Nothing reads the empty directory; it is there so the state on disk looks the same for every published turn to whoever inspects it.
 
 The manifest is written to a temporary file and renamed into place. The rename is atomic, so a read landing mid-publish sees the old manifest or the new one, never half of one. The before-image provider reads it on every request.
 
@@ -179,7 +179,7 @@ Closing the window mid-turn writes nothing. Claude Code records the result of a 
 
 Status is not stored. It is derived when the diff opens, from two `existsSync` calls: no before-image is an addition, no after file is a deletion, both present is a modification, and differing paths are a rename. A stored status froze what the turn did at the moment it ended while the tree moved on: a file modified and then deleted by hand rendered with a right side that no longer existed, and one deleted and then recreated by hand still rendered as a deletion.
 
-Two things keep that derivation unambiguous. An addition writes no before-image, so an empty image can only mean the file was already empty. And `beforeImages/` exists whenever a turn was published, so a missing directory means the images were reclaimed while a missing image inside it means there was no before.
+What keeps that derivation unambiguous is that an addition writes no before-image, so an empty image can only mean the file was already empty, and a missing one that there was no before. Nothing reclaims the images out from under a manifest: the only thing that deletes `beforeImages/` is the next publish rewriting it, and that removes the manifest first.
 
 Changes that no longer represent anything renderable drop out at render time: a file reverted by hand, or one whose sides have both gone.
 

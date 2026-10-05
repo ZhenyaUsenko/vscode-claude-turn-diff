@@ -219,7 +219,7 @@ check('a turn that only adds files still renders', async () => {
   await runTurn(repoDir, 'chat', [repoDir], () => outputFile(join(repoDir, 'added.txt'), 'new\n'))
 
   const diffData = await render([repoDir])
-  const reason = 'no before-image was written, so the directory has to exist on its own account'
+  const reason = 'no before-image was written, so the render must work with nothing on disk to read'
 
   assert.deepStrictEqual(getRenderedFileNames(diffData), ['added.txt'], reason)
 })
