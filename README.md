@@ -110,6 +110,8 @@ A diff you already have open keeps working after a later turn replaces it, becau
 
 - A shell command writing outside every repo is caught by neither mechanism.
 
+- A workspace folder that is not a git repo counts as outside: files Claude edits directly still appear, but what a shell command changes there does not. Running `git init` in the folder turns on full capture.
+
 - Binary files are not shown. The multi-file diff editor resolves both sides through VS Code's text model service, so a binary entry cannot render, and there is no image diff to fall back on.
 
 - Files over 50 MB are not shown either. They are not read at all, and the rest of the turn's changes are listed as usual.

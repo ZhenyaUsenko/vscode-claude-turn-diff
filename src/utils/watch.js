@@ -21,8 +21,7 @@ export const watchFilesOutsideWorkspace = (targetFiles, workspaceDirs) => {
     if (outsideWatchers.has(targetFile)) continue
     if (canonicalWorkspaceDirs.some((workspaceDir) => isUnder(canonicalize(targetFile), workspaceDir))) continue
 
-    const dirUri = Uri.file(dirname(targetFile))
-    const pattern = new RelativePattern(dirUri, basename(targetFile))
+    const pattern = new RelativePattern(Uri.file(dirname(targetFile)), basename(targetFile))
 
     outsideWatchers.set(targetFile, workspace.createFileSystemWatcher(pattern))
 

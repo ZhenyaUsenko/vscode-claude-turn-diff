@@ -75,6 +75,8 @@ Neither covers everything on its own:
 
 A shell command writing outside every repository is caught by neither.
 
+A workspace folder that is not a git repository counts as outside: files Claude edits directly are captured per file, and what a shell command changes there is not seen. Git could snapshot such a folder through a git dir of ours kept elsewhere, without touching the folder, but a plain folder has no `.gitignore` to fence anything off, so the first snapshot would hash whatever the folder holds — a `node_modules` in it means seconds inside `arm` and a pile of git objects that only we would ever reclaim. A repository freshly created with `git init` behaves the same way until its first `git add` or commit, since it has no index to copy yet.
+
 The repository snapshot happens once per turn. Later `arm` calls fall through to the cheap per-file branch, which is what keeps a turn with dozens of tool calls affordable.
 
 ### What the first arm records

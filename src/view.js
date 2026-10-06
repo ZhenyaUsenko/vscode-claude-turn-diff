@@ -53,7 +53,6 @@ export const showLastTurn = async (params) => {
   if (params?.force) await publishArmedTurn(project)
 
   const manifest = readManifest(project)
-
   const resources = getResources(project, manifest)
 
   const title = manifest?.running ? RUNNING_TURN_TITLE : LAST_TURN_TITLE
