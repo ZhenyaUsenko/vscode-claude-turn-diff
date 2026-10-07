@@ -1,13 +1,13 @@
-isEndOfTurn compares the whole user entry text to the interrupt marker instead of checking its prefix
+isTurnInterrupted compares the whole user entry text to the interrupt marker instead of checking its prefix
 
 --- a/src/store/transcript.js
 +++ b/src/store/transcript.js
-@@ -26,7 +26,7 @@
- const isEndOfTurn = (entry) => {
-   if (entry.type === 'assistant') return TERMINAL_STOP_REASONS.includes(entry.message?.stop_reason)
+@@ -31,7 +31,7 @@
  
--  return getEntryText(entry).trim().startsWith(INTERRUPT_MARKER)
-+  return getEntryText(entry).trim() === INTERRUPT_MARKER
- }
+     if (entry.isSidechain || !SPOKEN_TYPES.includes(entry.type)) continue
  
- ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+-    return entry.type === 'user' && getEntryText(entry).trim().startsWith(INTERRUPT_MARKER)
++    return entry.type === 'user' && getEntryText(entry).trim() === INTERRUPT_MARKER
+   }
+ 
+   return false

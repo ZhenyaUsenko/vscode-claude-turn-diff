@@ -1,0 +1,24 @@
+the manifest id is generated once at module load, so every diff a window publishes carries the same id
+
+--- a/src/store/manifest.js
++++ b/src/store/manifest.js
+@@ -4,6 +4,10 @@
+ 
+ ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+ 
++const MANIFEST_ID = randomUUID()
++
++////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
++
+ export const removeManifest = (project) => {
+   removeFile(getManifestFile(project))
+ }
+@@ -11,7 +15,7 @@
+ ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+ 
+ export const publishManifest = (project, changes, params) => {
+-  const manifestBody = { id: randomUUID(), changes, running: params.running }
++  const manifestBody = { id: MANIFEST_ID, changes, running: params.running }
+ 
+   replaceFile(getManifestFile(project), JSON.stringify(manifestBody))
+ }

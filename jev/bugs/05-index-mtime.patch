@@ -2,12 +2,14 @@ snapshotTree copies the git index with a plain copy that gives it a fresh mtime
 
 --- a/src/utils/git.js
 +++ b/src/utils/git.js
-@@ -82,7 +82,7 @@
-   const scratchDir = mkdtempSync(join(tmpdir(), 'turn-diff-'))
-   const indexCopyFile = join(scratchDir, 'index')
+@@ -64,10 +64,7 @@
+     const indexFile = join(gitDir, 'index')
+     const indexCopyFile = join(scratchDir, 'index')
  
--  try { copyPreservingMtime(join(gitDir, 'index'), indexCopyFile) } catch { return void removeRecursive(scratchDir) }
-+  try { copyFileSync(join(gitDir, 'index'), indexCopyFile) } catch { return void removeRecursive(scratchDir) }
+-    const { atime, mtime } = statSync(indexFile)
+-
+     copyFileSync(indexFile, indexCopyFile)
+-    utimesSync(indexCopyFile, atime, mtime)
  
-   const env = { GIT_INDEX_FILE: indexCopyFile }
+     await git(repoDir, 'add -u', { env: { GIT_INDEX_FILE: indexCopyFile } })
  

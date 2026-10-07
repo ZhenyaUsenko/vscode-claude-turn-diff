@@ -2,12 +2,12 @@ endTurn publishes a turn that changed nothing, replacing the previous diff with 
 
 --- a/src/turn/index.js
 +++ b/src/turn/index.js
-@@ -61,8 +61,6 @@
+@@ -67,8 +67,6 @@
  
-   if (ended) for (const armedTurnPath of getArmedTurnPaths(project)) removeRecursive(armedTurnPath)
+   if (endsTurn) for (const armedTurnPath of getArmedTurnPaths(project)) removeRecursive(armedTurnPath)
  
 -  if (!changes.length) return { published: false }
 -
    removeManifest(project)
    writeBeforeImages(project, images)
-   publishManifest(project, changes, { running: !ended })
+   publishManifest(project, changes, { running: !endsTurn })

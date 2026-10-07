@@ -2,12 +2,12 @@ collectOutsideChanges, a synchronous function, awaits readFile, a syntax error i
 
 --- a/src/turn/collect.js
 +++ b/src/turn/collect.js
-@@ -60,7 +60,7 @@
-   const touchedFiles = readLines(getTouchListFile(project)).sort(compareFilesInTreeOrder)
+@@ -67,7 +67,7 @@
  
-   for (const touchedFile of touchedFiles) {
--    const beforeContents = readFile(join(getTouchCopiesDir(project), touchedFile))
-+    const beforeContents = await readFile(join(getTouchCopiesDir(project), touchedFile))
+     if (getFileSize(copiedFile) > MAX_DIFF_BYTES) continue
  
-     addChange(collector, touchedFile, touchedFile, beforeContents)
+-    addChange(collector, touchedFile, touchedFile, readFile(copiedFile))
++    addChange(collector, touchedFile, touchedFile, await readFile(copiedFile))
    }
+ }
+ 

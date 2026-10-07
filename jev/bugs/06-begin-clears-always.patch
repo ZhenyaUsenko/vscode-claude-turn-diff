@@ -1,0 +1,13 @@
+beginTurn clears the armed turn on every prompt-submitted event, even one from the running turn's own chat
+
+--- a/src/turn/index.js
++++ b/src/turn/index.js
+@@ -17,8 +17,6 @@
+ const beginTurn = ({ project, sessionId }) => {
+   mkdirSync(getProjectDir(project), { recursive: true })
+ 
+-  if (sessionId === readFile(getSessionIdFile(project), 'utf8') && !isTurnInterrupted(project, sessionId)) return
+-
+   for (const armedTurnPath of getArmedTurnPaths(project)) removeRecursive(armedTurnPath)
+ }
+ 

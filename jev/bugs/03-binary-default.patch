@@ -1,11 +1,11 @@
 isBinary defaults to true when a side is missing, so every added and deleted file is skipped as binary
 
---- a/src/turn/collect.js
-+++ b/src/turn/collect.js
-@@ -11,7 +11,7 @@
+--- a/src/utils/files.js
++++ b/src/utils/files.js
+@@ -77,7 +77,7 @@
  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
  
- const isBinary = (contents) => {
+ export const isBinary = (contents) => {
 -  return contents?.subarray(0, BINARY_SNIFF_BYTES).includes(0) ?? false
 +  return contents?.subarray(0, BINARY_SNIFF_BYTES).includes(0) ?? true
  }

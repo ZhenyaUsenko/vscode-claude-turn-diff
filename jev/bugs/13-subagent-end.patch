@@ -2,12 +2,12 @@ endTurn no longer ignores end events that carry an agent_id
 
 --- a/src/turn/index.js
 +++ b/src/turn/index.js
-@@ -51,8 +51,6 @@
+@@ -53,8 +53,6 @@
  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
  
  export const endTurn = async ({ project, payload, ended = true }) => {
 -  if (payload?.agent_id) return { published: false }
 -
-   if (ended) disposeOutsideWatchers()
+   const waitsForAgents = payload?.background_tasks?.some((task) => AGENT_TASK_TYPES.includes(task.type))
  
-   if (!existsSync(getSnapshotsFile(project))) return { published: false }
+   const endsTurn = ended && !waitsForAgents && payload?.hook_event_name !== 'StopFailure'

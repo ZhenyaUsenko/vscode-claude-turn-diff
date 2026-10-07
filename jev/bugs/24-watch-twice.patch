@@ -2,11 +2,11 @@ watchFilesOutsideWorkspace no longer skips files it already watches, so every ed
 
 --- a/src/utils/watch.js
 +++ b/src/utils/watch.js
-@@ -12,7 +12,6 @@
+@@ -18,7 +18,6 @@
    const canonicalWorkspaceDirs = workspaceDirs.map(canonicalize)
  
    for (const targetFile of targetFiles) {
 -    if (outsideWatchers.has(targetFile)) continue
      if (canonicalWorkspaceDirs.some((workspaceDir) => isUnder(canonicalize(targetFile), workspaceDir))) continue
  
-     const dirUri = Uri.file(dirname(targetFile))
+     const pattern = new RelativePattern(Uri.file(dirname(targetFile)), basename(targetFile))

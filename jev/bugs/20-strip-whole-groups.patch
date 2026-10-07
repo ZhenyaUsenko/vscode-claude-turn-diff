@@ -1,0 +1,17 @@
+stripOurHooks removes whole groups that hold one of the extension's hooks, deleting another tool's hook that shared a group
+
+--- a/src/install/settings.js
++++ b/src/install/settings.js
+@@ -39,11 +39,7 @@
+   for (const event in settings.hooks) {
+     const groups = settings.hooks[event]
+ 
+-    const updatedGroups = groups.flatMap((group) => {
+-      const otherHooks = group.hooks.filter((hook) => !hook.command?.includes(HOOK_MARKER))
+-
+-      return otherHooks.length ? [{ ...group, hooks: otherHooks }] : []
+-    })
++    const updatedGroups = groups.filter((group) => !group.hooks.some((hook) => hook.command?.includes(HOOK_MARKER)))
+ 
+     settings.hooks[event] = updatedGroups.length ? updatedGroups : undefined
+   }
