@@ -1,12 +1,8 @@
-import { getFileSize, removeRecursive } from './files.js'
+import { isTextFile, removeRecursive } from './files.js'
 import { execFile } from 'node:child_process'
 import { copyFileSync, mkdtempSync, statSync, utimesSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-const MAX_UNTRACKED_BYTES = 1024 * 1024
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -30,7 +26,7 @@ const addUntrackedFiles = async (repoDir, { env }) => {
 
   const untrackedPaths = output?.split('\0').filter(Boolean) ?? []
 
-  const input = untrackedPaths.filter((path) => getFileSize(join(repoDir, path)) <= MAX_UNTRACKED_BYTES).join('\0')
+  const input = untrackedPaths.filter((path) => isTextFile(join(repoDir, path))).join('\0')
 
   if (!input) return
 

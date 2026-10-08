@@ -82,6 +82,26 @@ export const isBinary = (contents) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+export const isTextFile = (file) => {
+  let descriptor
+
+  try {
+    descriptor = openSync(file, 'r')
+
+    const buffer = Buffer.alloc(BINARY_SNIFF_BYTES)
+
+    const length = readSync(descriptor, buffer, 0, BINARY_SNIFF_BYTES, 0)
+
+    return !isBinary(buffer.subarray(0, length))
+  } catch {
+    return false
+  } finally {
+    if (descriptor != null) closeSync(descriptor)
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 export const canonicalize = (targetPath) => {
   const realPath = getRealPath(targetPath)
 

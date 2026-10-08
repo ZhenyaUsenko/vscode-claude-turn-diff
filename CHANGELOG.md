@@ -24,6 +24,10 @@
 
 - Fixed: removing the hooks, or registering them again after an update, also deleted any other command that had been added to the same hook group as ours. Only our own entries are touched now.
 
+- Untracked files are no longer left out for being over 1 MB. A text file that size now appears like any other, with what it held before. Binaries are left out of the snapshots instead, since they cannot be shown and hashing them twice a turn was the cost the limit was there to spare. This also stops an untracked file that shrank below 1 MB during a turn from showing up as newly created.
+
+- Fixed: a git repository nested inside the workspace repository, not ignored and with no commit in it yet, made git refuse to stage any untracked file alongside it. Files created during a turn were missing from the diff until the nested repository got its first commit or a `.gitignore` entry.
+
 ## 0.2.0
 
 The capture logic moved out of the bash hook and into the extension, and each project now keeps its own diff, so several VS Code windows no longer overwrite each other's. You can look at a turn while it is still running. A turn that was interrupted, or that ended while the window was closed, can still be shown afterwards, and one cut short by an API error gets a diff too. Moved files show as renames, files are listed in the explorer's order, and several cases where the diff came out empty, stale or incomplete are fixed.

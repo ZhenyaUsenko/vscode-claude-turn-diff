@@ -104,8 +104,6 @@ A diff you already have open keeps working after a later turn replaces it, becau
 
 ## Limitations
 
-- Untracked files over 1 MB are left out of both snapshots, so they never appear.
-
 - Gitignored files inside a repo do not appear, even when an `Edit`/`Write` tool named them. Already-tracked files always appear, whatever the ignore rules say.
 
 - A shell command writing outside every repo is caught by neither mechanism.

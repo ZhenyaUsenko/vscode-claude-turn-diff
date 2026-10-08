@@ -6,6 +6,7 @@ import { check } from '../utils/checks.js'
 import { commitAll, createRepo } from '../utils/fixtures.js'
 import { nextSecond, readChangedFileNames, registerChat, runTurn } from '../utils/turn.js'
 import assert from 'node:assert'
+import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, renameSync } from 'node:fs'
 import { join, relative as getRelativePath } from 'node:path'
 
@@ -115,19 +116,67 @@ check('binary files are skipped', async () => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-check('untracked files over the size cap are excluded from both snapshots', async () => {
+check('an untracked binary is never hashed into the repository, whatever its size', async () => {
   const repoDir = createRepo()
+  const bigBinary = Buffer.alloc(2 * 1024 * 1024)
+  const smallBinary = Buffer.from([0x89, 0x50, 0, 1])
 
   outputFile(join(repoDir, 'seed.txt'), 'x\n')
   commitAll(repoDir)
-  outputFile(join(repoDir, 'big.bin'), Buffer.alloc(2 * 1024 * 1024, 7))
+  outputFile(join(repoDir, 'shrinks.bin'), bigBinary)
+  outputFile(join(repoDir, 'grows.bin'), smallBinary)
 
   await runTurn(repoDir, 'chat', [repoDir], () => {
-    outputFile(join(repoDir, 'big.bin'), Buffer.alloc(2 * 1024 * 1024, 8))
+    outputFile(join(repoDir, 'shrinks.bin'), smallBinary)
+    outputFile(join(repoDir, 'grows.bin'), bigBinary)
     outputFile(join(repoDir, 'seed.txt'), 'y\n')
   })
 
+  const hashArgs = ['-C', repoDir, 'hash-object', '--stdin']
+
+  const bigBinaryId = execFileSync('git', hashArgs, { input: bigBinary }).toString().trim()
+  const reason = 'a binary cannot render, so staging it would only cost a hash of it at every snapshot'
+
   assert.deepStrictEqual(readChangedFileNames(repoDir), ['seed.txt'])
+  assert.throws(() => execFileSync('git', ['-C', repoDir, 'cat-file', '-e', bigBinaryId], { stdio: 'ignore' }), reason)
+})
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+check('an untracked nested repository with no commit yet does not hide the other untracked files', async () => {
+  const repoDir = createRepo()
+
+  outputFile(join(repoDir, 'seed.txt'), 'one\n')
+  commitAll(repoDir)
+  mkdirSync(join(repoDir, 'nested'))
+  execFileSync('git', ['-C', join(repoDir, 'nested'), 'init', '-q'])
+  outputFile(join(repoDir, 'nested', 'inner.txt'), 'x\n')
+
+  await runTurn(repoDir, 'chat', [repoDir], () => outputFile(join(repoDir, 'added.txt'), 'new\n'))
+
+  const reason = 'git lists the nested repository as a directory and refuses to stage it, failing the whole batch'
+
+  assert.deepStrictEqual(readChangedFileNames(repoDir), ['added.txt'], reason)
+})
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+check('an untracked text file is captured whatever its size', async () => {
+  const repoDir = createRepo()
+  const project = getProjectKey(repoDir)
+  const bigText = 'x'.repeat(2 * 1024 * 1024)
+
+  outputFile(join(repoDir, 'seed.txt'), 'one\n')
+  commitAll(repoDir)
+  outputFile(join(repoDir, 'big.log'), bigText)
+
+  await runTurn(repoDir, 'chat', [repoDir], () => outputFile(join(repoDir, 'big.log'), 'tiny now\n'))
+
+  const manifest = readManifest(project)
+  const reason = 'left out of the first snapshot for its size, it would arrive as newly created'
+
+  assert.deepStrictEqual(readChangedFileNames(repoDir), ['big.log'])
+  assert.strictEqual(readFile(getBeforeImageFile(project, manifest, 'big.log'), 'utf8'), bigText, reason)
 })
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
