@@ -2,7 +2,7 @@
   "name": "claude-turn-diff",
   "displayName": "Turn Diff for Claude Code",
   "description": "Shows everything Claude Code changed in one turn as a single multi-file diff.",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "publisher": "ZhenyaUsenko",
   "license": "MIT",
   "icon": "icon.png",
@@ -54,6 +54,7 @@
   "scripts": {
     "test": "node --import ./test/setup.js test/index.js",
     "build": "./scripts/build.sh",
+    "release": "./scripts/release.sh",
     "install-extension": "./scripts/install.sh",
     "restore-extension": "./scripts/restore.sh"
   }

@@ -1,6 +1,10 @@
 # Changelog
 
-## 0.2.1
+## 0.3.0
+
+The diff of a finished turn now stays open as a regular tab. A turn is held open while background agents it started are still working, and after an API error, so all of its work lands in one diff, and closing the window mid-turn no longer loses the turn. Untracked files are no longer skipped for their size, and several cases where the diff came out incomplete, stale or empty are fixed.
+
+The hooks are unchanged, so there is nothing to register again.
 
 - The diff of a finished turn now opens as a regular tab, where it used to be a preview. The next turn's diff, or a file you click once in the explorer, no longer takes its place, so it stays until you close it. A look at a turn still running remains a preview, and the finished diff replaces it.
 
@@ -10,6 +14,8 @@
 
 - A turn whose end never reached the extension, because the window was closed or reloading just as it finished, is no longer finished off when you ask for its diff. It shows as changes so far, and your next prompt in that chat carries it on. The extension cannot tell such a turn from one still waiting for its agents, so asking for the diff now finishes a turn off only when you interrupted it.
 
+- Untracked files are no longer left out for being over 1 MB. A text file that size now appears like any other, with what it held before. Binaries are left out of the snapshots instead, since they cannot be shown and hashing them twice a turn was the cost the limit was there to spare. This also stops an untracked file that shrank below 1 MB during a turn from showing up as newly created.
+
 - Fixed: closing the window while Claude was working left everything the turn had done so far out of its diff. Claude Code picks such a turn back up when the window reopens, and the prompt it resumes with was taken for a new turn.
 
 - Fixed: a file outside the workspace could still show its old contents on both sides of the diff. The watcher that makes VS Code reload such a file takes a moment to start, and an edit landing in that moment went unreported. The file is now nudged a second later, once its watcher is live.
@@ -18,13 +24,11 @@
 
 - Fixed: a turn whose only change was a file outside every repository that Claude tried to create but never did, because you refused the write or it failed, replaced the previous turn's diff with an empty one. Nothing opened, but the last diff was gone, and a look at a running turn showed nothing instead of the last finished turn.
 
-- Fixed: when the files a turn changed in one repository came to more than 64 MB before the turn, every change in that repository was left out of the diff. Now only a file over 50 MB is left out, the same way a binary is, since VS Code computes no diff above that size anyway. The rest are listed as usual.
+- Fixed: when the files a turn changed in one repository added up to more than 64 MB as they were before the turn, every change in that repository was left out of the diff. Now only a file over 50 MB is left out, the same way a binary is, since VS Code computes no diff above that size anyway. The rest are listed as usual.
 
 - Fixed: an untracked file with `*`, `?` or `[` in its name was read by git as a pattern, so it could pull in other files it matched, including gitignored ones, which then appeared in the diff whenever they changed.
 
 - Fixed: removing the hooks, or registering them again after an update, also deleted any other command that had been added to the same hook group as ours. Only our own entries are touched now.
-
-- Untracked files are no longer left out for being over 1 MB. A text file that size now appears like any other, with what it held before. Binaries are left out of the snapshots instead, since they cannot be shown and hashing them twice a turn was the cost the limit was there to spare. This also stops an untracked file that shrank below 1 MB during a turn from showing up as newly created.
 
 - Fixed: a git repository nested inside the workspace repository, not ignored and with no commit in it yet, made git refuse to stage any untracked file alongside it. Files created during a turn were missing from the diff until the nested repository got its first commit or a `.gitignore` entry.
 
